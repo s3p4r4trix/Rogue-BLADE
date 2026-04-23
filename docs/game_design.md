@@ -41,16 +41,19 @@ Shurikens take damage during runs but are never permanently destroyed to avoid p
 
 ### 5.2 Hull Materials (Tiered Progression)
 **Tier I: Weak & Common**
+
 1.  **Sinter-Scrap:** Cheap, compressed junk. Fragile and brittle.
 2.  **Plasteel:** Lightweight polymer-metal mix. Good against basic projectiles.
 3.  **Poly-Titanium:** Titanium with carbon nanotubes. High strength-to-weight ratio.
 
 **Tier II: Solid & Military**
+
 4.  **Durasteel:** Industrial standard. Heavy, heat-resistant, and extremely tough.
 5.  **Tritanium:** Crystalline alloy used in starships. High density, resists plasma.
 6.  **Kinetic-Graphene (Reactive Metal):** Flexible until impact; hardens in microseconds upon hit.
 
 **Tier III: Exotic & God-Tier**
+
 7.  **Null-Field Steel:** Forged in a vacuum. Absorbs/dissipates energy (Plasma/Lasers).
 8.  **Neutronium-Cast:** Extremely dense material from dead stars. Near-indestructible but requires elite engines to fly.
 9.  **Adamant-Quantum-Grid:** Atoms bound by quantum entanglement. Physically impossible to break or cut.
