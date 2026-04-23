@@ -58,4 +58,6 @@ We are currently building **Phase 1 (The Workshop / Routine - Modular system)**.
 * Keep components small and isolated (Dumb/Smart component pattern).
 * Use standard Tailwind utility classes; avoid custom CSS unless absolutely necessary (for specific Cyberpunk neon effects).
 * Write self-documenting code with clear variable names. Add JSDoc comments to complex game logic rules.
+* **ALWAYS add useful, comprehensive comments to quickly grasp the underlying concepts and their inner workings.**
+* **All text in the application MUST be in English.**
 * Whenever generating code, provide complete, runnable snippets.

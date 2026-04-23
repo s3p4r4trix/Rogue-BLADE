@@ -12,11 +12,21 @@ import { WorkshopService } from '../../services/workshop.service';
 export class Inventory {
   workshop = inject(WorkshopService);
 
-  // Provide available lists via the service
+  /**
+   * Getter for available triggers from the central WorkshopService state.
+   */
   get triggers() { return this.workshop.availableTriggers(); }
+  
+  /**
+   * Getter for available actions from the central WorkshopService state.
+   */
   get actions() { return this.workshop.availableActions(); }
 
-  // This predicate prevents dropping back into the inventory from slots
+  /**
+   * This predicate disables dropping items BACK into the inventory from the routine slots.
+   * Ensures a unidirectional flow (Inventory -> Slots). Items are "copied" rather than moved,
+   * or replaced when a slot is cleared.
+   */
   noReturnPredicate() {
     return false;
   }

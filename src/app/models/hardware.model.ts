@@ -1,9 +1,16 @@
+/**
+ * Base interface for all Shuriken hardware parts.
+ */
 export interface HardwareComponent {
   id: string;
   name: string;
   description: string;
 }
 
+/**
+ * Determines mobility and evasion stats.
+ * Directly affects the 2D auto-battler simulation movement.
+ */
 export interface AntiGravEngine extends HardwareComponent {
   speed: number;
   stealth: number;
@@ -11,6 +18,10 @@ export interface AntiGravEngine extends HardwareComponent {
   evasionRate: number;
 }
 
+/**
+ * Determines defensive capabilities and overall weight.
+ * Weight impacts kinetic damage output and movement inertia.
+ */
 export interface HullMaterial extends HardwareComponent {
   tier: number;
   hp: number;
@@ -18,22 +29,35 @@ export interface HullMaterial extends HardwareComponent {
   weight: number;
 }
 
+/**
+ * Determines how much energy is available to power engines and actions.
+ */
 export interface EnergyCell extends HardwareComponent {
   maxEnergy: number;
   regenRate: number;
   maxOutput: number;
 }
 
+/**
+ * Sensors unlock specific Gambit Triggers (IF conditions).
+ * E.g., a Terahertz sensor allows "Enemy behind cover" to be used.
+ */
 export interface Sensor extends HardwareComponent {
   range: number;
   unlocksTriggerIds: string[];
 }
 
+/**
+ * The offensive weapon. Determines damage type (e.g., plasma melts shields).
+ */
 export interface Blade extends HardwareComponent {
   damageType: 'kinetic' | 'vibro' | 'mono-molecular' | 'plasma';
   damage: number;
 }
 
+/**
+ * The full representation of a configured drone, passed into the combat simulation phase.
+ */
 export interface Shuriken {
   id: string;
   name: string;

@@ -13,14 +13,24 @@ export class CompilerConsole implements AfterViewChecked {
   
   @ViewChild('consoleEl') private consoleEl!: ElementRef;
 
+  /**
+   * Gets the live stream of system logs from the WorkshopService.
+   */
   get logs() {
     return this.workshop.systemLogs();
   }
 
+  /**
+   * Triggers the code compilation and validation process.
+   */
   compileCode() {
     this.workshop.compileCode();
   }
 
+  /**
+   * Lifecycle hook that fires after the view has been checked.
+   * We use this to auto-scroll the console to the newest log entry.
+   */
   ngAfterViewChecked() {
     this.scrollToBottom();
   }

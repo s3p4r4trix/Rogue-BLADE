@@ -10,7 +10,7 @@
           'border-2 border-dashed border-cyan-800 text-cyan-800': !routine.trigger,
           'bg-cyan-900/40 border border-solid border-cyan-500 text-cyan-300': routine.trigger
        }">
-      <span *ngIf="!routine.trigger">Hier WENN-Bedingung ablegen</span>
+      <span *ngIf="!routine.trigger">Drop IF condition here</span>
       <span *ngIf="routine.trigger">{{ routine.trigger.value }}</span>
   </div>
   
@@ -25,7 +25,7 @@
           'border-2 border-dashed border-orange-800 text-orange-800': !routine.action,
           'bg-orange-900/40 border border-solid border-orange-500 text-orange-300': routine.action
        }">
-      <span *ngIf="!routine.action">Hier DANN-Aktion ablegen</span>
+      <span *ngIf="!routine.action">Drop THEN action here</span>
       <span *ngIf="routine.action">{{ routine.action.value }}</span>
   </div>
   
