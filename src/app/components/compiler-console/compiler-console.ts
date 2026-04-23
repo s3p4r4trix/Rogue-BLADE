@@ -1,4 +1,4 @@
-import { Component, inject, ElementRef, ViewChild, AfterViewChecked } from '@angular/core';
+import { Component, inject, ElementRef, viewChild, AfterViewChecked, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WorkshopService } from '../../services/workshop.service';
 
@@ -6,12 +6,13 @@ import { WorkshopService } from '../../services/workshop.service';
   selector: 'app-compiler-console',
   imports: [CommonModule],
   templateUrl: './compiler-console.html',
-  styleUrl: './compiler-console.scss'
+  styleUrl: './compiler-console.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CompilerConsole implements AfterViewChecked {
   workshop = inject(WorkshopService);
   
-  @ViewChild('consoleEl') private consoleEl!: ElementRef;
+  private consoleEl = viewChild.required<ElementRef>('consoleEl');
 
   /**
    * Gets the live stream of system logs from the WorkshopService.
@@ -37,7 +38,8 @@ export class CompilerConsole implements AfterViewChecked {
 
   private scrollToBottom(): void {
     try {
-      this.consoleEl.nativeElement.scrollTop = this.consoleEl.nativeElement.scrollHeight;
+      const el = this.consoleEl().nativeElement;
+      el.scrollTop = el.scrollHeight;
     } catch(err) { }
   }
 }

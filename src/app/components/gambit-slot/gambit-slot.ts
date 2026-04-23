@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, input, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, CdkDropList, CdkDrag } from '@angular/cdk/drag-drop';
 import { WorkshopService } from '../../services/workshop.service';
@@ -8,10 +8,11 @@ import { GambitRoutine, Trigger, Action } from '../../models/gambit.model';
   selector: 'app-gambit-slot',
   imports: [CommonModule, CdkDropList],
   templateUrl: './gambit-slot.html',
-  styleUrl: './gambit-slot.scss'
+  styleUrl: './gambit-slot.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GambitSlot {
-  @Input({ required: true }) routine!: GambitRoutine;
+  routine = input.required<GambitRoutine>();
   
   workshop = inject(WorkshopService);
 
@@ -37,7 +38,7 @@ export class GambitSlot {
    */
   onTriggerDrop(event: CdkDragDrop<any>) {
     if (event.item.data && event.item.data.type === 'trigger') {
-      this.workshop.setTrigger(this.routine.priority, event.item.data as Trigger);
+      this.workshop.setTrigger(this.routine().priority, event.item.data as Trigger);
     }
   }
 
@@ -47,7 +48,7 @@ export class GambitSlot {
    */
   onActionDrop(event: CdkDragDrop<any>) {
     if (event.item.data && event.item.data.type === 'action') {
-      this.workshop.setAction(this.routine.priority, event.item.data as Action);
+      this.workshop.setAction(this.routine().priority, event.item.data as Action);
     }
   }
 
@@ -55,6 +56,6 @@ export class GambitSlot {
    * Clears the current slot via the WorkshopService.
    */
   clearSlot() {
-    this.workshop.clearSlot(this.routine.priority);
+    this.workshop.clearSlot(this.routine().priority);
   }
 }

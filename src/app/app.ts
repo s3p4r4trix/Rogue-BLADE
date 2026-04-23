@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { Inventory } from './components/inventory/inventory';
@@ -15,6 +15,7 @@ import { WorkshopService } from './services/workshop.service';
   imports: [CommonModule, CdkDropListGroup, Inventory, GambitSlot, CompilerConsole],
   templateUrl: './app.html',
   styleUrl: './app.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class App {
   workshop = inject(WorkshopService);

@@ -15,11 +15,11 @@ The core gameplay loop is divided into two strict phases:
 
 ## 3. Technology Stack
 
-* **Framework:** Angular (latest version)
+* **Framework:** Angular (latest stable version only)
 * **Language:** TypeScript (Strict mode enabled)
 * **Styling:** Tailwind CSS
 * **UI Interactions:** `@angular/cdk/drag-drop` (for the programming interface)
-* **State Management:** Angular Signals (preferred) or RxJS BehaviorSubjects inside dedicated Singleton Services.
+* **State Management:** Modern Angular Signals and RxJS usage. Strictly utilize `signalForms` and `signalStores` along with their associated best practices.
 * **Game Engine (Phase 2):** HTML5 Canvas API (custom loop) or Phaser.js (to be integrated into an Angular component later).
 
 ## 4. Core Domain Logic (Data Models needed)
@@ -55,7 +55,8 @@ We are currently building **Phase 1 (The Workshop / Routine - Modular system)**.
 
 ## 6. Coding Guidelines
 
-* Keep components small and isolated (Dumb/Smart component pattern).
+* **Component Architecture:** All components MUST be Standalone and strictly use `ChangeDetectionStrategy.OnPush`. Keep components small and isolated (Dumb/Smart component pattern).
+* **Signal-based APIs:** Exclusively use modern Signal-based APIs for components: `input()`, `output()`, `viewChild()`, and `viewChildren()` instead of the older `@Input`, `@Output`, and `@ViewChild` decorators.
 * Use standard Tailwind utility classes; avoid custom CSS unless absolutely necessary (for specific Cyberpunk neon effects).
 * Write self-documenting code with clear variable names. Add JSDoc comments to complex game logic rules.
 * **ALWAYS add useful, comprehensive comments to quickly grasp the underlying concepts and their inner workings.**
