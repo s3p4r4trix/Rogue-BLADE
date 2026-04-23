@@ -1,74 +1,59 @@
-# 🗡️ Rogue:BLADE
+# RogueBlade
 
-A strategic cyberpunk auto-battler with roguelite elements. Build, upgrade, and program your own smart-shuriken swarm using a visual drag-and-drop logic system.
+This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.8.
 
-> 📝 For a deep dive into the mechanics, read the full [Game Design Document](./docs/GDD.md).
+## Development server
 
-# 📖 About the Project
+To start a local development server, run:
 
-**Rogue:BLADE** divides gameplay into two strict phases:
+```bash
+ng serve
+```
 
-1. The Workshop (Active): A UI-heavy management phase. You are a mechanic in a dystopian underground lab. Build, repair, and program flying high-tech drones ("Smart-Shurikens") using a visual Gambit system (IF/THEN logic).
-2. The Run (Passive): A 2D auto-battler simulation. Your programmed Shuriken swarms fight waves of enemies (corporate security, EMP-grenadiers, hacker drones) completely autonomously based on your hardware and software setup.
+Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
 
-# 🛠️ Tech Stack
-* Frontend Framework: Angular
-* Language: TypeScript (Strict mode)
-* Styling: Tailwind CSS
-* UI Interactions: @angular/cdk/drag-drop
-* State Management: Angular Signals
-* Game Engine: HTML5 Canvas / Phaser.js (for the combat simulation)
+## Code scaffolding
 
-# 🚀 Getting Started
+Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+```bash
+ng generate component component-name
+```
 
-## Prerequisites
-* Node.js (v22 or higher recommended)
-* Angular CLI
+For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
 
-> npm install -g @angular/cli
+```bash
+ng generate --help
+```
 
-## Installation
+## Building
 
-1. Clone the repository:
+To build the project run:
 
-> git clone [https://github.com/yourusername/rogue-blade.git](https://github.com/yourusername/rogue-blade.git)
+```bash
+ng build
+```
 
-2. Navigate into the project directory:
+This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
-> cd rogue-blade
+## Running unit tests
 
-3. Install dependencies:
+To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
 
-> npm install
+```bash
+ng test
+```
 
-4. Start the development server:
+## Running end-to-end tests
 
-> ng serve
+For end-to-end (e2e) testing, run:
 
-5. Open your browser and navigate to http://localhost:4200/. The app will automatically reload if you change any of the source files.
+```bash
+ng e2e
+```
 
-# 🗺️ Roadmap / Milestones
+Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
 
-* [x] Concept & Game Design Document
-* [x] Static HTML/JS Prototype for the Gambit UI
-* [ ] Milestone 1: Angular Architecture & Workshop UI (Drag & Drop Gambit Compiler)
-* [ ] Milestone 2: Core Combat Loop (Canvas/Phaser Auto-Battler Phase)
-* [ ] Milestone 3: Roguelite Progression (Pathing, Meta-Upgrades)
-* [ ] Milestone 4: Mobile Port (Capacitor/Ionic)
+## Additional Resources
 
-# ⚙️ Hardware & Programming Synergy
-
-The strategic depth of Rogue:BLADE comes from the synergy between hardware components and AI routines:
-
-* Anti-Grav Engines: Determine speed, acoustic stealth, and evasion.
-* Hull Materials: Ranging from cheap Sinter-Scrap to god-tier Neutronium-Cast.
-* Sensors: Required to unlock specific AI triggers (e.g., Terahertz sensors to detect enemies behind cover).
-* Blades: From blunt kinetic edges (heavy impact) to shield-melting plasma cutters (high energy drain).
-
-# ⚖️ License & Copyright
-
-Copyright (c) 2026. All Rights Reserved.
-
-This repository and its contents are strictly private and proprietary. Unauthorized copying, modification, distribution, or use of this code and game concept, via any medium, is strictly prohibited.
+For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
