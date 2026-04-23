@@ -57,6 +57,7 @@ We are currently building **Phase 1 (The Workshop / Routine - Modular system)**.
 
 * **Component Architecture:** All components MUST be Standalone and strictly use `ChangeDetectionStrategy.OnPush`. Keep components small and isolated (Dumb/Smart component pattern).
 * **Templates & Styles:** Always use inline templates (`template: \`...\``) and inline styles (`styles: [\`...\`]`) when the HTML or SCSS code is under 50 lines.
+* **Folder Structure:** Only create specific folders for components when there is more than one file associated with them. Single-file components should reside directly in their parent directory (e.g., `src/app/components/`).
 * **Signal-based APIs:** Exclusively use modern Signal-based APIs for components: `input()`, `output()`, `viewChild()`, and `viewChildren()` instead of the older `@Input`, `@Output`, and `@ViewChild` decorators.
 * Use standard Tailwind utility classes; avoid custom CSS unless absolutely necessary (for specific Cyberpunk neon effects).
 * Write self-documenting code with clear variable names. Add JSDoc comments to complex game logic rules.

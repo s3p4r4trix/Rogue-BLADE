@@ -1,7 +1,7 @@
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
-import { WorkshopService } from '../../services/workshop.service';
+import { WorkshopService } from '../services/workshop.service';
 
 @Component({
   selector: 'app-inventory',

@@ -1,9 +1,9 @@
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDropListGroup } from '@angular/cdk/drag-drop';
-import { Inventory } from './components/inventory/inventory';
-import { GambitSlot } from './components/gambit-slot/gambit-slot';
-import { CompilerConsole } from './components/compiler-console/compiler-console';
+import { Inventory } from './components/inventory';
+import { GambitSlot } from './components/gambit-slot';
+import { CompilerConsole } from './components/compiler-console';
 import { WorkshopService } from './services/workshop.service';
 
 /**

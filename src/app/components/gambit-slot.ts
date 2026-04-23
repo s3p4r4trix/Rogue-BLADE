@@ -1,8 +1,8 @@
 import { Component, input, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, CdkDropList, CdkDrag } from '@angular/cdk/drag-drop';
-import { WorkshopService } from '../../services/workshop.service';
-import { GambitRoutine, Trigger, Action } from '../../models/gambit.model';
+import { WorkshopService } from '../services/workshop.service';
+import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
 
 @Component({
   selector: 'app-gambit-slot',
