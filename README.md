@@ -2,6 +2,8 @@
 
 A strategic cyberpunk auto-battler with roguelite elements. Build, upgrade, and program your own smart-shuriken swarm using a visual drag-and-drop logic system.
 
+> 📝 For a deep dive into the mechanics, read the full [Game Design Document](./docs/GDD.md).
+
 # 📖 About the Project
 
 **Rogue:BLADE** divides gameplay into two strict phases:
