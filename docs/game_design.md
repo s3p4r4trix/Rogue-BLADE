@@ -1,89 +1,93 @@
-# Game Design Konzept: Projekt "Rogue:BLADE" (Mobile / Auto-Battler)
+# Game Design Document: Project "Rogue:BLADE" (Mobile / Auto-Battler)
 
-## 1. Kernkonzept & Spielidee
-Im Zentrum des Spiels stehen **Smart-Shuriken** – fliegende, drohnenartige Projektil-Waffen in einer dystopischen Cyberpunk-Welt. Das Spiel ist ein strategischer **Mobile-Auto-Battler mit Roguelite-Elementen**. Der Spieler verbringt seine aktive Zeit in einer Untergrund-Werkstatt mit dem Programmieren, Reparieren und Upgraden der Shuriken. Der eigentliche Kampfablauf ist passiv: Der Spieler beobachtet, wie seine Kreationen in prozedural generierten Leveln autonom gegen Feindkonzerne, Gangs und Roboter-Wellen antreten.
+## 1. Core Concept & Game Idea
+"Rogue:BLADE" is a strategic mobile auto-battler with roguelite elements set in a dystopian cyberpunk world. The game centers on **Smart-Shuriken** – flying, drone-like projectile weapons. Players spend their active time in an underground workshop programming, repairing, and upgrading these shurikens. Combat is passive: players watch their creations autonomously navigate procedurally generated levels and fight waves of corporate security, gangs, and robots.
 
-## 2. Der Mobile-Gameplay-Loop
-Das Spiel ist für kurze "Zwischendurch"-Sessions (Casual) optimiert. Der Loop teilt sich in zwei Phasen:
+## 2. Mobile Gameplay Loop
+The game is optimized for short "on-the-go" sessions. The loop is divided into two distinct phases:
 
-* **Phase 1: Die Basis (Aktiv - Management & Taktik)**
-  * **Routinen bauen:** Ausrüsten von simplen "Wenn-Dann"-Logikblöcken.
-  * **Hardware-Tuning:** Anpassen von Motoren, Materialien, Klingen, Energiezellen und Sensoren.
-  * **Wartung:** Reparieren von beschädigten Shuriken.
-  * **Werkstatt-Management:** Forschung und Interaktion mit NPCs (Hacker, Schwarzmarkt-Mechaniker) für bessere Technologie.
+* **Phase 1: The Base (Active - Management & Tactics)**
+    * **Routine Building:** Configuring simple "If-Then" logic blocks.
+    * **Hardware Tuning:** Customizing engines, materials, blades, energy cells, and sensors.
+    * **Maintenance:** Repairing damaged shurikens.
+    * **Workshop Management:** Research and interaction with NPCs (hackers, black-market mechanics) for technological advancement.
 
-* **Phase 2: Der Run (Passiv - Beobachten & Lernen)**
-  * **Pfad-Wahl:** Ähnlich wie in *Slay the Spire* wählt der Spieler den Weg durch das Level (z.B. feindliches Konzerngebäude, verregnete Gassen, Schwarzmarkt).
-  * Die Shuriken agieren zu 100% autonom nach den in Phase 1 programmierten Routinen.
-  * **Lern-Effekt:** Der Spieler analysiert Fehler in seiner Logik und passt diese nach dem Run an.
+* **Phase 2: The Run (Passive - Observe & Learn)**
+    * **Path Selection:** Choosing a route through the level (e.g., corporate HQ, rainy alleys, black markets) similar to "Slay the Spire."
+    * **Execution:** Shurikens act 100% autonomously based on the Phase 1 programming.
+    * **Learning Effect:** Players analyze logic failures and adapt their routines for the next run.
 
-## 3. Das Software-System (Die Routinen für Mobile)
-Das **Slot-basierte Gambits-System** ist die Kernmechanik.
+## 3. Software System (Mobile Routines)
+The **Slot-based Gambit System** is the core mechanic.
 
-* **Trigger (WENN):** z.B. "Feindliches Projektil in Reichweite", "Gegner-Schild > 0", "Gegner hat Status: Markiert", "Eigener Status: Unentdeckt".
-* **Aktion (DANN):** z.B. "Parieren", "Ramm-Angriff auf Schild", "Schutzformation um Charakter", "Hinterhalt-Angriff".
-* **Prioritäten:** Die Reihenfolge der Slots bestimmt die Wichtigkeit der Aktionen.
+* **Trigger (IF):** e.g., "Enemy in 5m radius," "Enemy has shield," "Self HP < 20%," "Enemy status: Marked." (Triggers often require specific sensors).
+* **Action (THEN):** e.g., "Parry," "Kinetic Ram," "Guard Character," "Mark Target."
+* **Priorities:** The order of slots determines the importance of actions.
+* **Depth through Synergies:** Players can assign roles. A light shuriken marks targets (debuff), while a heavy shuriken is programmed to strike only marked targets.
 
-## 4. Wirtschaft & Shuriken-Verwaltung
-* **Startbedingung:** Der Spieler beginnt mit einem rudimentären Shuriken.
-* **Skalierung:** Im Spielverlauf wird ein ganzer Drohnen-Schwarm aufgebaut.
-* **Verschleiß & Reparatur:** Shuriken nehmen im Level Schaden. Nach einem Run gibt es zwei Wege:
-  * **Passiv (Zeit):** Naniten setzen den Shuriken über Zeit wieder langsam instand.
-  * **Aktiv (Ressource):** Der Spieler investiert Credits in eine Polymerlösung zur Sofort-Reparatur.
+## 4. Economy & Shuriken Management
+* **Start Condition:** The player begins with one rudimentary, salvaged shuriken.
+* **Scaling:** Over time, a full swarm of drones is built.
+* **Wear & Repair:** Shurikens take damage but are never permanently destroyed. Post-run repair options:
+    * **Passive (Time):** Nanites slowly restore the shuriken over time.
+    * **Active (Resource):** Players spend credits (Crypto/Scrap) on a polymer solution for instant 100% repair.
 
-## 5. Das Hardware-System (Upgrades)
+## 5. Hardware System (Upgrades)
 
-### 5.1 Anti-Grav Motoren
-* **Geschwindigkeit:** Maximale Fluggeschwindigkeit.
-* **Stealth (Akustik):** Reduziert Betriebsgeräusche und Wärmesignatur.
-* **Energiebedarf:** Laufender Stromverbrauch.
-* **Fluxkompensator:** Ermöglicht Ausweichmanöver.
+### 5.1 Anti-Grav Engines
+* **Speed:** Maximum flight velocity.
+* **Stealth (Acoustic):** Reduces engine noise and thermal signature.
+* **Energy Consumption:** Power draw during operation.
+* **Flux Capacitor:** Enables rapid direction changes and evasive maneuvers.
 
-### 5.2 Korpusmaterialien
-* **Stufe I:** Sinter-Scrap, Plastistahl, Poly-Titan.
-* **Stufe II:** Durastahl, Tritanium, Kineto-Graphen (Reaktiv-Metall).
-* **Stufe III:** Null-Feld-Stahl, Neutronium-Guss, Adamant-Quanten-Gitter, Singularitäts-Matrix.
+### 5.2 Hull Materials
+Materials determine physical base stats (weight, durability, visual stealth).
+* **Tier I (Common):** Sinter-Scrap, Plasteel, Poly-Titanium.
+* **Tier II (Standard):** Durasteel, Tritanium, Kinetic-Graphene (Reactive Metal).
+* **Tier III (Exotic):** Null-Field Steel, Neutronium-Cast, Adamant-Quantum-Grid, Singularity Matrix (Aetherium).
 
-### 5.3 Energiezellen
-* **Betriebsdauer:** Maximale Kapazität.
-* **Regeneration:** Ladegeschwindigkeit im Kampf.
-* **Maximale Energieabgabe:** Nötig für Burst-Manöver.
+### 5.3 Energy Cells
+* **Capacity:** Total energy stored.
+* **Regeneration:** Charging speed during combat.
+* **Max Output:** Required for burst maneuvers or energy-intensive stealth cloaks.
 
-### 5.4 Semi-AI (Primitiv)
-* **IFF:** Freund-Feind-Erkennung.
-* **Reaktions-Boni:** Verringert Latenz der Routinen-Ausführung.
-* **Schwarm-Kommunikation:** Erlaubt Koordination zwischen Shuriken.
+### 5.4 Semi-AI (Primitive)
+* **IFF:** Identification Friend or Foe accuracy.
+* **Reaction Bonus:** Reduces latency in "If-Then" routine execution.
+* **Swarm Communication:** Enables coordination between multiple shurikens.
 
-### 5.5 Sensoren
-* **Biosensoren:** Erfassen organische Ziele.
-* **EM-Sensor:** Detektiert Energiefelder und Schilde.
-* **Radar:** Klassische Allround-Überwachung.
-* **Lidar:** Präzise optische Zielerfassung.
-* **Terahertz:** Durchdringt physische Hindernisse (Wände).
+### 5.5 Sensors
+Sensors unlock specific "IF" triggers:
+* **Biosensors:** Detect organic/living targets.
+* **EM-Sensors:** Detect energy fields, shields, and synthetic targets.
+* **Radar:** Long-range monitoring, susceptible to decoys.
+* **Lidar:** High-precision optical targeting for critical hits.
+* **Terahertz:** Penetrates physical obstacles; detects enemies behind cover.
 
-### 5.6 Klingen & Schneiden
-* **Klassisch:** Solider Basis-Schnittschaden.
-* **Stumpf / Hammer:** Kinetischer Schaden gegen schwere Panzerung.
-* **Vibro-Klinge:** Hochfrequente Sägebewegung gegen mittlere Rüstung.
-* **Monofilament:** Ignoriert Rüstung fast vollständig, sehr fragil.
-* **Energie/Plasma:** Hocheffektiv gegen Schilde, hoher Energieverbrauch.
+### 5.6 Blades & Edges
+* **Standard Sharpening:** Basic slash damage.
+* **Blunt / Hammer Profile:** Kinetic damage to crush heavy armor.
+* **Vibro-Blade:** High-frequency vibration to saw through medium armor.
+* **Monofilament Wire:** Ignores armor almost entirely; extremely fragile.
+* **Energy/Plasma Blade:** Highly effective against shields and heavy plating; high power draw.
 
-## 6. Gegner-Design & Kontermechaniken
-* **EMP-Grenadiere:** Zwingen zu EM-Härtung oder Abfang-Routinen.
-* **Schildträger:** Erfordern Schildbrecher-Klingen.
-* **Hacker-Drohnen:** Manipulieren Routinen-Prioritäten.
-* **Sniper:** Erfordern Leibwächter-Verhalten.
+## 6. Enemy Design & Counters
+* **EMP Grenadiers:** Force players to invest in EM-hardening or interception routines.
+* **Shield Bearers:** Require shield-breaker routines (Plasma or Heavy Blunt).
+* **Hacker Drones:** Temporarily invert routine priorities.
+* **Snipers:** Force defensive "Bodyguard" behavior.
 
-## 7. Die Werkstatt (Meta-Progression)
-* **Reparatur-Deck:** NPC-Mechaniker (Ripperdocs) verbessern Naniten-Effizienz.
-* **Serverraum:** Netrunner schalten neue Gambit-Slots frei.
-* **Genesis-Kammer:** Forschungslabor für neue Materialien und Legierungen.
+## 7. The Workshop (Meta-Progression)
+* **Repair Deck:** NPC Mechanics (Ripperdocs) improve nanite efficiency.
+* **Server Room:** Netrunners unlock additional Gambit slots and improve AI processing speed.
+* **Genesis Chamber:** A high-tech lab to research new alloys (e.g., Neutronium) and energy tech.
 
 ## 8. Setting & Art Direction
-* **Stil:** "Used Future" Cyberpunk. Dunkler Schmutz trifft auf Neon.
-* **Design:** High-Tech Drohnen mit sichtbaren Platinen und Plasma-Leuchten.
+* **Visual Style:** "Used Future" Cyberpunk. Dark grime vs. vibrant neon.
+* **Shuriken Design:** High-tech flying discs with visible circuit boards, glowing plasma edges, and micro-thrusters.
+* **UI/UX:** Phase 1 resembles a hacking terminal or holographic blueprint table.
 
-## 9. Monetarisierung
-* **Skins:** Neon-Discs, Chrom-Räder, Kreissägen.
-* **Trails:** Leuchtspuren der Antriebe.
-* **Customization:** Dekorationen für den Underground-Hub.
+## 9. Monetization (Fair & Cosmetic)
+* **Skins:** Cyberpunk-themed visuals (Neon-discs, Chrome-sawblades).
+* **Particle Effects:** Engine trails (e.g., Red Plasma, Glitch trails).
+* **Hub Customization:** Cosmetic decorations for the underground workshop.
