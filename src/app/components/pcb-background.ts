@@ -130,157 +130,101 @@ function offsetPolyline(spine: Point[], dist: number): Point[] {
 // ─────────────────────────────────────────────────────────────────────────────
 // PCB Layout Generator (Octilinear & Parallel Bundles)
 // ─────────────────────────────────────────────────────────────────────────────
-function segmentIntersection(p1: Point, p2: Point, p3: Point, p4: Point): Point | null {
-  const d = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x);
-  if (Math.abs(d) < 1e-6) return null; // parallel
+function connectChips(x1: number, y1: number, x2: number, y2: number): Point[] {
+  const pts: Point[] = [];
+  let cx = x1;
+  let cy = y1;
   
-  const t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / d;
-  const u = ((p1.x - p2.x) * (p1.y - p3.y) - (p1.y - p2.y) * (p1.x - p3.x)) / d;
+  pts.push({x: cx, y: cy});
   
-  // We only consider strict intersections (not endpoints), except slightly relaxed to catch close calls
-  if (t > 0.05 && t < 0.95 && u > 0.05 && u < 0.95) {
-    return {
-      x: p1.x + t * (p2.x - p1.x),
-      y: p1.y + t * (p2.y - p1.y)
-    };
+  const dx = x2 - cx;
+  const dy = y2 - cy;
+  
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+  const signX = Math.sign(dx) || 1;
+  const signY = Math.sign(dy) || 1;
+  
+  // Randomly choose diagonal first or orthogonal first
+  if (Math.random() > 0.5) {
+     // Diagonal first
+     const minD = Math.min(absX, absY);
+     cx += signX * minD;
+     cy += signY * minD;
+     pts.push({x: cx, y: cy});
+     // Orthogonal rest
+     if (absX > absY) cx += signX * (absX - absY);
+     else cy += signY * (absY - absX);
+     pts.push({x: cx, y: cy});
+  } else {
+     // Orthogonal first
+     const minD = Math.min(absX, absY);
+     if (absX > absY) {
+        cx += signX * (absX - absY);
+        pts.push({x: cx, y: cy});
+     } else {
+        cy += signY * (absY - absX);
+        pts.push({x: cx, y: cy});
+     }
+     // Diagonal rest
+     cx += signX * minD;
+     cy += signY * minD;
+     pts.push({x: cx, y: cy});
   }
-  return null;
+  
+  return pts;
 }
 
 function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node[]; chips: Chip[]; primaryCount: number } {
   const traces: Trace[] = [];
   const nodes: Node[] = [];
   const chips: Chip[] = [];
-  
-  const drawnSegments: {A: Point, B: Point}[] = [];
 
-  // Generate large central processing chips
-  const numChips = 4 + Math.floor(Math.random() * 3);
+  // Generate 2 to 4 central chips
+  const numChips = 2 + Math.floor(Math.random() * 3);
   for (let i = 0; i < numChips; i++) {
     const cw = 80 + Math.random() * 120;
     const ch = 80 + Math.random() * 120;
-    const cx = w * 0.1 + Math.random() * (w * 0.8 - cw);
-    const cy = h * 0.1 + Math.random() * (h * 0.8 - ch);
+    const cx = w * 0.15 + Math.random() * (w * 0.7 - cw);
+    const cy = h * 0.15 + Math.random() * (h * 0.7 - ch);
     chips.push({ x: cx, y: cy, w: cw, h: ch, label: `QUANTUM_CELL_ARRAY_${Math.floor(Math.random()*900)+100}` });
-    
-    // Add chip borders to drawnSegments so traces stop at the chip edge
-    drawnSegments.push({A: {x: cx, y: cy}, B: {x: cx+cw, y: cy}});
-    drawnSegments.push({A: {x: cx+cw, y: cy}, B: {x: cx+cw, y: cy+ch}});
-    drawnSegments.push({A: {x: cx+cw, y: cy+ch}, B: {x: cx, y: cy+ch}});
-    drawnSegments.push({A: {x: cx, y: cy+ch}, B: {x: cx, y: cy}});
   }
 
-  const DIRS = [
-    { dx: 1, dy: 0 },
-    { dx: 0.707, dy: 0.707 },
-    { dx: 0, dy: 1 },
-    { dx: -0.707, dy: 0.707 },
-    { dx: -1, dy: 0 },
-    { dx: -0.707, dy: -0.707 },
-    { dx: 0, dy: -1 },
-    { dx: 0.707, dy: -0.707 }
-  ];
-
-  function generateSpine(startX: number, startY: number): Point[] {
-    const pts: Point[] = [{x: startX, y: startY}];
-    let dirIdx = Math.floor(Math.random() * 4) * 2; // start orthogonal
-    let cx = startX, cy = startY;
-    let remainingLen = Math.max(w, h) * (0.4 + Math.random() * 0.8);
-    
-    while (remainingLen > 0) {
-      const orthLen = 80 + Math.random() * 300;
-      cx += DIRS[dirIdx].dx * orthLen;
-      cy += DIRS[dirIdx].dy * orthLen;
-      pts.push({x: cx, y: cy});
-      remainingLen -= orthLen;
-      
-      const turn = Math.random() > 0.5 ? 1 : -1;
-      dirIdx = (dirIdx + turn + 8) % 8;
-      
-      const diagLen = 40 + Math.random() * 120;
-      cx += DIRS[dirIdx].dx * diagLen;
-      cy += DIRS[dirIdx].dy * diagLen;
-      pts.push({x: cx, y: cy});
-      remainingLen -= diagLen;
-      
-      const nextTurn = Math.random() > 0.5 ? 1 : -1;
-      dirIdx = (dirIdx + nextTurn + 8) % 8;
-    }
-    return pts;
-  }
-
-  // Generate trace bundles
-  const numBundles = 15 + Math.floor((w * h) / 70000);
-  
-  for (let b = 0; b < numBundles; b++) {
-    // Start at a random chip edge if possible
-    let sx = Math.random() * w;
-    let sy = Math.random() * h;
-    if (chips.length > 0 && Math.random() > 0.3) {
-       const c = chips[Math.floor(Math.random() * chips.length)];
-       sx = c.x + (Math.random() > 0.5 ? 0 : c.w);
-       sy = c.y + Math.random() * c.h;
-    }
-
-    const spine = generateSpine(sx, sy);
-    const numTraces = 3 + Math.floor(Math.random() * 6);
-    const gap = 8 + Math.random() * 4;
-    
-    for (let i = 0; i < numTraces; i++) {
-      const offsetDist = (i - (numTraces - 1) / 2) * gap;
+  function addBundle(spine: Point[], numTraces: number, gap: number) {
+    for (let t = 0; t < numTraces; t++) {
+      const offsetDist = (t - (numTraces - 1) / 2) * gap;
       const tracePts = offsetPolyline(spine, offsetDist);
-      
       if (tracePts.length > 1) {
-         const validPts: Point[] = [tracePts[0]];
-         let truncated = false;
-         
-         // Collision checking against all drawn segments
-         for (let j = 0; j < tracePts.length - 1; j++) {
-            const p1 = tracePts[j];
-            const p2 = tracePts[j+1];
-            
-            let closestInter: Point | null = null;
-            let minDist = Infinity;
-            
-            for (const seg of drawnSegments) {
-               const inter = segmentIntersection(p1, p2, seg.A, seg.B);
-               if (inter) {
-                  const dist = Math.hypot(inter.x - p1.x, inter.y - p1.y);
-                  if (dist < minDist) {
-                     minDist = dist;
-                     closestInter = inter;
-                  }
-               }
-            }
-            
-            if (closestInter) {
-               validPts.push(closestInter);
-               truncated = true;
-               break;
-            } else {
-               validPts.push(p2);
-            }
-         }
-         
-         if (validPts.length > 1) {
-            traces.push(buildTrace(validPts));
-            
-            // Add to drawnSegments
-            for(let j=0; j<validPts.length-1; j++) {
-               drawnSegments.push({A: validPts[j], B: validPts[j+1]});
-            }
-            
-            // Always add vias to endpoints!
-            nodes.push({ x: validPts[0].x, y: validPts[0].y, r: 2.5 });
-            nodes.push({ x: validPts[validPts.length-1].x, y: validPts[validPts.length-1].y, r: 2.5 });
-            
-            // Optional mid-trace vias
-            for (let j=1; j<validPts.length-1; j++) {
-               if (Math.random() > 0.8) nodes.push({ x: validPts[j].x, y: validPts[j].y, r: 2.5 });
-            }
-         }
+         traces.push(buildTrace(tracePts));
+         nodes.push({ x: tracePts[0].x, y: tracePts[0].y, r: 2.5 });
+         nodes.push({ x: tracePts[tracePts.length-1].x, y: tracePts[tracePts.length-1].y, r: 2.5 });
       }
     }
+  }
+
+  // Inter-chip connections
+  for (let i = 0; i < chips.length; i++) {
+    for (let j = i + 1; j < chips.length; j++) {
+      // Connect center of chip i to center of chip j
+      const spine = connectChips(
+         chips[i].x + chips[i].w / 2, chips[i].y + chips[i].h / 2,
+         chips[j].x + chips[j].w / 2, chips[j].y + chips[j].h / 2
+      );
+      addBundle(spine, 4 + Math.floor(Math.random() * 5), 8 + Math.random() * 3);
+    }
+  }
+
+  // Peripheral connections (from chips to edges)
+  const numEdgeBuses = 6 + Math.floor((w * h) / 100000);
+  for (let b = 0; b < numEdgeBuses; b++) {
+    const c = chips[Math.floor(Math.random() * chips.length)];
+    
+    // Pick a random edge point
+    const edgeX = Math.random() > 0.5 ? (Math.random() > 0.5 ? -50 : w + 50) : Math.random() * w;
+    const edgeY = Math.random() > 0.5 ? (Math.random() > 0.5 ? -50 : h + 50) : Math.random() * h;
+    
+    const spine = connectChips(c.x + c.w / 2, c.y + c.h / 2, edgeX, edgeY);
+    addBundle(spine, 3 + Math.floor(Math.random() * 5), 8 + Math.random() * 4);
   }
 
   return { traces, nodes, chips, primaryCount: Math.floor(traces.length * 0.4) };
@@ -369,13 +313,17 @@ export class PcbBackground implements AfterViewInit, OnDestroy {
   private makeElectron(initialDelay = 0): Electron {
     const trace   = this.traces[Math.floor(Math.random() * this.traces.length)];
     const forward = Math.random() > 0.5;
-    const rTheme = Math.random();
-    const colorTheme = rTheme > 0.6 ? 'cyan' : rTheme > 0.2 ? 'purple' : 'gold';
+    
+    // Normal or Fast speeds
+    const isFast = Math.random() > 0.5;
+    const baseSpeed = 0.00025; // Normal speed (was previously the max speed)
+    const speedMultiplier = isFast ? 1.5 : 1.0;
+    const colorTheme = isFast ? 'cyan' : 'purple';
 
     return {
       trace,
       t:      forward ? 0 : 1,
-      speed:  (forward ? 1 : -1) * (0.00008 + Math.random() * 0.00015),
+      speed:  (forward ? 1 : -1) * (baseSpeed * speedMultiplier),
       active: false,
       fireIn: initialDelay,
       trail:  [],
@@ -399,9 +347,13 @@ export class PcbBackground implements AfterViewInit, OnDestroy {
         if (e.fireIn <= 0) {
           const trace   = this.traces[Math.floor(Math.random() * this.traces.length)];
           const forward = Math.random() > 0.5;
+          const isFast = Math.random() > 0.5;
+          const baseSpeed = 0.00025;
+          const speedMultiplier = isFast ? 1.5 : 1.0;
           e.trace  = trace;
           e.t      = forward ? 0 : 1;
-          e.speed  = (forward ? 1 : -1) * (0.00008 + Math.random() * 0.00015);
+          e.speed  = (forward ? 1 : -1) * (baseSpeed * speedMultiplier);
+          e.colorTheme = isFast ? 'cyan' : 'purple';
           e.active = true;
           e.trail  = [];
         }
