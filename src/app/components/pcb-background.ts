@@ -175,19 +175,50 @@ function connectChips(x1: number, y1: number, x2: number, y2: number): Point[] {
   return pts;
 }
 
+function getEdgePoint(c: Chip): Point {
+  const side = Math.floor(Math.random() * 4);
+  let px, py;
+  // Make pins somewhat discrete, e.g. every 20px
+  const offsetX = 20 + Math.floor(Math.random() * ((c.w - 40)/20)) * 20;
+  const offsetY = 20 + Math.floor(Math.random() * ((c.h - 40)/20)) * 20;
+  
+  if (side === 0) { px = c.x + offsetX; py = c.y; } // Top
+  else if (side === 1) { px = c.x + c.w; py = c.y + offsetY; } // Right
+  else if (side === 2) { px = c.x + offsetX; py = c.y + c.h; } // Bottom
+  else { px = c.x; py = c.y + offsetY; } // Left
+  return {x: px, y: py};
+}
+
 function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node[]; chips: Chip[]; primaryCount: number } {
   const traces: Trace[] = [];
   const nodes: Node[] = [];
   const chips: Chip[] = [];
 
-  // Generate 2 to 4 central chips
-  const numChips = 2 + Math.floor(Math.random() * 3);
-  for (let i = 0; i < numChips; i++) {
-    const cw = 80 + Math.random() * 120;
-    const ch = 80 + Math.random() * 120;
-    const cx = w * 0.15 + Math.random() * (w * 0.7 - cw);
-    const cy = h * 0.15 + Math.random() * (h * 0.7 - ch);
-    chips.push({ x: cx, y: cy, w: cw, h: ch, label: `QUANTUM_CELL_ARRAY_${Math.floor(Math.random()*900)+100}` });
+  // Generate 3 to 7 central chips with minimum spacing
+  const targetChips = 3 + Math.floor(Math.random() * 5);
+  const minSpacing = 120; // generous minimum space between chips
+  
+  for (let i = 0; i < targetChips * 5; i++) { // allow max tries to find valid spots
+    if (chips.length >= targetChips) break;
+    
+    const cw = 80 + Math.random() * 100;
+    const ch = 80 + Math.random() * 100;
+    const cx = w * 0.1 + Math.random() * (w * 0.8 - cw);
+    const cy = h * 0.1 + Math.random() * (h * 0.8 - ch);
+    
+    // Check spacing against existing chips
+    let tooClose = false;
+    for (const c of chips) {
+       const dist = Math.hypot((cx + cw/2) - (c.x + c.w/2), (cy + ch/2) - (c.y + c.h/2));
+       if (dist < minSpacing + Math.max(cw, c.w)) {
+          tooClose = true;
+          break;
+       }
+    }
+    
+    if (!tooClose) {
+       chips.push({ x: cx, y: cy, w: cw, h: ch, label: `QUANTUM_CELL_ARRAY_${Math.floor(Math.random()*900)+100}` });
+    }
   }
 
   function addBundle(spine: Point[], numTraces: number, gap: number) {
@@ -205,26 +236,30 @@ function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node
   // Inter-chip connections
   for (let i = 0; i < chips.length; i++) {
     for (let j = i + 1; j < chips.length; j++) {
-      // Connect center of chip i to center of chip j
-      const spine = connectChips(
-         chips[i].x + chips[i].w / 2, chips[i].y + chips[i].h / 2,
-         chips[j].x + chips[j].w / 2, chips[j].y + chips[j].h / 2
-      );
-      addBundle(spine, 4 + Math.floor(Math.random() * 5), 8 + Math.random() * 3);
+      // Don't connect all chips if there are many, to avoid a completely solid mess
+      if (chips.length > 4 && Math.random() > 0.6) continue;
+      
+      // Connect random edge of chip i to random edge of chip j
+      const p1 = getEdgePoint(chips[i]);
+      const p2 = getEdgePoint(chips[j]);
+      
+      const spine = connectChips(p1.x, p1.y, p2.x, p2.y);
+      addBundle(spine, 4 + Math.floor(Math.random() * 4), 8 + Math.random() * 3);
     }
   }
 
   // Peripheral connections (from chips to edges)
-  const numEdgeBuses = 6 + Math.floor((w * h) / 100000);
+  const numEdgeBuses = 4 + Math.floor((w * h) / 100000);
   for (let b = 0; b < numEdgeBuses; b++) {
     const c = chips[Math.floor(Math.random() * chips.length)];
+    const p1 = getEdgePoint(c);
     
-    // Pick a random edge point
+    // Pick a random screen edge point
     const edgeX = Math.random() > 0.5 ? (Math.random() > 0.5 ? -50 : w + 50) : Math.random() * w;
     const edgeY = Math.random() > 0.5 ? (Math.random() > 0.5 ? -50 : h + 50) : Math.random() * h;
     
-    const spine = connectChips(c.x + c.w / 2, c.y + c.h / 2, edgeX, edgeY);
-    addBundle(spine, 3 + Math.floor(Math.random() * 5), 8 + Math.random() * 4);
+    const spine = connectChips(p1.x, p1.y, edgeX, edgeY);
+    addBundle(spine, 3 + Math.floor(Math.random() * 4), 8 + Math.random() * 4);
   }
 
   return { traces, nodes, chips, primaryCount: Math.floor(traces.length * 0.4) };
