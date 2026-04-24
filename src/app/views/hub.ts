@@ -1,10 +1,12 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { DecimalPipe } from '@angular/common';
+import { PlayerService } from '../services/player.service';
 
 @Component({
   selector: 'app-hub',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, DecimalPipe],
   template: `
     <div class="min-h-screen bg-black text-gray-300 p-8 font-mono relative overflow-hidden">
       <!-- Ambient effects -->
@@ -18,9 +20,9 @@ import { RouterLink } from '@angular/router';
           <p class="text-xs text-green-700 uppercase mt-1">Underground Sector 4 // Status: Undetected</p>
         </div>
         <div class="text-right">
-          <div class="text-green-500 text-sm">Credits: <span class="text-white">1,042</span> ¢</div>
-          <div class="text-blue-400 text-sm">Polymer: <span class="text-white">50</span> u</div>
-          <div class="text-purple-400 text-sm">Scrap: <span class="text-white">210</span> kg</div>
+          <div class="text-green-500 text-sm">Credits: <span class="text-white">{{ player.resources().credits | number }}</span></div>
+          <div class="text-blue-400 text-sm">Polymer units: <span class="text-white">{{ player.resources().polymer | number }}</span></div>
+          <div class="text-purple-400 text-sm">Scrap in kg: <span class="text-white">{{ player.resources().scrap | number }}</span></div>
         </div>
       </header>
 
@@ -73,4 +75,6 @@ import { RouterLink } from '@angular/router';
   styles: [],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class Hub {}
+export class Hub {
+  player = inject(PlayerService);
+}

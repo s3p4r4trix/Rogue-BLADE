@@ -1,22 +1,84 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
 import { Action, GambitRoutine, Trigger } from '../models/gambit.model';
-import { Shuriken } from '../models/hardware.model';
+import { Shuriken, HardwareComponent, AntiGravEngine, EnergyCell, Sensor, Blade, FormDesign, HullMaterial, Processor, SemiAI } from '../models/hardware.model';
 import { moveItemInArray } from '@angular/cdk/drag-drop';
 
-const MOCK_SHURIKENS: Shuriken[] = [
-  {
-    id: 'shuriken-01',
-    name: 'Shuriken #01 (Plasteel)',
-    engine: null, hull: null, energyCell: null, sensor: null, blade: null, formDesign: null,
-    processor: { id: 'b1', name: 'Basic AI', description: '', routineCapacity: 2, iffAccuracy: 90, reactionBonus: 0, isAI: true }
-  },
-  {
-    id: 'shuriken-02',
-    name: 'Shuriken #02 (Durasteel)',
-    engine: null, hull: null, energyCell: null, sensor: null, blade: null, formDesign: null,
-    processor: { id: 'b2', name: 'Advanced AI', description: '', routineCapacity: 4, iffAccuracy: 95, reactionBonus: 10, isAI: true }
+export const HARDWARE_INVENTORY = {
+  engines: [
+    { id: 'eng-drifter', name: 'Kuro-Tech "Drifter" Mag-Lev', description: 'Cheap, reliable, mass-produced.', speed: 10, stealth: 5, energyConsumption: 2, evasionRate: 5 } as AntiGravEngine,
+    { id: 'eng-hauler', name: 'Atlas "Hauler" Grav-Drive', description: 'Slow but heavy lifting.', speed: 5, stealth: 2, energyConsumption: 5, evasionRate: 1 } as AntiGravEngine
+  ],
+  energyCells: [
+    { id: 'cell-scrap', name: 'Scrap-Built Dynamo Cell', description: 'Barely holds a charge.', maxEnergy: 50, regenRate: 1, maxOutput: 10 } as EnergyCell,
+    { id: 'cell-longhaul', name: 'Voltaic "Long-Haul" Battery', description: 'Huge pool, slow recharge.', maxEnergy: 200, regenRate: 0.5, maxOutput: 15 } as EnergyCell
+  ],
+  sensors: [
+    { id: 'sens-vital', name: 'Vital-Scan "Pulse" Biosensor', description: 'Tracks heartbeats.', range: 10, unlocksTriggerIds: [] } as Sensor,
+    { id: 'sens-spectra', name: 'Spectra EM-Scanner', description: 'Highlights shields.', range: 15, unlocksTriggerIds: ['Enemy has shield'] } as Sensor
+  ],
+  blades: [
+    { id: 'blade-carbon', name: 'Carbon "Razor" Edge', description: 'Standard sharpened rim.', damageType: 'kinetic', damage: 10 } as Blade,
+    { id: 'blade-breaker', name: 'Titan "Breaker" Profile', description: 'Crushes armor.', damageType: 'kinetic', damage: 25 } as Blade
+  ],
+  formDesigns: [
+    { id: 'form-striker', name: 'Mk1 "Striker" Disc', description: 'Classic shuriken shape.', shape: 'disc', primaryDamageType: 'cutting' } as FormDesign,
+    { id: 'form-viper', name: 'Aero "Viper" Dagger', description: 'Sleek dart-like chassis.', shape: 'dagger', primaryDamageType: 'piercing' } as FormDesign
+  ],
+  hulls: [
+    { id: 'hull-sinter', name: 'Sinter-Scrap', description: 'Tier I Human Scrap.', tier: 1, hp: 50, armor: 2, weight: 5 } as HullMaterial,
+    { id: 'hull-durasteel', name: 'Durasteel', description: 'Tier II Pre-War Military.', tier: 2, hp: 150, armor: 10, weight: 15 } as HullMaterial
+  ],
+  processors: [
+    { id: 'proc-abacus', name: 'Scrap-Town "Abacus" Micro-Board', description: 'Barely holds two logic slots together.', routineCapacity: 2, latencyModifier: 50 } as Processor,
+    { id: 'proc-cortex', name: 'Kuro-Tech "Cortex" CPU', description: 'Reliable 3-slot logic board.', routineCapacity: 3, latencyModifier: 0 } as Processor,
+    { id: 'proc-overthinker', name: 'Dynacorp "Overthinker" Logic-Core', description: 'Unlocks advanced branching slots.', routineCapacity: 5, latencyModifier: -40 } as Processor,
+    { id: 'proc-omni', name: 'Zenith "Omni-Node" Quantum Core', description: 'Processes variables instantaneously.', routineCapacity: 8, latencyModifier: -150 } as Processor
+  ],
+  semiAIs: [
+    { id: 'semi-feral', name: 'Scrap-Code "Feral" Instinct-Chip', description: 'Highly aggressive pathing.', iffAccuracy: 70, behaviorBuff: 'aggressive' } as SemiAI,
+    { id: 'semi-guardian', name: 'Aegis "Guardian" Sub-Routine', description: 'Prioritizes self-preservation.', iffAccuracy: 95, behaviorBuff: 'defensive' } as SemiAI,
+    { id: 'semi-hive', name: 'Vektor "Hive-Mind" Link', description: 'Specialized in swarm coordination.', iffAccuracy: 90, behaviorBuff: 'coordinator' } as SemiAI,
+    { id: 'semi-whisper', name: 'Zenith "Whisper" Singularity-Mind', description: 'Adapts to enemy tactics on the fly.', iffAccuracy: 100, behaviorBuff: 'adaptive' } as SemiAI
+  ]
+};
+
+const DEFAULT_SHURIKEN: Omit<Shuriken, 'id' | 'name'> = {
+  engine: HARDWARE_INVENTORY.engines[0],
+  energyCell: HARDWARE_INVENTORY.energyCells[0],
+  sensor: HARDWARE_INVENTORY.sensors[0],
+  blade: HARDWARE_INVENTORY.blades[0],
+  formDesign: HARDWARE_INVENTORY.formDesigns[0],
+  hull: HARDWARE_INVENTORY.hulls[0],
+  processor: HARDWARE_INVENTORY.processors[0],
+  semiAI: HARDWARE_INVENTORY.semiAIs[0]
+};
+
+function loadShurikens(): Shuriken[] {
+  const defaults = [
+    { ...DEFAULT_SHURIKEN, id: 'shuriken-01', name: 'Shuriken #01 (Scrap)' },
+    { ...DEFAULT_SHURIKEN, id: 'shuriken-02', name: 'Shuriken #02 (Scrap)' }
+  ];
+  const saved = localStorage.getItem('rogueBlade_shurikens');
+  if (saved) {
+    try { 
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.length > 0 && parsed[0].semiAI !== undefined) {
+        return parsed;
+      }
+    } catch (e) {}
   }
-];
+  return defaults;
+}
+
+function loadUnlockedComponents(): string[] {
+  const saved = localStorage.getItem('rogueBlade_unlockedComponents');
+  if (saved) {
+    try { return JSON.parse(saved); } catch (e) {}
+  }
+  return [
+    'eng-drifter', 'cell-scrap', 'sens-vital', 'blade-carbon', 'form-striker', 'hull-sinter', 'proc-abacus', 'semi-feral'
+  ];
+}
 
 function loadSavedRoutinesMap(): Record<string, GambitRoutine[]> {
   const saved = localStorage.getItem('rogueBlade_routinesMap');
@@ -50,12 +112,14 @@ export class WorkshopService {
   ]);
 
   readonly availableActions = signal<Action[]>([
-    { type: 'action', value: 'Kinetic Ram Attack', name: '[>] Kinetic Ram Attack' },
-    { type: 'action', value: 'Mark Target (Debuff)', name: '[>] Mark Target (Debuff)' },
-    { type: 'action', value: 'Defensive Formation (Parry)', name: '[>] Defensive Formation (Parry)' }
+    { type: 'action', value: 'Kinetic Ram (Forward)', name: '[>] Kinetic Ram (Forward)', baseLatency: 50 },
+    { type: 'action', value: 'Evasive Dash (Left/Right)', name: '[>] Evasive Dash (Left/Right)', baseLatency: 20 },
+    { type: 'action', value: 'Defensive Formation (Parry)', name: '[>] Defensive Formation (Parry)', baseLatency: 20 },
+    { type: 'action', value: 'Charge Plasma Edge', name: '[>] Charge Plasma Edge', baseLatency: 300 }
   ]);
 
-  readonly availableShurikens = signal<Shuriken[]>(MOCK_SHURIKENS);
+  readonly availableShurikens = signal<Shuriken[]>(loadShurikens());
+  readonly unlockedComponentIds = signal<string[]>(loadUnlockedComponents());
   readonly activeShurikenId = signal<string>(localStorage.getItem('rogueBlade_activeShuriken') || 'shuriken-01');
 
   readonly routinesMap = signal<Record<string, GambitRoutine[]>>(loadSavedRoutinesMap());
@@ -73,9 +137,19 @@ export class WorkshopService {
 
   constructor() {
     effect(() => {
+      localStorage.setItem('rogueBlade_shurikens', JSON.stringify(this.availableShurikens()));
+      localStorage.setItem('rogueBlade_unlockedComponents', JSON.stringify(this.unlockedComponentIds()));
       localStorage.setItem('rogueBlade_routinesMap', JSON.stringify(this.routinesMap()));
       localStorage.setItem('rogueBlade_activeShuriken', this.activeShurikenId());
     });
+  }
+
+  renameShuriken(id: string, newName: string) {
+    this.availableShurikens.update(list => list.map(s => s.id === id ? { ...s, name: newName } : s));
+  }
+
+  equipComponent(shurikenId: string, slot: keyof Shuriken, component: any) {
+    this.availableShurikens.update(list => list.map(s => s.id === shurikenId ? { ...s, [slot]: component } : s));
   }
 
   log(message: string, isError: boolean = false) {

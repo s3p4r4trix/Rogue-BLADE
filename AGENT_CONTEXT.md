@@ -65,3 +65,4 @@ We are currently building **Phase 1 (The Workshop / Routine - Modular system)**.
 * **All text in the application MUST be in English.**
 * Whenever generating code, provide complete, runnable snippets.
 * **Game Design Consistency:** Always refer to and adhere to the overall game design and mechanics specified in `docs/game_design.md` when generating or modifying code.
+* **UI/UX Smoothness:** The UI must feel smooth and responsive in handling. Ensure interactions, transitions, and layout shifts are visually polished and free of jank.

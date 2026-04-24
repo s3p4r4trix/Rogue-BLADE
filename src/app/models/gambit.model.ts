@@ -21,6 +21,7 @@ export interface Action {
   type: ActionType;
   value: string;
   name: string;
+  baseLatency?: number; // Spool-up time in ms
 }
 
 /**

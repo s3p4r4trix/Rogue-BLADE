@@ -64,13 +64,19 @@ export interface FormDesign extends HardwareComponent {
 }
 
 /**
- * The Semi-AI controlling the Shuriken's execution latency and capacity.
+ * The Processor controlling the Shuriken's execution latency and capacity.
  */
 export interface Processor extends HardwareComponent {
   routineCapacity: number;
+  latencyModifier: number;
+}
+
+/**
+ * The Semi-AI controlling the Shuriken's personality and IFF.
+ */
+export interface SemiAI extends HardwareComponent {
   iffAccuracy: number;
-  reactionBonus: number;
-  isAI: boolean;
+  behaviorBuff: 'aggressive' | 'defensive' | 'coordinator' | 'adaptive';
 }
 
 /**
@@ -86,4 +92,5 @@ export interface Shuriken {
   blade: Blade | null;
   formDesign: FormDesign | null;
   processor: Processor | null;
+  semiAI: SemiAI | null;
 }

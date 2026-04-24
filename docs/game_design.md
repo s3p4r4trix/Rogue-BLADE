@@ -65,13 +65,22 @@ Shurikens take damage during runs but are automatically teleported back to the H
 * **Regeneration:** Charging speed during combat.
 * **Max Output:** Required for burst maneuvers or cloaking devices.
 
-### 6.4 Semi-AI (The Brain)
-* **Routine Capacity:** Determines the maximum number of If-Then logic blocks that can be installed on the Shuriken.
+### 6.4 Processor (Compute / Logic)
+* **Routine Capacity:** Determines the maximum number of available Gambit Slots.
+* **Latency Modifier:** Modifies the base processing time of routines (in milliseconds). Negative values speed up reactions, positive values add hesitation.
+
+#### Combat Simulation: The "Cycle Latency" Mechanic
+In the 2D auto-battler, a Shuriken doesn't just attack instantly; it has a calculation phase.
+* **Routine Cost (Thinking):** Every programmed Gambit slot adds a fixed base execution latency (e.g., +20ms). A complex 8-rule drone takes longer to "decide" its next move than a simple 1-rule drone.
+* **Action Cost (Doing):** Actions have their own spool-up latency (e.g., "Evasive Dash" takes 20ms, "Charge Plasma Edge" takes 300ms).
+* **The Processor:** The Processor chip applies its `Latency Modifier` to this total. A junk processor adds delays, causing the drone to pause vulnerably in combat. An elite quantum processor provides a massive negative modifier, allowing the drone to calculate complex routines instantly.
+
+### 6.5 Semi-AI (The Brain / Personality)
 * **IFF:** Identification Friend or Foe accuracy.
-* **Reaction Bonus:** Reduces latency in "If-Then" routine execution.
+* **Behavior Buff:** Passive behavioral modifiers (e.g., Aggressive vs. Defensive pathing).
 * **Swarm Communication:** Coordination (e.g., "If Shuriken A attacks, Shuriken B flanks").
 
-### 6.5 Sensors (Unlocking Triggers)
+### 6.6 Sensors (Unlocking Triggers)
 * **Biosensors:** Detect organic targets.
 * **EM-Sensors:** Detect energy fields, Zenith shields, and electronics.
 * **Radar:** Long-range monitoring; susceptible to chaff.
