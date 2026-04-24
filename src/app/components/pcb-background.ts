@@ -130,15 +130,26 @@ function offsetPolyline(spine: Point[], dist: number): Point[] {
 // ─────────────────────────────────────────────────────────────────────────────
 // PCB Layout Generator (Octilinear & Parallel Bundles)
 // ─────────────────────────────────────────────────────────────────────────────
-function connectChips(x1: number, y1: number, x2: number, y2: number): Point[] {
+
+type Pin = { x: number, y: number, nx: number, ny: number };
+
+function connectChips(p1: Pin, p2: Pin): Point[] {
   const pts: Point[] = [];
-  let cx = x1;
-  let cy = y1;
   
+  // start point perfectly on edge
+  pts.push({x: p1.x, y: p1.y});
+  
+  // orthogonal step-out from chip 1
+  let cx = p1.x + p1.nx * 40;
+  let cy = p1.y + p1.ny * 40;
   pts.push({x: cx, y: cy});
   
-  const dx = x2 - cx;
-  const dy = y2 - cy;
+  // orthogonal step-out for chip 2
+  const tx = p2.x + p2.nx * 40;
+  const ty = p2.y + p2.ny * 40;
+  
+  const dx = tx - cx;
+  const dy = ty - cy;
   
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
@@ -147,17 +158,14 @@ function connectChips(x1: number, y1: number, x2: number, y2: number): Point[] {
   
   // Randomly choose diagonal first or orthogonal first
   if (Math.random() > 0.5) {
-     // Diagonal first
      const minD = Math.min(absX, absY);
      cx += signX * minD;
      cy += signY * minD;
      pts.push({x: cx, y: cy});
-     // Orthogonal rest
      if (absX > absY) cx += signX * (absX - absY);
      else cy += signY * (absY - absX);
      pts.push({x: cx, y: cy});
   } else {
-     // Orthogonal first
      const minD = Math.min(absX, absY);
      if (absX > absY) {
         cx += signX * (absX - absY);
@@ -166,27 +174,29 @@ function connectChips(x1: number, y1: number, x2: number, y2: number): Point[] {
         cy += signY * (absY - absX);
         pts.push({x: cx, y: cy});
      }
-     // Diagonal rest
      cx += signX * minD;
      cy += signY * minD;
      pts.push({x: cx, y: cy});
   }
   
+  // end point perfectly on edge
+  pts.push({x: p2.x, y: p2.y});
+  
   return pts;
 }
 
-function getEdgePoint(c: Chip): Point {
+function getEdgePoint(c: Chip): Pin {
   const side = Math.floor(Math.random() * 4);
-  let px, py;
+  let px, py, nx, ny;
   // Make pins somewhat discrete, e.g. every 20px
   const offsetX = 20 + Math.floor(Math.random() * ((c.w - 40)/20)) * 20;
   const offsetY = 20 + Math.floor(Math.random() * ((c.h - 40)/20)) * 20;
   
-  if (side === 0) { px = c.x + offsetX; py = c.y; } // Top
-  else if (side === 1) { px = c.x + c.w; py = c.y + offsetY; } // Right
-  else if (side === 2) { px = c.x + offsetX; py = c.y + c.h; } // Bottom
-  else { px = c.x; py = c.y + offsetY; } // Left
-  return {x: px, y: py};
+  if (side === 0) { px = c.x + offsetX; py = c.y; nx = 0; ny = -1; } // Top
+  else if (side === 1) { px = c.x + c.w; py = c.y + offsetY; nx = 1; ny = 0; } // Right
+  else if (side === 2) { px = c.x + offsetX; py = c.y + c.h; nx = 0; ny = 1; } // Bottom
+  else { px = c.x; py = c.y + offsetY; nx = -1; ny = 0; } // Left
+  return {x: px, y: py, nx, ny};
 }
 
 function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node[]; chips: Chip[]; primaryCount: number } {
@@ -243,7 +253,7 @@ function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node
       const p1 = getEdgePoint(chips[i]);
       const p2 = getEdgePoint(chips[j]);
       
-      const spine = connectChips(p1.x, p1.y, p2.x, p2.y);
+      const spine = connectChips(p1, p2);
       addBundle(spine, 4 + Math.floor(Math.random() * 4), 8 + Math.random() * 3);
     }
   }
@@ -255,10 +265,16 @@ function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node
     const p1 = getEdgePoint(c);
     
     // Pick a random screen edge point
-    const edgeX = Math.random() > 0.5 ? (Math.random() > 0.5 ? -50 : w + 50) : Math.random() * w;
-    const edgeY = Math.random() > 0.5 ? (Math.random() > 0.5 ? -50 : h + 50) : Math.random() * h;
+    const edgeSide = Math.floor(Math.random() * 4);
+    let edgeX = 0, edgeY = 0, nx = 0, ny = 0;
+    if (edgeSide === 0) { edgeX = Math.random() * w; edgeY = -50; nx = 0; ny = 1; }
+    else if (edgeSide === 1) { edgeX = w + 50; edgeY = Math.random() * h; nx = -1; ny = 0; }
+    else if (edgeSide === 2) { edgeX = Math.random() * w; edgeY = h + 50; nx = 0; ny = -1; }
+    else { edgeX = -50; edgeY = Math.random() * h; nx = 1; ny = 0; }
     
-    const spine = connectChips(p1.x, p1.y, edgeX, edgeY);
+    const p2: Pin = { x: edgeX, y: edgeY, nx, ny };
+    
+    const spine = connectChips(p1, p2);
     addBundle(spine, 3 + Math.floor(Math.random() * 4), 8 + Math.random() * 4);
   }
 
