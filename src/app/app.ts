@@ -2,16 +2,18 @@ import { Component, ChangeDetectionStrategy, inject, computed } from '@angular/c
 import { RouterOutlet } from '@angular/router';
 import { PlayerService } from './services/player.service';
 import { PcbBackground } from './components/pcb-background';
+import { TopBar } from './components/top-bar';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, PcbBackground],
+  imports: [RouterOutlet, PcbBackground, TopBar],
   template: `
     <!-- PCB animated background: only mounted for the Neuromancer theme -->
     @if (isNeuromancer()) {
       <app-pcb-background />
     }
+    <app-top-bar />
     <div class="relative z-10">
       <router-outlet />
     </div>

@@ -27,25 +27,6 @@ import { PlayerService } from '../services/player.service';
                   <p class="text-sm text-green-700">User: MECHANIC_77 | Status: OFFLINE_MODE</p>
               </div>
           </div>
-          <div class="text-right flex flex-col items-end gap-2">
-              <div class="text-right hidden sm:block mb-1">
-                <div class="text-green-500 text-xs">Credits: <span class="text-white">{{ player.resources().credits }}</span></div>
-                <div class="text-blue-400 text-xs">Polymer units: <span class="text-white">{{ player.resources().polymer }}</span></div>
-                <div class="text-purple-400 text-xs">Scrap in kg: <span class="text-white">{{ player.resources().scrap }}</span></div>
-              </div>
-              <div class="flex gap-2">
-                <a routerLink="/hardware" class="text-xs bg-blue-900/30 text-blue-300 hover:bg-blue-900/60 px-2 py-1 uppercase border border-blue-500 transition-colors flex items-center">
-                   [⚙] Hardware Tuning
-                </a>
-                <select class="text-xs bg-green-900 text-green-300 px-2 py-1 uppercase border border-green-500 outline-none cursor-pointer h-full"
-                        [value]="activeShuriken().id"
-                        (change)="onShurikenChange($event)">
-                   @for (s of availableShurikens(); track s.id) {
-                      <option [value]="s.id">{{ s.name }} (Cap: {{s.processor?.routineCapacity}})</option>
-                   }
-                </select>
-              </div>
-          </div>
       </header>
 
       <!-- Main Content -->
@@ -57,7 +38,21 @@ import { PlayerService } from '../services/player.service';
 
           <!-- Rechte Seite: Programmierung (Drop Zones) -->
           <div class="w-full lg:w-2/3 neon-border bg-[#030014]/95 p-4 flex flex-col h-full min-h-0">
-              <h2 class="text-lg font-bold border-b border-green-800 pb-2 mb-4">// ROUTINE COMPILER</h2>
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-green-800 pb-2 mb-4 gap-4">
+                  <h2 class="text-lg font-bold">// ROUTINE COMPILER</h2>
+                  <div class="flex gap-2">
+                    <select class="text-xs bg-green-900 text-green-300 px-2 py-1 uppercase border border-green-500 outline-none cursor-pointer h-full"
+                            [value]="activeShuriken().id"
+                            (change)="onShurikenChange($event)">
+                       @for (s of availableShurikens(); track s.id) {
+                          <option [value]="s.id">{{ s.name }} (Cap: {{s.processor?.routineCapacity}})</option>
+                       }
+                    </select>
+                    <a routerLink="/hardware" class="text-xs bg-blue-900/30 text-blue-300 hover:bg-blue-900/60 px-2 py-1 uppercase border border-blue-500 transition-colors flex items-center">
+                       ⚙ Hardware Tuning
+                    </a>
+                  </div>
+              </div>
               
               <div id="gambit-list" class="flex-1 overflow-y-auto pr-2 flex flex-col gap-4"
                    cdkDropList
@@ -104,14 +99,14 @@ import { PlayerService } from '../services/player.service';
 export class RoutineCompiler {
   workshop = inject(WorkshopService);
   player = inject(PlayerService);
-  
+
   routines = this.workshop.routines;
   fallbackAction = this.workshop.fallbackAction;
   availableShurikens = this.workshop.availableShurikens;
   activeShuriken = this.workshop.activeShuriken;
-  
-  capacityReached() { 
-     return this.routines().length >= (this.activeShuriken().processor?.routineCapacity || 2); 
+
+  capacityReached() {
+    return this.routines().length >= (this.activeShuriken().processor?.routineCapacity || 2);
   }
 
   onShurikenChange(event: any) {
@@ -125,7 +120,7 @@ export class RoutineCompiler {
   onSlotDrop(event: CdkDragDrop<any>) {
     // Only reorder if we are dragging within the same list and moved it
     if (event.previousContainer === event.container && event.previousIndex !== event.currentIndex) {
-       this.workshop.reorderRoutines(event.previousIndex, event.currentIndex);
+      this.workshop.reorderRoutines(event.previousIndex, event.currentIndex);
     }
   }
 }

@@ -1,38 +1,25 @@
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { DecimalPipe } from '@angular/common';
 import { PlayerService } from '../services/player.service';
 
 @Component({
   selector: 'app-hub',
   standalone: true,
-  imports: [RouterLink, DecimalPipe],
+  imports: [RouterLink],
   template: `
     <div class="min-h-screen text-gray-300 p-8 font-mono relative overflow-hidden">
       <!-- Ambient effects -->
       <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-900/10 via-transparent to-transparent pointer-events-none"></div>
       <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAiLz4KPHBhdGggZD0iTTAgMGg0djRIMEowem0yIDJoMnYySDJWMHptLTIgMmgydjJIMFYyem0wLTJoMnYySDBWMHoiIGZpbGw9IiMzMzMiIGZpbGwtb3BhY2l0eT0iMC4xIi8+Cjwvc3ZnPg==')] opacity-30 pointer-events-none"></div>
       
-      <!-- Top Bar -->
-      <header class="relative bg-[#030014]/95 border border-green-800/50 pb-4 mb-8 flex justify-between items-end z-10 p-6">
-        <div>
-          <div class="flex items-center gap-4">
-            <h1 class="text-3xl font-bold tracking-widest text-green-500 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]">RESISTANCE HQ</h1>
-            <a routerLink="/settings" class="text-xs bg-gray-900 border border-gray-700 hover:border-gray-400 text-gray-400 hover:text-white px-2 py-1 transition-colors cursor-pointer">
-              [⚙] SETTINGS
-            </a>
-          </div>
-          <p class="text-xs text-green-700 uppercase mt-1">Underground Sector 4 // Status: Undetected</p>
-        </div>
-        <div class="text-right">
-          <div class="text-green-500 text-sm">Credits: <span class="text-white">{{ player.resources().credits | number }}</span></div>
-          <div class="text-blue-400 text-sm">Polymer units: <span class="text-white">{{ player.resources().polymer | number }}</span></div>
-          <div class="text-purple-400 text-sm">Scrap in kg: <span class="text-white">{{ player.resources().scrap | number }}</span></div>
-        </div>
+      <!-- Header -->
+      <header class="relative bg-[#030014]/95 border border-green-800/50 pb-4 mb-8 z-10 p-6">
+        <h1 class="text-3xl font-bold tracking-widest text-green-500 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]">RESISTANCE HQ</h1>
+        <p class="text-xs text-green-700 uppercase mt-1">Underground Sector 4 // Status: Undetected</p>
       </header>
 
       <!-- Main Navigation Grid -->
-      <div class="relative grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto z-10">
+      <div class="relative grid grid-cols-1 md:grid-cols-2 gap-6 z-10">
         
         <!-- Routine Compiler (Rogue OS) -->
         <a routerLink="/routine" class="group relative block bg-[#030014]/95 border border-green-800 hover:border-green-400 p-6 transition-all duration-300 hover:bg-green-900/20">

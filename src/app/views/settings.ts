@@ -9,7 +9,7 @@ import { PlayerService } from '../services/player.service';
   imports: [CommonModule],
   template: `
     <div class="min-h-screen p-8 text-blue-300 font-mono">
-      <div class="max-w-4xl mx-auto flex flex-col gap-6">
+      <div class="flex flex-col gap-6">
         
         <!-- Header -->
         <div class="flex items-center justify-between border-b border-blue-800 pb-4">
@@ -18,11 +18,6 @@ import { PlayerService } from '../services/player.service';
             <div class="text-xs text-blue-600 uppercase mt-1">Player Profile & Global Preferences</div>
           </div>
           <div class="flex items-center gap-6">
-            <div class="text-right hidden sm:block">
-              <div class="text-green-500 text-xs">Credits: <span class="text-white">{{ player.resources().credits }}</span></div>
-              <div class="text-blue-400 text-xs">Polymer units: <span class="text-white">{{ player.resources().polymer }}</span></div>
-              <div class="text-purple-400 text-xs">Scrap in kg: <span class="text-white">{{ player.resources().scrap }}</span></div>
-            </div>
             <button (click)="goBack()" class="bg-blue-900/50 border border-blue-600 text-blue-400 hover:bg-blue-800 px-4 py-2 uppercase text-sm transition-colors cursor-pointer">
               [<] Return to Hub
             </button>
