@@ -31,11 +31,23 @@ function loadResources(): PlayerResources {
   return { credits: 0, polymer: 0, scrap: 0 };
 }
 
+function loadStats(): PlayerStats {
+  const saved = localStorage.getItem('rogueBlade_stats');
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error('Failed to parse saved stats', e);
+    }
+  }
+  return { totalPlayTime: 0, successfulRuns: 0, failedRuns: 0 };
+}
+
 @Injectable({ providedIn: 'root' })
 export class PlayerService {
   readonly resources = signal<PlayerResources>(loadResources());
   readonly profile = signal<PlayerProfile>({ username: 'Guest_774', email: 'guest.774@zenith-net.local' });
-  readonly stats = signal<PlayerStats>({ totalPlayTime: 0, successfulRuns: 0, failedRuns: 0 });
+  readonly stats = signal<PlayerStats>(loadStats());
   readonly theme = signal<'zenith' | 'ripperdoc' | 'neuromancer'>(
     (localStorage.getItem('rogueBlade_theme') as 'zenith' | 'ripperdoc' | 'neuromancer') || 'neuromancer'
   );
@@ -54,6 +66,23 @@ export class PlayerService {
         document.body.classList.add(`theme-${currentTheme}`);
       }
     });
+
+    if (isPlatformBrowser(this.platformId)) {
+      // Smooth UI Playtime Tick (1 second)
+      setInterval(() => {
+        this.stats.update(s => ({ ...s, totalPlayTime: s.totalPlayTime + 1 }));
+      }, 1000);
+
+      // Optimized Local Storage Save (5 seconds)
+      setInterval(() => {
+        localStorage.setItem('rogueBlade_stats', JSON.stringify(this.stats()));
+      }, 5000);
+
+      // Mock Remote Cloud Sync (60 seconds)
+      setInterval(() => {
+        console.log(`[NETWORK] Syncing accumulated gameplay telemetry to Zenith remote servers...`);
+      }, 60000);
+    }
   }
 
   addCredits(amount: number) {

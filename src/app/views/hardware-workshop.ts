@@ -181,12 +181,16 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                    </div>
                 </div>
 
-                 <!-- Statistics Block -->
-                 <div class="mt-8 border-t border-blue-900/50 pt-6">
-                   <h3 class="text-lg font-bold text-blue-500 mb-4 flex items-center gap-2">
-                     <span class="text-blue-700">|</span> COMBAT STATISTICS
-                   </h3>
-                   <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                  <!-- Statistics Block -->
+                  <div class="mt-8 border-t border-blue-900/50 pt-6">
+                    <h3 class="text-lg font-bold text-blue-500 mb-4 flex items-center gap-2">
+                      <span class="text-blue-700">|</span> COMBAT STATISTICS
+                    </h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
+                      <div class="bg-black border border-blue-900/30 p-3">
+                        <div class="text-blue-600 text-xs uppercase mb-1">Joined Swarm</div>
+                        <div class="text-blue-300 font-bold">{{ shuriken.creationDate | date:'mediumDate' }}</div>
+                      </div>
                      <div class="bg-black border border-blue-900/30 p-3">
                        <div class="text-blue-600 text-xs uppercase mb-1">Time Online</div>
                        <div class="text-blue-300 font-bold">{{ formatTime(shuriken.stats.timeOnline) }}</div>

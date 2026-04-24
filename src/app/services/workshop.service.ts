@@ -56,8 +56,8 @@ const DEFAULT_SHURIKEN: Omit<Shuriken, 'id' | 'name'> = {
 
 function loadShurikens(): Shuriken[] {
   const defaults = [
-    { ...DEFAULT_SHURIKEN, id: 'shuriken-01', name: 'Shuriken #01 (Scrap)' },
-    { ...DEFAULT_SHURIKEN, id: 'shuriken-02', name: 'Shuriken #02 (Scrap)' }
+    { ...DEFAULT_SHURIKEN, id: 'shuriken-01', name: 'Shuriken #01 (Scrap)', creationDate: Date.now() },
+    { ...DEFAULT_SHURIKEN, id: 'shuriken-02', name: 'Shuriken #02 (Scrap)', creationDate: Date.now() }
   ];
   const saved = localStorage.getItem('rogueBlade_shurikens');
   if (saved) {
@@ -66,7 +66,8 @@ function loadShurikens(): Shuriken[] {
       if (parsed && parsed.length > 0 && parsed[0].semiAI !== undefined) {
         parsed = parsed.map((s: any) => ({
           ...s,
-          stats: s.stats || { enemiesKilled: 0, timeRepairing: 0, lostHealth: 0, timeOnline: 0 }
+          stats: s.stats || { enemiesKilled: 0, timeRepairing: 0, lostHealth: 0, timeOnline: 0 },
+          creationDate: s.creationDate || Date.now()
         }));
         return parsed;
       }

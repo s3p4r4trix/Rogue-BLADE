@@ -104,4 +104,5 @@ export interface Shuriken {
   processor: Processor | null;
   semiAI: SemiAI | null;
   stats: ShurikenStats;
+  creationDate?: number; // timestamp
 }
