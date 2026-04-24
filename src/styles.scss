@@ -89,11 +89,6 @@ body.theme-neuromancer .neuro-panel {
   transition: all 0.3s ease;
 }
 
-body.theme-neuromancer .neuro-panel:hover {
-  border-color: var(--neuro-glow);
-  box-shadow: 0 0 15px rgba(167, 139, 250, 0.3), inset 0 0 20px rgba(167, 139, 250, 0.1);
-}
-
 /* 
   Drawing Border Animation 
   Using an SVG or CSS clip-path trick. For simplicity and performance, 
@@ -160,11 +155,15 @@ body.theme-neuromancer .neuro-border-draw .border-anim-v::after {
 }
 
 body.theme-neuromancer .neuro-border-draw:hover > .border-anim::before,
-body.theme-neuromancer .neuro-border-draw:hover > .border-anim::after {
+body.theme-neuromancer .neuro-border-draw:hover > .border-anim::after,
+body.theme-neuromancer .neuro-border-draw.neuro-border-active > .border-anim::before,
+body.theme-neuromancer .neuro-border-draw.neuro-border-active > .border-anim::after {
   width: 100%;
 }
 body.theme-neuromancer .neuro-border-draw:hover .border-anim-v::before,
-body.theme-neuromancer .neuro-border-draw:hover .border-anim-v::after {
+body.theme-neuromancer .neuro-border-draw:hover .border-anim-v::after,
+body.theme-neuromancer .neuro-border-draw.neuro-border-active .border-anim-v::before,
+body.theme-neuromancer .neuro-border-draw.neuro-border-active .border-anim-v::after {
   height: 100%;
 }
 

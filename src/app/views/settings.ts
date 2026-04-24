@@ -12,16 +12,19 @@ import { PlayerService } from '../services/player.service';
       <div class="flex flex-col gap-6">
         
         <!-- Header -->
-        <div class="flex items-center gap-6 border-b border-blue-800 pb-4 neuro-panel p-4">
-          <button (click)="goBack()" class="bg-blue-900/50 border border-blue-600 text-blue-400 hover:bg-blue-800 px-4 py-2 uppercase text-sm transition-colors cursor-pointer neuro-border-draw shrink-0">
-            <div class="border-anim"></div><div class="border-anim-v"></div>
-            <span class="relative z-10">[<] Return to Hub</span>
-          </button>
-          <div>
-            <h1 class="text-3xl font-bold text-blue-400 tracking-wider relative z-10">SYSTEM SETTINGS</h1>
-            <div class="text-xs text-blue-600 uppercase mt-1 relative z-10">Player Profile & Global Preferences</div>
+        <header class="mb-6 flex justify-between items-end border-b-2 border-blue-800 pb-2">
+          <div class="flex items-center gap-4">
+            <button (click)="goBack()" class="text-blue-500 border border-blue-800 hover:bg-blue-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors cursor-pointer">
+              < Back to Hub
+            </button>
+            <div>
+              <h1 class="text-2xl font-bold tracking-widest text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]">
+                  SYSTEM SETTINGS
+              </h1>
+              <p class="text-sm text-blue-700 uppercase">Player Profile & Global Preferences</p>
+            </div>
           </div>
-        </div>
+        </header>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           
@@ -70,6 +73,7 @@ import { PlayerService } from '../services/player.service';
               <button (click)="setTheme('zenith')" 
                       [class.border-blue-400]="player.theme() === 'zenith'"
                       [class.bg-blue-900]="player.theme() === 'zenith'"
+                      [class.neuro-border-active]="player.theme() === 'zenith'"
                       class="border border-blue-900/50 p-4 text-left hover:border-blue-700 transition-colors cursor-pointer group neuro-border-draw">
                 <div class="border-anim"></div><div class="border-anim-v"></div>
                 <div class="font-bold mb-1 transition-colors relative z-10"
@@ -83,6 +87,7 @@ import { PlayerService } from '../services/player.service';
               <button (click)="setTheme('ripperdoc')" 
                       [class.border-green-500]="player.theme() === 'ripperdoc'"
                       [class.bg-green-900]="player.theme() === 'ripperdoc'"
+                      [class.neuro-border-active]="player.theme() === 'ripperdoc'"
                       class="border border-blue-900/50 p-4 text-left hover:border-green-700 transition-colors cursor-pointer group neuro-border-draw">
                 <div class="border-anim before:bg-green-500 after:bg-green-500"></div><div class="border-anim-v before:bg-green-500 after:bg-green-500"></div>
                 <div class="font-bold mb-1 transition-colors relative z-10"
@@ -96,6 +101,7 @@ import { PlayerService } from '../services/player.service';
               <button (click)="setTheme('neuromancer')" 
                       [class.border-purple-500]="player.theme() === 'neuromancer'"
                       [class.bg-purple-900]="player.theme() === 'neuromancer'"
+                      [class.neuro-border-active]="player.theme() === 'neuromancer'"
                       class="border border-blue-900/50 p-4 text-left hover:border-purple-700 transition-colors cursor-pointer group neuro-border-draw">
                 <div class="border-anim before:bg-purple-500 after:bg-purple-500"></div><div class="border-anim-v before:bg-purple-500 after:bg-purple-500"></div>
                 <div class="font-bold mb-1 transition-colors relative z-10"

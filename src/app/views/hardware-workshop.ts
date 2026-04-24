@@ -20,31 +20,52 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
             <h1 class="text-2xl font-bold tracking-widest text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]">
                 HARDWARE // TUNING
             </h1>
-            <p class="text-sm text-blue-700">NPC: RIPPERDOC_01</p>
+            <p class="text-sm text-blue-700">NPC: OFFLINE</p>
           </div>
         </div>
       </header>
       
       <div class="flex flex-col md:flex-row gap-6 h-[75vh]">
-        <!-- Sidebar: Shuriken List -->
-        <div class="w-full md:w-1/3 lg:w-1/4 bg-[#030014]/95 border border-blue-900/50 flex flex-col z-10 relative neuro-panel">
-           <div class="bg-blue-900/30 p-3 border-b border-blue-800">
-               <h2 class="text-blue-400 font-bold uppercase tracking-wider">// SWARM FLEET</h2>
+        <!-- Sidebar -->
+        <div class="w-full md:w-1/3 lg:w-1/4 flex flex-col gap-6 z-10 relative">
+           
+           <!-- Shuriken List -->
+           <div class="bg-[#030014]/95 border border-blue-900/50 flex flex-col flex-1 neuro-panel min-h-0">
+               <div class="bg-blue-900/30 p-3 border-b border-blue-800 shrink-0">
+                   <h2 class="text-blue-400 font-bold uppercase tracking-wider">// SWARM FLEET</h2>
+               </div>
+               <div class="flex-1 overflow-y-auto p-2 flex flex-col gap-2">
+                 @for (s of shurikens(); track s.id) {
+                   <button class="text-left p-3 border transition-colors flex flex-col gap-1 neuro-border-draw"
+                           [ngClass]="{
+                              'bg-blue-900/40 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]': activeShuriken().id === s.id,
+                              'bg-black border-blue-900 hover:border-blue-700': activeShuriken().id !== s.id
+                           }"
+                           (click)="selectShuriken(s.id)">
+                       <div class="border-anim"></div>
+                       <div class="border-anim-v"></div>
+                       <div class="font-bold text-blue-300 relative z-10">{{ s.name }}</div>
+                       <div class="text-xs text-blue-600 relative z-10">Cap: {{ s.processor?.routineCapacity }} | Hull: {{ s.hull?.name }}</div>
+                   </button>
+                 }
+               </div>
            </div>
-           <div class="flex-1 overflow-y-auto p-2 flex flex-col gap-2">
-             @for (s of shurikens(); track s.id) {
-               <button class="text-left p-3 border transition-colors flex flex-col gap-1 neuro-border-draw"
-                       [ngClass]="{
-                          'bg-blue-900/40 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]': activeShuriken().id === s.id,
-                          'bg-black border-blue-900 hover:border-blue-700': activeShuriken().id !== s.id
-                       }"
-                       (click)="selectShuriken(s.id)">
-                   <div class="border-anim"></div>
-                   <div class="border-anim-v"></div>
-                   <div class="font-bold text-blue-300 relative z-10">{{ s.name }}</div>
-                   <div class="text-xs text-blue-600 relative z-10">Cap: {{ s.processor?.routineCapacity }} | Hull: {{ s.hull?.name }}</div>
-               </button>
-             }
+
+           <!-- NPC Recruits -->
+           <div class="bg-[#030014]/95 border border-blue-900/50 flex flex-col shrink-0 neuro-panel">
+               <div class="bg-blue-900/30 p-3 border-b border-blue-800 shrink-0">
+                   <h2 class="text-blue-400 font-bold uppercase tracking-wider">// CONTACTS</h2>
+               </div>
+               <div class="p-2 flex flex-col gap-2">
+                  <div class="p-3 border border-blue-900/50 bg-black flex justify-between items-center transition-colors hover:border-blue-700">
+                     <span class="text-blue-300 font-bold">RIPPERDOC_01</span>
+                     <span class="text-red-500 text-xs font-bold uppercase">Offline</span>
+                  </div>
+                  <div class="p-3 border border-blue-900/50 bg-black flex justify-between items-center opacity-50">
+                     <span class="text-blue-300 font-bold">???</span>
+                     <span class="text-gray-500 text-xs font-bold uppercase">Unknown</span>
+                  </div>
+               </div>
            </div>
         </div>
         
