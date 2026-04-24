@@ -56,6 +56,14 @@ export interface Blade extends HardwareComponent {
 }
 
 /**
+ * Determines the overall physical shape and primary combat specialization of the Shuriken.
+ */
+export interface FormDesign extends HardwareComponent {
+  shape: 'disc' | 'dagger' | 'sphere' | 'tron-disc';
+  primaryDamageType: 'cutting' | 'piercing' | 'blunt' | 'burning';
+}
+
+/**
  * The full representation of a configured drone, passed into the combat simulation phase.
  */
 export interface Shuriken {
@@ -66,4 +74,5 @@ export interface Shuriken {
   energyCell: EnergyCell | null;
   sensor: Sensor | null;
   blade: Blade | null;
+  formDesign: FormDesign | null;
 }

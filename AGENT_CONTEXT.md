@@ -64,3 +64,4 @@ We are currently building **Phase 1 (The Workshop / Routine - Modular system)**.
 * **ALWAYS add useful, comprehensive comments to quickly grasp the underlying concepts and their inner workings.**
 * **All text in the application MUST be in English.**
 * Whenever generating code, provide complete, runnable snippets.
+* **Game Design Consistency:** Always refer to and adhere to the overall game design and mechanics specified in `docs/game_design.md` when generating or modifying code.

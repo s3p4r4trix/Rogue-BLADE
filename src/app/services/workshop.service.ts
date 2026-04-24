@@ -1,5 +1,21 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, effect } from '@angular/core';
 import { Action, GambitRoutine, Trigger } from '../models/gambit.model';
+
+function loadSavedRoutines(): GambitRoutine[] {
+  const saved = localStorage.getItem('rogueBlade_routines');
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error('Failed to parse saved routines', e);
+    }
+  }
+  return [
+    { priority: 1, trigger: null, action: null },
+    { priority: 2, trigger: null, action: null },
+    { priority: 3, trigger: null, action: null }
+  ];
+}
 
 /**
  * The WorkshopService acts as the central state manager for the Workshop Phase.
@@ -35,11 +51,7 @@ export class WorkshopService {
    * The active Gambit routines for the currently selected Shuriken.
    * Represented as a list of 3 priority slots. The lower the index, the higher the priority in combat.
    */
-  readonly routines = signal<GambitRoutine[]>([
-    { priority: 1, trigger: null, action: null },
-    { priority: 2, trigger: null, action: null },
-    { priority: 3, trigger: null, action: null }
-  ]);
+  readonly routines = signal<GambitRoutine[]>(loadSavedRoutines());
 
   /**
    * The default action executed by the auto-battler if none of the priority triggers match.
@@ -51,7 +63,12 @@ export class WorkshopService {
    */
   readonly systemLogs = signal<string[]>(['> System ready.', '> Waiting for input...']);
 
-  constructor() { }
+  constructor() {
+    // Automatically save routines to localStorage whenever they change
+    effect(() => {
+      localStorage.setItem('rogueBlade_routines', JSON.stringify(this.routines()));
+    });
+  }
 
   /**
    * Appends a new message to the system console log.
