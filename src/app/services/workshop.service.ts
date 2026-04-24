@@ -17,7 +17,8 @@ export const HARDWARE_INVENTORY = {
     { id: 'sens-spectra', name: 'Spectra EM-Scanner', description: 'Highlights shields.', range: 15, unlocksTriggerIds: ['Enemy has shield'] } as Sensor
   ],
   blades: [
-    { id: 'blade-carbon', name: 'Carbon "Razor" Edge', description: 'Standard sharpened rim.', damageType: 'kinetic', damage: 10 } as Blade,
+    { id: 'blade-carbon', name: 'Carbon "Razor" Edge', description: 'Standard sharpened rim.', damageType: 'kinetic', damage: 10, unlocksActionIds: ['act-kinetic-ram', 'act-evasive-dash', 'act-defensive-parry'] } as Blade,
+    { id: 'blade-plasma', name: 'Z-1 "Sun-Cutter" Plasma Blade', description: 'Cuts through shields like butter.', damageType: 'plasma', damage: 25, unlocksActionIds: ['act-kinetic-ram', 'act-plasma-edge'] } as Blade,
     { id: 'blade-breaker', name: 'Titan "Breaker" Profile', description: 'Crushes armor.', damageType: 'kinetic', damage: 25 } as Blade
   ],
   formDesigns: [
@@ -111,17 +112,79 @@ function loadSavedRoutinesMap(): Record<string, GambitRoutine[]> {
 })
 export class WorkshopService {
   readonly availableTriggers = signal<Trigger[]>([
-    { type: 'trigger', value: 'Enemy within 5m radius', name: '[+] Enemy within 5m radius' },
-    { type: 'trigger', value: 'Enemy has shield', name: '[+] Enemy has shield' },
-    { type: 'trigger', value: 'Self HP < 20%', name: '[+] Self HP < 20%' },
-    { type: 'trigger', value: 'Enemy behind cover', name: '[!] Enemy behind cover', disabled: true, requiredSensor: 'Terahertz Sensor' }
+    { 
+      id: 'trig-enemy-5m',
+      type: 'trigger', 
+      value: 'Enemy in range', 
+      name: '[+] Enemy in range',
+      description: 'Standard proximity sensor trigger. Activates when a hostile target enters the immediate combat envelope.',
+      lore: 'Kuro-Tech pulse sensors are reliable, if a bit noisy. Guaranteed to detect anything with a heat signature.'
+    },
+    { 
+      id: 'trig-enemy-shield',
+      type: 'trigger', 
+      value: 'Enemy has shield', 
+      name: '[+] Enemy has shield',
+      description: 'Analyzes energy signatures to detect active EM shielding on the target.',
+      lore: 'In the corporate wars, shields were everything. This routine was written in the trenches of Neo-Tokyo.'
+    },
+    { 
+      id: 'trig-low-hp',
+      type: 'trigger', 
+      value: 'Self HP < 20%', 
+      name: '[+] Self HP < 20%',
+      description: 'Internal diagnostic trigger. Activates when structural integrity falls below critical levels.',
+      lore: 'Panic mode for machines. When the hull screams, the AI listens.'
+    },
+    { 
+      id: 'trig-behind-cover',
+      type: 'trigger', 
+      value: 'Enemy behind cover', 
+      name: '[!] Enemy behind cover', 
+      disabled: true, 
+      requiredSensor: 'Terahertz Sensor',
+      description: 'Advanced occlusion analysis. Detects targets hiding behind physical obstacles.',
+      lore: 'Hiding only works if they can\'t see your heartbeat through the wall.'
+    }
   ]);
 
   readonly availableActions = signal<Action[]>([
-    { type: 'action', value: 'Kinetic Ram (Forward)', name: '[>] Kinetic Ram (Forward)', baseLatency: 50 },
-    { type: 'action', value: 'Evasive Dash (Left/Right)', name: '[>] Evasive Dash (Left/Right)', baseLatency: 20 },
-    { type: 'action', value: 'Defensive Formation (Parry)', name: '[>] Defensive Formation (Parry)', baseLatency: 20 },
-    { type: 'action', value: 'Charge Plasma Edge', name: '[>] Charge Plasma Edge', baseLatency: 300 }
+    { 
+      id: 'act-kinetic-ram',
+      type: 'action', 
+      value: 'Kinetic Ram (Forward)', 
+      name: '[>] Kinetic Ram (Forward)', 
+      baseLatency: 50,
+      description: 'A high-speed physical collision. Deals significant damage but risks self-harm.',
+      lore: 'The simplest solution is often the most violent one.'
+    },
+    { 
+      id: 'act-evasive-dash',
+      type: 'action', 
+      value: 'Evasive Dash (Left/Right)', 
+      name: '[>] Evasive Dash (Left/Right)', 
+      baseLatency: 20,
+      description: 'Quick lateral movement to avoid incoming fire or collisions.',
+      lore: 'The best way to win a fight is to not be where the bullet is.'
+    },
+    { 
+      id: 'act-defensive-parry',
+      type: 'action', 
+      value: 'Defensive Formation (Parry)', 
+      name: '[>] Defensive Formation (Parry)', 
+      baseLatency: 20,
+      description: 'Angled hull positioning to deflect incoming kinetic projectiles.',
+      lore: 'Armor is just physics waiting for an angle.'
+    },
+    { 
+      id: 'act-plasma-edge',
+      type: 'action', 
+      value: 'Charge Plasma Edge', 
+      name: '[>] Charge Plasma Edge', 
+      baseLatency: 300,
+      description: 'Heats the blade edges to extreme temperatures. Destroys shields instantly.',
+      lore: 'Zenith tech at its finest. It cuts through durasteel like a hot knife through butter.'
+    }
   ]);
 
   readonly availableShurikens = signal<Shuriken[]>(loadShurikens());
@@ -138,8 +201,60 @@ export class WorkshopService {
      return this.availableShurikens().find(s => s.id === this.activeShurikenId()) || this.availableShurikens()[0];
   });
 
+  // Filtered triggers based on active sensors
+  readonly unlockedTriggers = computed(() => {
+    const shuriken = this.activeShuriken();
+    if (!shuriken) return [];
+    
+    const unlockedIds = new Set<string>();
+    // Core triggers always available to all shurikens
+    unlockedIds.add('trig-enemy-5m');
+    unlockedIds.add('trig-low-hp');
+    
+    // Check sensors
+    if (shuriken.sensor?.unlocksTriggerIds) {
+      shuriken.sensor.unlocksTriggerIds.forEach(id => unlockedIds.add(id));
+    }
+    
+    return this.availableTriggers().filter(t => unlockedIds.has(t.id) || (shuriken.sensor?.unlocksTriggerIds?.includes(t.value)));
+  });
+
+  // Filtered actions based on active blade
+  readonly unlockedActions = computed(() => {
+    const shuriken = this.activeShuriken();
+    if (!shuriken) return [];
+    
+    const unlockedIds = new Set<string>();
+    // Core actions always available if any blade is equipped
+    unlockedIds.add('act-kinetic-ram');
+    unlockedIds.add('act-evasive-dash');
+    unlockedIds.add('act-defensive-parry');
+    
+    if (shuriken.blade?.unlocksActionIds) {
+      shuriken.blade.unlocksActionIds.forEach(id => unlockedIds.add(id));
+    }
+    
+    return this.availableActions().filter(a => unlockedIds.has(a.id));
+  });
+
+  isRoutineValid(routine: GambitRoutine): boolean {
+    if (!routine.trigger || !routine.action) return true; // Incomplete routines are "valid" but non-functional
+    
+    const isTriggerUnlocked = this.unlockedTriggers().some(t => t.id === routine.trigger?.id);
+    const isActionUnlocked = this.unlockedActions().some(a => a.id === routine.action?.id);
+    
+    return isTriggerUnlocked && isActionUnlocked;
+  }
+
+  readonly isSystemValid = computed(() => {
+    return this.routines().every(r => this.isRoutineValid(r));
+  });
+
   readonly fallbackAction = signal<string>('Circle around character');
   readonly systemLogs = signal<string[]>(['> System ready.', '> Waiting for input...']);
+  
+  // Tracking the currently selected component for the info panel
+  readonly selectedInfoItem = signal<Trigger | Action | null>(null);
 
   constructor() {
     effect(() => {
@@ -202,6 +317,20 @@ export class WorkshopService {
       return updated.map((r, i) => ({ ...r, priority: i + 1 }));
     });
     this.log(`Routines reprioritized.`);
+  }
+
+  moveRoutineUp(index: number) {
+    if (index <= 0) return;
+    this.reorderRoutines(index, index - 1);
+  }
+
+  moveRoutineDown(index: number) {
+    if (index >= this.routines().length - 1) return;
+    this.reorderRoutines(index, index + 1);
+  }
+
+  setInfoItem(item: Trigger | Action | null) {
+    this.selectedInfoItem.set(item);
   }
 
   setTrigger(index: number, trigger: Trigger) {

@@ -1,64 +1,85 @@
-import { Component, input, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CdkDragDrop, CdkDropList, CdkDrag, CdkDragHandle } from '@angular/cdk/drag-drop';
 import { WorkshopService } from '../services/workshop.service';
 import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
+import { CyberSelect, CyberOption } from './cyber-select';
 
 @Component({
   selector: 'app-gambit-slot',
   standalone: true,
-  imports: [CommonModule, CdkDropList, CdkDrag, CdkDragHandle],
+  imports: [CommonModule, CyberSelect],
   template: `
-    <div cdkDrag class="bg-gray-900 border border-gray-700 p-3 flex flex-col sm:flex-row items-center gap-3 relative group">
+    <div class="bg-[#030014]/95 border p-3 flex flex-col sm:flex-row items-center gap-3 relative group neuro-panel transition-colors duration-500 overflow-visible hover:z-[1000] focus-within:z-[1000]"
+         [ngClass]="isInvalid() ? 'border-red-600/50 bg-red-950/10' : 'border-green-900/50'">
       
-      <!-- Drag Handle -->
-      <div cdkDragHandle class="cursor-grab text-gray-600 hover:text-gray-400 px-1 select-none active:cursor-grabbing">
-        ≡
+      <!-- Movement Controls -->
+      <div class="flex flex-col gap-1 pr-2 border-r border-green-900/30">
+        <button (click)="moveUp()" 
+                [disabled]="index() === 0"
+                class="text-green-600 hover:text-green-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs">
+          ▲
+        </button>
+        <div class="text-green-500 font-bold text-[10px] text-center uppercase tracking-tighter">P{{ routine().priority }}</div>
+        <button (click)="moveDown()" 
+                [disabled]="isLast()"
+                class="text-green-600 hover:text-green-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs">
+          ▼
+        </button>
       </div>
-
-      <div class="text-gray-500 font-bold w-16 text-center">PRIO {{ routine().priority }}</div>
       
-      <!-- Trigger Drop Zone -->
-      <div cdkDropList
-          [cdkDropListEnterPredicate]="triggerPredicate"
-          (cdkDropListDropped)="onTriggerDrop($event)"
-          class="flex-1 h-12 flex items-center justify-center w-full transition-colors dropzone"
-          [ngClass]="{
-              'border-2 border-dashed border-cyan-800 text-cyan-800': !routine().trigger,
-              'bg-cyan-900/40 border border-solid border-cyan-500 text-cyan-300': routine().trigger
-          }">
-          @if (!routine().trigger) {
-            <span>Drop IF condition here</span>
-          } @else {
-            <span>{{ routine().trigger?.value }}</span>
+      <!-- Trigger Selection -->
+      <div class="flex-1 flex flex-col gap-1 w-full">
+        <div class="flex justify-between items-center px-1">
+          <label class="text-[10px] uppercase font-bold tracking-widest"
+                 [ngClass]="isInvalid() ? 'text-red-500' : 'text-cyan-600'">IF (Trigger)</label>
+          @if (routine().trigger) {
+            <button (click)="showTriggerInfo()" class="text-[10px] text-cyan-500 hover:text-cyan-300 underline uppercase cursor-pointer">ⓘ Info</button>
           }
+        </div>
+        <app-cyber-select 
+          [value]="routine().trigger?.value"
+          [options]="triggerOptions"
+          (valueChange)="onTriggerChange($event)"
+          placeholder="-- Select Trigger --"
+          class="block w-full">
+        </app-cyber-select>
       </div>
       
-      <div class="text-green-500 font-bold w-8 text-center">-></div>
+      <div class="text-green-500 font-bold hidden sm:block" [ngClass]="{'text-red-500': isInvalid()}">➔</div>
       
-      <!-- Action Drop Zone -->
-      <div cdkDropList
-          [cdkDropListEnterPredicate]="actionPredicate"
-          (cdkDropListDropped)="onActionDrop($event)"
-          class="flex-1 h-12 flex items-center justify-center w-full transition-colors dropzone"
-          [ngClass]="{
-              'border-2 border-dashed border-orange-800 text-orange-800': !routine().action,
-              'bg-orange-900/40 border border-solid border-orange-500 text-orange-300': routine().action
-          }">
-          @if (!routine().action) {
-            <span>Drop THEN action here</span>
-          } @else {
-            <span>{{ routine().action?.value }}</span>
+      <!-- Action Selection -->
+      <div class="flex-1 flex flex-col gap-1 w-full">
+        <div class="flex justify-between items-center px-1">
+          <label class="text-[10px] uppercase font-bold tracking-widest"
+                 [ngClass]="isInvalid() ? 'text-red-500' : 'text-orange-600'">THEN (Action)</label>
+          @if (routine().action) {
+            <button (click)="showActionInfo()" class="text-[10px] text-orange-500 hover:text-orange-300 underline uppercase cursor-pointer">ⓘ Info</button>
           }
+        </div>
+        <app-cyber-select 
+          [value]="routine().action?.value"
+          [options]="actionOptions"
+          (valueChange)="onActionChange($event)"
+          placeholder="-- Select Action --"
+          class="block w-full">
+        </app-cyber-select>
       </div>
       
-      <div class="flex flex-col gap-1 ml-2">
-        <button class="text-gray-500 hover:text-yellow-500 text-xs font-bold" title="Clear Slot" (click)="clearSlot()">[C]</button>
-        <button class="text-gray-500 hover:text-red-500 text-xs font-bold" title="Remove Routine" (click)="removeSlot()">[X]</button>
+      <!-- Slot Actions -->
+      <div class="flex flex-row sm:flex-col gap-2 ml-2 sm:border-l sm:border-green-900/30 sm:pl-3 min-w-[60px] items-center">
+        @if (isInvalid()) {
+          <div class="text-[8px] bg-red-600 text-white font-bold px-1 py-0.5 rounded animate-pulse mb-1 whitespace-nowrap">
+            [!] HW FAIL
+          </div>
+        }
+        <div class="flex sm:flex-col gap-2">
+          <button class="text-gray-500 hover:text-yellow-500 text-xs font-bold transition-colors cursor-pointer" title="Clear Slot" (click)="clearSlot()">[CLR]</button>
+          <button class="text-gray-500 hover:text-red-500 text-xs font-bold transition-colors cursor-pointer" title="Remove Routine" (click)="removeSlot()">[DEL]</button>
+        </div>
       </div>
     </div>
   `,
-  styles: [``],
+  styles: [],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GambitSlot {
@@ -67,24 +88,53 @@ export class GambitSlot {
   
   workshop = inject(WorkshopService);
 
-  triggerPredicate(drag: CdkDrag<any>) {
-    return drag.data && drag.data.type === 'trigger';
+  isInvalid = computed(() => !this.workshop.isRoutineValid(this.routine()));
+
+  get triggerOptions(): CyberOption[] {
+    return this.workshop.unlockedTriggers().map(t => ({
+      value: t.value,
+      label: t.name,
+      disabled: t.disabled
+    }));
   }
 
-  actionPredicate(drag: CdkDrag<any>) {
-    return drag.data && drag.data.type === 'action';
+  get actionOptions(): CyberOption[] {
+    return this.workshop.unlockedActions().map(a => ({
+      value: a.value,
+      label: a.name
+    }));
   }
 
-  onTriggerDrop(event: CdkDragDrop<any>) {
-    if (event.item.data && event.item.data.type === 'trigger') {
-      this.workshop.setTrigger(this.index(), event.item.data as Trigger);
-    }
+  isLast() {
+    return this.index() === this.workshop.routines().length - 1;
   }
 
-  onActionDrop(event: CdkDragDrop<any>) {
-    if (event.item.data && event.item.data.type === 'action') {
-      this.workshop.setAction(this.index(), event.item.data as Action);
-    }
+  onTriggerChange(value: string | undefined) {
+    if (!value) return;
+    const trigger = this.workshop.availableTriggers().find(t => t.value === value);
+    if (trigger) this.workshop.setTrigger(this.index(), trigger);
+  }
+
+  onActionChange(value: string | undefined) {
+    if (!value) return;
+    const action = this.workshop.availableActions().find(a => a.value === value);
+    if (action) this.workshop.setAction(this.index(), action);
+  }
+
+  moveUp() {
+    this.workshop.moveRoutineUp(this.index());
+  }
+
+  moveDown() {
+    this.workshop.moveRoutineDown(this.index());
+  }
+
+  showTriggerInfo() {
+    this.workshop.setInfoItem(this.routine().trigger);
+  }
+
+  showActionInfo() {
+    this.workshop.setInfoItem(this.routine().action);
   }
 
   clearSlot() {

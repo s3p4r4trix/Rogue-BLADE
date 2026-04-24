@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 export interface CyberOption {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 @Component({
@@ -30,14 +31,16 @@ export interface CyberOption {
 
       <!-- Dropdown Menu -->
       @if (isOpen()) {
-        <div class="absolute z-50 w-full mt-1 bg-[#030014]/95 border border-[#a855f7]/50 shadow-[0_4px_20px_rgba(168,85,247,0.3)] neuro-menu-popout max-h-60 overflow-y-auto backdrop-blur-md">
+        <div class="absolute z-[200] w-full mt-1 bg-[#030014]/95 border border-[#a855f7]/50 shadow-[0_4px_20px_rgba(168,85,247,0.3)] neuro-menu-popout max-h-60 overflow-y-auto backdrop-blur-md">
           @for (opt of options(); track opt.value) {
             <button type="button" 
-                    (click)="selectOption(opt.value)"
+                    (click)="!opt.disabled && selectOption(opt.value)"
+                    [disabled]="opt.disabled"
                     class="w-full text-left px-3 py-2 transition-colors border-l-2"
                     [ngClass]="{
                       'border-[#a855f7] bg-[#a855f7]/20 text-white': opt.value === value(),
-                      'border-transparent text-gray-400 hover:bg-[#a855f7]/10 hover:text-[#e9d5ff] hover:border-[#a855f7]/50': opt.value !== value()
+                      'border-transparent text-gray-400 hover:bg-[#a855f7]/10 hover:text-[#e9d5ff] hover:border-[#a855f7]/50': opt.value !== value() && !opt.disabled,
+                      'opacity-30 cursor-not-allowed': opt.disabled
                     }">
               {{ opt.label }}
             </button>

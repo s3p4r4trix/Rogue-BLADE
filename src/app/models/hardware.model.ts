@@ -53,6 +53,7 @@ export interface Sensor extends HardwareComponent {
 export interface Blade extends HardwareComponent {
   damageType: 'kinetic' | 'vibro' | 'mono-molecular' | 'plasma';
   damage: number;
+  unlocksActionIds?: string[];
 }
 
 /**

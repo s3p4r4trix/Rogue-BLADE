@@ -7,6 +7,7 @@ export const routes: Routes = [
   { path: 'hardware', loadComponent: () => import('./views/hardware-workshop').then(m => m.HardwareWorkshop) },
   { path: 'genesis', loadComponent: () => import('./views/genesis-chamber').then(m => m.GenesisChamber) },
   { path: 'liberation', loadComponent: () => import('./views/liberation-strike').then(m => m.LiberationStrike) },
+  { path: 'strike-report', loadComponent: () => import('./views/strike-report').then(m => m.StrikeReport) },
   { path: 'settings', loadComponent: () => import('./views/settings').then(m => m.Settings) },
   { path: '**', redirectTo: 'hub' }
 ];

@@ -6,9 +6,12 @@ export type ActionType = 'action';
  * The Shuriken evaluates this condition during combat.
  */
 export interface Trigger {
+  id: string; // Unique identifier for mapping (e.g. 'trig-enemy-5m')
   type: TriggerType;
   value: string;
   name: string;
+  description?: string;
+  lore?: string;
   disabled?: boolean;
   requiredSensor?: string;
 }
@@ -18,9 +21,12 @@ export interface Trigger {
  * This is executed if the corresponding Trigger condition is met.
  */
 export interface Action {
+  id: string; // Unique identifier for mapping (e.g. 'act-kinetic-ram')
   type: ActionType;
   value: string;
   name: string;
+  description?: string;
+  lore?: string;
   baseLatency?: number; // Spool-up time in ms
 }
 

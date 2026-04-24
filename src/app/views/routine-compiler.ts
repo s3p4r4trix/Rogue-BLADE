@@ -1,6 +1,5 @@
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CdkDropListGroup, CdkDropList, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { RouterLink } from '@angular/router';
 import { Inventory } from '../components/inventory';
 import { GambitSlot } from '../components/gambit-slot';
@@ -12,9 +11,9 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
 @Component({
   selector: 'app-routine-compiler',
   standalone: true,
-  imports: [CommonModule, CdkDropListGroup, CdkDropList, RouterLink, Inventory, GambitSlot, CompilerConsole, CyberSelect],
+  imports: [CommonModule, RouterLink, Inventory, GambitSlot, CompilerConsole, CyberSelect],
   template: `
-    <div class="h-screen flex flex-col p-4 sm:p-8 overflow-hidden" cdkDropListGroup>
+    <div class="h-screen flex flex-col p-4 sm:p-8 overflow-hidden">
       <!-- Header -->
       <header class="mb-6 flex justify-between items-end border-b-2 border-green-500 pb-2">
           <div class="flex items-center gap-4">
@@ -32,15 +31,15 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
 
       <!-- Main Content -->
       <div class="flex flex-col lg:flex-row gap-8 h-full min-h-0">
-          <!-- Linke Seite: Inventar (Drag Sources) -->
+          <!-- Linke Seite: System Reference -->
           <div class="w-full lg:w-1/3 neon-border bg-[#030014]/95 p-4 flex flex-col h-full neuro-panel">
               <app-inventory class="h-full flex-1 min-h-0 block"></app-inventory>
           </div>
 
-          <!-- Rechte Seite: Programmierung (Drop Zones) -->
+          <!-- Rechte Seite: Programmierung -->
           <div class="w-full lg:w-2/3 neon-border bg-[#030014]/95 p-4 flex flex-col h-full min-h-0 neuro-panel">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-green-800 pb-2 mb-4 gap-4">
-                  <h2 class="text-lg font-bold">// ROUTINE COMPILER</h2>
+                  <h2 class="text-lg font-bold tracking-widest">// ROUTINE_MANAGER</h2>
                   <div class="flex gap-2">
                     <div class="w-64">
                        <app-cyber-select 
@@ -56,37 +55,37 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                   </div>
               </div>
               
-              <div id="gambit-list" class="flex-1 overflow-y-auto pr-2 flex flex-col gap-4"
-                   cdkDropList
-                   (cdkDropListDropped)="onSlotDrop($event)">
-                  
-                  <!-- Dynamisch gerenderte Slots -->
-                  @for (routine of routines(); track routine.priority; let i = $index) {
-                    <app-gambit-slot [routine]="routine" [index]="i"></app-gambit-slot>
-                  }
-                  
-                  <!-- Add Routine Button -->
-                  <div class="mt-2 text-center">
-                     <button class="w-full py-2 border border-green-800 text-green-600 uppercase font-bold text-sm tracking-widest transition-colors neuro-border-draw"
-                             [ngClass]="{'opacity-50 cursor-not-allowed bg-red-900/20 border-red-800 text-red-500': capacityReached(), 'hover:bg-green-900/30 hover:border-green-500 hover:text-green-400': !capacityReached()}"
-                             (click)="addRoutine()"
-                             [disabled]="capacityReached()">
-                         <div class="border-anim"></div><div class="border-anim-v"></div>
-                         <span class="relative z-10">+ Add Routine Slot</span>
-                     </button>
-                     @if (capacityReached()) {
-                       <div class="text-red-500 text-xs mt-1 animate-pulse">! MAX CAPACITY REACHED !</div>
-                     } @else {
-                       <div class="text-green-700 text-xs mt-1">Processing Load: {{ routines().length }} / {{ activeShuriken().processor?.routineCapacity || 2 }}</div>
-                     }
-                  </div>
-                  
-                  <!-- Fallback (Always active) -->
-                  <div class="bg-gray-900/50 border border-gray-800 p-3 flex flex-col sm:flex-row items-center gap-3 mt-4">
-                      <div class="text-gray-600 font-bold w-16 text-center">FALL<br>BACK</div>
-                      <div class="flex-1 text-center text-gray-500 text-sm">If no priority applies:</div>
-                      <div class="flex-1 border border-gray-700 p-2 text-center text-gray-400">{{ fallbackAction() }}</div>
-                      <div class="w-8"></div>
+              <div class="flex-1 overflow-y-auto pr-2">
+                  <div id="gambit-list" class="flex flex-col gap-4 overflow-visible pb-40">
+                      
+                      <!-- Dynamisch gerenderte Slots -->
+                      @for (routine of routines(); track routine.priority; let i = $index) {
+                        <app-gambit-slot [routine]="routine" [index]="i" [style.z-index]="100 - i"></app-gambit-slot>
+                      }
+                      
+                      <!-- Add Routine Button -->
+                      <div class="mt-2 text-center">
+                         <button class="w-full py-2 border border-green-800 text-green-600 uppercase font-bold text-sm tracking-widest transition-colors neuro-border-draw"
+                                 [ngClass]="{'opacity-50 cursor-not-allowed bg-red-900/20 border-red-800 text-red-500': capacityReached(), 'hover:bg-green-900/30 hover:border-green-500 hover:text-green-400': !capacityReached()}"
+                                 (click)="addRoutine()"
+                                 [disabled]="capacityReached()">
+                             <div class="border-anim"></div><div class="border-anim-v"></div>
+                             <span class="relative z-10">+ Allocate New Priority Slot</span>
+                         </button>
+                         @if (capacityReached()) {
+                           <div class="text-red-500 text-xs mt-1 animate-pulse">! PROCESSOR OVERLOAD: CAPACITY REACHED !</div>
+                         } @else {
+                           <div class="text-green-700 text-[10px] mt-1 uppercase tracking-widest">Available Cycles: {{ routines().length }} / {{ activeShuriken().processor?.routineCapacity || 2 }}</div>
+                         }
+                      </div>
+                      
+                      <!-- Fallback (Always active) -->
+                      <div class="bg-gray-900/20 border border-gray-800/50 p-3 flex flex-col sm:flex-row items-center gap-3 mt-4 opacity-50">
+                          <div class="text-gray-600 font-bold w-16 text-center text-xs">DEFAULT<br>GATE</div>
+                          <div class="flex-1 text-center text-gray-500 text-[10px] uppercase tracking-widest">If no priority routine returns TRUE:</div>
+                          <div class="flex-1 border border-gray-800 p-2 text-center text-gray-500 text-xs font-bold">{{ fallbackAction() }}</div>
+                          <div class="w-8"></div>
+                      </div>
                   </div>
               </div>
 
@@ -127,12 +126,5 @@ export class RoutineCompiler {
 
   addRoutine() {
     this.workshop.addRoutine();
-  }
-
-  onSlotDrop(event: CdkDragDrop<any>) {
-    // Only reorder if we are dragging within the same list and moved it
-    if (event.previousContainer === event.container && event.previousIndex !== event.currentIndex) {
-      this.workshop.reorderRoutines(event.previousIndex, event.currentIndex);
-    }
   }
 }

@@ -113,6 +113,15 @@ export class PlayerService {
     this.resources.update(r => ({ ...r, scrap: r.scrap + amount }));
   }
 
+  addResources(res: { polymer: number, scrap: number, credits: number }) {
+    this.resources.update(r => ({
+      ...r,
+      polymer: r.polymer + res.polymer,
+      scrap: r.scrap + res.scrap,
+      credits: r.credits + res.credits
+    }));
+  }
+
   spendScrap(amount: number): boolean {
     if (this.resources().scrap >= amount) {
       this.resources.update(r => ({ ...r, scrap: r.scrap - amount }));
