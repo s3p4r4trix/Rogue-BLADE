@@ -1,14 +1,21 @@
 import { Component, input, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CdkDragDrop, CdkDropList, CdkDrag } from '@angular/cdk/drag-drop';
+import { CdkDragDrop, CdkDropList, CdkDrag, CdkDragHandle } from '@angular/cdk/drag-drop';
 import { WorkshopService } from '../services/workshop.service';
 import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
 
 @Component({
   selector: 'app-gambit-slot',
-  imports: [CommonModule, CdkDropList],
+  standalone: true,
+  imports: [CommonModule, CdkDropList, CdkDrag, CdkDragHandle],
   template: `
-    <div class="bg-gray-900 border border-gray-700 p-3 flex flex-col sm:flex-row items-center gap-3">
+    <div cdkDrag class="bg-gray-900 border border-gray-700 p-3 flex flex-col sm:flex-row items-center gap-3 relative group">
+      
+      <!-- Drag Handle -->
+      <div cdkDragHandle class="cursor-grab text-gray-600 hover:text-gray-400 px-1 select-none active:cursor-grabbing">
+        ≡
+      </div>
+
       <div class="text-gray-500 font-bold w-16 text-center">PRIO {{ routine().priority }}</div>
       
       <!-- Trigger Drop Zone -->
@@ -45,7 +52,10 @@ import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
           }
       </div>
       
-      <button class="text-red-500 hover:text-red-400 font-bold px-2" (click)="clearSlot()">[X]</button>
+      <div class="flex flex-col gap-1 ml-2">
+        <button class="text-gray-500 hover:text-yellow-500 text-xs font-bold" title="Clear Slot" (click)="clearSlot()">[C]</button>
+        <button class="text-gray-500 hover:text-red-500 text-xs font-bold" title="Remove Routine" (click)="removeSlot()">[X]</button>
+      </div>
     </div>
   `,
   styles: [``],
@@ -53,49 +63,35 @@ import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
 })
 export class GambitSlot {
   routine = input.required<GambitRoutine>();
+  index = input.required<number>();
   
   workshop = inject(WorkshopService);
 
-  /**
-   * Predicate for the IF drop zone.
-   * Ensures that only items with data.type === 'trigger' can be dropped here.
-   */
   triggerPredicate(drag: CdkDrag<any>) {
     return drag.data && drag.data.type === 'trigger';
   }
 
-  /**
-   * Predicate for the THEN drop zone.
-   * Ensures that only items with data.type === 'action' can be dropped here.
-   */
   actionPredicate(drag: CdkDrag<any>) {
     return drag.data && drag.data.type === 'action';
   }
 
-  /**
-   * Handles the drop event for the IF condition.
-   * Updates the global WorkshopService state.
-   */
   onTriggerDrop(event: CdkDragDrop<any>) {
     if (event.item.data && event.item.data.type === 'trigger') {
-      this.workshop.setTrigger(this.routine().priority, event.item.data as Trigger);
+      this.workshop.setTrigger(this.index(), event.item.data as Trigger);
     }
   }
 
-  /**
-   * Handles the drop event for the THEN action.
-   * Updates the global WorkshopService state.
-   */
   onActionDrop(event: CdkDragDrop<any>) {
     if (event.item.data && event.item.data.type === 'action') {
-      this.workshop.setAction(this.routine().priority, event.item.data as Action);
+      this.workshop.setAction(this.index(), event.item.data as Action);
     }
   }
 
-  /**
-   * Clears the current slot via the WorkshopService.
-   */
   clearSlot() {
-    this.workshop.clearSlot(this.routine().priority);
+    this.workshop.clearSlot(this.index());
+  }
+
+  removeSlot() {
+    this.workshop.removeRoutine(this.index());
   }
 }

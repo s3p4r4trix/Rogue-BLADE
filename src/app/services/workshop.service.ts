@@ -1,8 +1,25 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
 import { Action, GambitRoutine, Trigger } from '../models/gambit.model';
+import { Shuriken } from '../models/hardware.model';
+import { moveItemInArray } from '@angular/cdk/drag-drop';
 
-function loadSavedRoutines(): GambitRoutine[] {
-  const saved = localStorage.getItem('rogueBlade_routines');
+const MOCK_SHURIKENS: Shuriken[] = [
+  {
+    id: 'shuriken-01',
+    name: 'Shuriken #01 (Plasteel)',
+    engine: null, hull: null, energyCell: null, sensor: null, blade: null, formDesign: null,
+    processor: { id: 'b1', name: 'Basic AI', description: '', routineCapacity: 2, iffAccuracy: 90, reactionBonus: 0, isAI: true }
+  },
+  {
+    id: 'shuriken-02',
+    name: 'Shuriken #02 (Durasteel)',
+    engine: null, hull: null, energyCell: null, sensor: null, blade: null, formDesign: null,
+    processor: { id: 'b2', name: 'Advanced AI', description: '', routineCapacity: 4, iffAccuracy: 95, reactionBonus: 10, isAI: true }
+  }
+];
+
+function loadSavedRoutinesMap(): Record<string, GambitRoutine[]> {
+  const saved = localStorage.getItem('rogueBlade_routinesMap');
   if (saved) {
     try {
       return JSON.parse(saved);
@@ -10,27 +27,21 @@ function loadSavedRoutines(): GambitRoutine[] {
       console.error('Failed to parse saved routines', e);
     }
   }
-  return [
-    { priority: 1, trigger: null, action: null },
-    { priority: 2, trigger: null, action: null },
-    { priority: 3, trigger: null, action: null }
-  ];
+  return {
+    'shuriken-01': [
+      { priority: 1, trigger: null, action: null },
+      { priority: 2, trigger: null, action: null }
+    ],
+    'shuriken-02': [
+      { priority: 1, trigger: null, action: null }
+    ]
+  };
 }
 
-/**
- * The WorkshopService acts as the central state manager for the Workshop Phase.
- * It uses Angular Signals to provide reactive, synchronous state updates to the UI.
- * This service holds the inventory of available parts, the current state of the player's
- * configured routines, and the logic to compile those routines.
- */
 @Injectable({
   providedIn: 'root'
 })
 export class WorkshopService {
-  /**
-   * List of available Triggers (IF conditions) the player can drag into the slots.
-   * Includes disabled items to hint at progression (e.g., needing a specific sensor).
-   */
   readonly availableTriggers = signal<Trigger[]>([
     { type: 'trigger', value: 'Enemy within 5m radius', name: '[+] Enemy within 5m radius' },
     { type: 'trigger', value: 'Enemy has shield', name: '[+] Enemy has shield' },
@@ -38,102 +49,108 @@ export class WorkshopService {
     { type: 'trigger', value: 'Enemy behind cover', name: '[!] Enemy behind cover', disabled: true, requiredSensor: 'Terahertz Sensor' }
   ]);
 
-  /**
-   * List of available Actions (THEN results) the player can assign to triggers.
-   */
   readonly availableActions = signal<Action[]>([
     { type: 'action', value: 'Kinetic Ram Attack', name: '[>] Kinetic Ram Attack' },
     { type: 'action', value: 'Mark Target (Debuff)', name: '[>] Mark Target (Debuff)' },
     { type: 'action', value: 'Defensive Formation (Parry)', name: '[>] Defensive Formation (Parry)' }
   ]);
 
-  /**
-   * The active Gambit routines for the currently selected Shuriken.
-   * Represented as a list of 3 priority slots. The lower the index, the higher the priority in combat.
-   */
-  readonly routines = signal<GambitRoutine[]>(loadSavedRoutines());
+  readonly availableShurikens = signal<Shuriken[]>(MOCK_SHURIKENS);
+  readonly activeShurikenId = signal<string>(localStorage.getItem('rogueBlade_activeShuriken') || 'shuriken-01');
 
-  /**
-   * The default action executed by the auto-battler if none of the priority triggers match.
-   */
+  readonly routinesMap = signal<Record<string, GambitRoutine[]>>(loadSavedRoutinesMap());
+  
+  readonly routines = computed(() => {
+    return this.routinesMap()[this.activeShurikenId()] || [];
+  });
+
+  readonly activeShuriken = computed(() => {
+     return this.availableShurikens().find(s => s.id === this.activeShurikenId()) || this.availableShurikens()[0];
+  });
+
   readonly fallbackAction = signal<string>('Circle around character');
-
-  /**
-   * A reactive list of string-based log entries mimicking a cyberpunk terminal console.
-   */
   readonly systemLogs = signal<string[]>(['> System ready.', '> Waiting for input...']);
 
   constructor() {
-    // Automatically save routines to localStorage whenever they change
     effect(() => {
-      localStorage.setItem('rogueBlade_routines', JSON.stringify(this.routines()));
+      localStorage.setItem('rogueBlade_routinesMap', JSON.stringify(this.routinesMap()));
+      localStorage.setItem('rogueBlade_activeShuriken', this.activeShurikenId());
     });
   }
 
-  /**
-   * Appends a new message to the system console log.
-   * @param message The text to display.
-   * @param isError If true, the text renders in red. Otherwise, green.
-   */
   log(message: string, isError: boolean = false) {
     const cssClass = isError ? 'text-red-500' : 'text-green-500';
     this.systemLogs.update(logs => [...logs, `<span class="${cssClass}">> ${message}</span>`]);
   }
 
-  /**
-   * Assigns a dragged Trigger to a specific priority slot.
-   * @param priority The slot priority number (1, 2, or 3).
-   * @param trigger The Trigger object dropped into the slot.
-   */
-  setTrigger(priority: number, trigger: Trigger) {
-    this.routines.update(routines => {
+  setActiveShuriken(id: string) {
+    this.activeShurikenId.set(id);
+    this.log(`Switched to ${this.activeShuriken().name}`);
+  }
+
+  private updateActiveRoutines(updater: (routines: GambitRoutine[]) => GambitRoutine[]) {
+    this.routinesMap.update(map => {
+       const activeId = this.activeShurikenId();
+       const current = map[activeId] || [];
+       return { ...map, [activeId]: updater(current) };
+    });
+  }
+
+  addRoutine() {
+    const active = this.activeShuriken();
+    const cap = active.processor?.routineCapacity || 2;
+    if (this.routines().length >= cap) return;
+
+    this.updateActiveRoutines(routines => {
+      return [...routines, { priority: routines.length + 1, trigger: null, action: null }];
+    });
+    this.log(`Allocated new routine slot.`);
+  }
+
+  removeRoutine(index: number) {
+    this.updateActiveRoutines(routines => {
+      const updated = routines.filter((_, i) => i !== index);
+      return updated.map((r, i) => ({ ...r, priority: i + 1 }));
+    });
+    this.log(`Deallocated routine slot.`);
+  }
+
+  reorderRoutines(previousIndex: number, currentIndex: number) {
+    this.updateActiveRoutines(routines => {
       const updated = [...routines];
-      const index = updated.findIndex(r => r.priority === priority);
-      if (index !== -1) {
-        updated[index] = { ...updated[index], trigger };
-      }
+      moveItemInArray(updated, previousIndex, currentIndex);
+      return updated.map((r, i) => ({ ...r, priority: i + 1 }));
+    });
+    this.log(`Routines reprioritized.`);
+  }
+
+  setTrigger(index: number, trigger: Trigger) {
+    this.updateActiveRoutines(routines => {
+      const updated = [...routines];
+      if (updated[index]) updated[index] = { ...updated[index], trigger };
       return updated;
     });
     this.log(`Set TRIGGER: [${trigger.value}]`);
   }
 
-  /**
-   * Assigns a dragged Action to a specific priority slot.
-   * @param priority The slot priority number (1, 2, or 3).
-   * @param action The Action object dropped into the slot.
-   */
-  setAction(priority: number, action: Action) {
-    this.routines.update(routines => {
+  setAction(index: number, action: Action) {
+    this.updateActiveRoutines(routines => {
       const updated = [...routines];
-      const index = updated.findIndex(r => r.priority === priority);
-      if (index !== -1) {
-        updated[index] = { ...updated[index], action };
-      }
+      if (updated[index]) updated[index] = { ...updated[index], action };
       return updated;
     });
     this.log(`Set ACTION: [${action.value}]`);
   }
 
-  /**
-   * Clears both the Trigger and Action from a specific priority slot.
-   */
-  clearSlot(priority: number) {
-    this.routines.update(routines => {
+  clearSlot(index: number) {
+    this.updateActiveRoutines(routines => {
       const updated = [...routines];
-      const index = updated.findIndex(r => r.priority === priority);
-      if (index !== -1) {
-        updated[index] = { ...updated[index], trigger: null, action: null };
-      }
+      if (updated[index]) updated[index] = { ...updated[index], trigger: null, action: null };
       return updated;
     });
     this.log('Slot reset.');
   }
 
-  /**
-   * Validates the currently equipped routines.
-   * Ensures that no slot is partially filled (e.g., has an IF but no THEN).
-   * Outputs the compilation status to the terminal logs.
-   */
   compileCode() {
     this.log('==============================');
     this.log('Starting compilation...');
@@ -154,7 +171,7 @@ export class WorkshopService {
     if (!hasError) {
       if (routinesFound > 0) {
         setTimeout(() => {
-          this.log(`Upload of ${routinesFound} routines to Shuriken #01 successful.`);
+          this.log(`Upload of ${routinesFound} routines to ${this.activeShuriken().name} successful.`);
           this.log('Shuriken is ready for deployment.');
         }, 800);
       } else {
@@ -163,3 +180,4 @@ export class WorkshopService {
     }
   }
 }
+

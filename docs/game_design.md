@@ -66,6 +66,7 @@ Shurikens take damage during runs but are automatically teleported back to the H
 * **Max Output:** Required for burst maneuvers or cloaking devices.
 
 ### 6.4 Semi-AI (The Brain)
+* **Routine Capacity:** Determines the maximum number of If-Then logic blocks that can be installed on the Shuriken.
 * **IFF:** Identification Friend or Foe accuracy.
 * **Reaction Bonus:** Reduces latency in "If-Then" routine execution.
 * **Swarm Communication:** Coordination (e.g., "If Shuriken A attacks, Shuriken B flanks").

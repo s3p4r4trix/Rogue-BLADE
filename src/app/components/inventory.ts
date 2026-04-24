@@ -1,11 +1,13 @@
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
+import { RouterLink } from '@angular/router';
 import { WorkshopService } from '../services/workshop.service';
 
 @Component({
   selector: 'app-inventory',
-  imports: [CommonModule, CdkDrag, CdkDropList],
+  standalone: true,
+  imports: [CommonModule, CdkDrag, CdkDropList, RouterLink],
   template: `
     <div class="h-full flex flex-col">
       <h2 class="text-lg font-bold border-b border-green-800 pb-2 mb-4">// COMPONENT INVENTORY</h2>
@@ -36,7 +38,7 @@ import { WorkshopService } from '../services/workshop.service';
           </div>
 
           <!-- DANN (Actions) -->
-          <div>
+          <div class="mb-6">
               <h3 class="text-orange-500 text-sm mb-3 uppercase tracking-wide border-l-2 border-orange-500 pl-2">Actions (THEN)</h3>
               <div cdkDropList
                   [cdkDropListData]="actions"
@@ -54,6 +56,13 @@ import { WorkshopService } from '../services/workshop.service';
               </div>
           </div>
       </div>
+      
+      <!-- Research Link -->
+      <div class="mt-4 pt-4 border-t border-purple-900/50">
+          <a routerLink="/genesis" class="block w-full text-center bg-purple-900/20 border border-purple-800 text-purple-400 p-2 text-sm uppercase hover:bg-purple-900/40 hover:border-purple-500 transition-colors">
+              [⚛] Research New Tech
+          </a>
+      </div>
     </div>
   `,
   styles: [``],
@@ -62,21 +71,9 @@ import { WorkshopService } from '../services/workshop.service';
 export class Inventory {
   workshop = inject(WorkshopService);
 
-  /**
-   * Getter for available triggers from the central WorkshopService state.
-   */
   get triggers() { return this.workshop.availableTriggers(); }
-  
-  /**
-   * Getter for available actions from the central WorkshopService state.
-   */
   get actions() { return this.workshop.availableActions(); }
 
-  /**
-   * This predicate disables dropping items BACK into the inventory from the routine slots.
-   * Ensures a unidirectional flow (Inventory -> Slots). Items are "copied" rather than moved,
-   * or replaced when a slot is cleared.
-   */
   noReturnPredicate() {
     return false;
   }

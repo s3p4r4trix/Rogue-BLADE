@@ -64,6 +64,16 @@ export interface FormDesign extends HardwareComponent {
 }
 
 /**
+ * The Semi-AI controlling the Shuriken's execution latency and capacity.
+ */
+export interface Processor extends HardwareComponent {
+  routineCapacity: number;
+  iffAccuracy: number;
+  reactionBonus: number;
+  isAI: boolean;
+}
+
+/**
  * The full representation of a configured drone, passed into the combat simulation phase.
  */
 export interface Shuriken {
@@ -75,4 +85,5 @@ export interface Shuriken {
   sensor: Sensor | null;
   blade: Blade | null;
   formDesign: FormDesign | null;
+  processor: Processor | null;
 }
