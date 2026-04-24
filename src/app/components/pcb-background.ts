@@ -131,71 +131,114 @@ function offsetPolyline(spine: Point[], dist: number): Point[] {
 // PCB Layout Generator (Octilinear & Parallel Bundles)
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Pin = { x: number, y: number, nx: number, ny: number };
+class Pathfinder {
+  cols: number;
+  rows: number;
+  grid: boolean[][];
 
-function connectChips(p1: Pin, p2: Pin): Point[] {
-  const pts: Point[] = [];
-  
-  // start point perfectly on edge
-  pts.push({x: p1.x, y: p1.y});
-  
-  // orthogonal step-out from chip 1
-  let cx = p1.x + p1.nx * 40;
-  let cy = p1.y + p1.ny * 40;
-  pts.push({x: cx, y: cy});
-  
-  // orthogonal step-out for chip 2
-  const tx = p2.x + p2.nx * 40;
-  const ty = p2.y + p2.ny * 40;
-  
-  const dx = tx - cx;
-  const dy = ty - cy;
-  
-  const absX = Math.abs(dx);
-  const absY = Math.abs(dy);
-  const signX = Math.sign(dx) || 1;
-  const signY = Math.sign(dy) || 1;
-  
-  // Randomly choose diagonal first or orthogonal first
-  if (Math.random() > 0.5) {
-     const minD = Math.min(absX, absY);
-     cx += signX * minD;
-     cy += signY * minD;
-     pts.push({x: cx, y: cy});
-     if (absX > absY) cx += signX * (absX - absY);
-     else cy += signY * (absY - absX);
-     pts.push({x: cx, y: cy});
-  } else {
-     const minD = Math.min(absX, absY);
-     if (absX > absY) {
-        cx += signX * (absX - absY);
-        pts.push({x: cx, y: cy});
-     } else {
-        cy += signY * (absY - absX);
-        pts.push({x: cx, y: cy});
-     }
-     cx += signX * minD;
-     cy += signY * minD;
-     pts.push({x: cx, y: cy});
+  constructor(w: number, h: number, chips: Chip[], S: number) {
+    this.cols = Math.ceil(w / S) + 4;
+    this.rows = Math.ceil(h / S) + 4;
+    this.grid = Array(this.cols).fill(0).map(() => Array(this.rows).fill(true));
+
+    const PADDING = 40; // Avoid routing too close to chip edges
+
+    for (const c of chips) {
+      const minX = Math.floor((c.x - PADDING) / S);
+      const maxX = Math.ceil((c.x + c.w + PADDING) / S);
+      const minY = Math.floor((c.y - PADDING) / S);
+      const maxY = Math.ceil((c.y + c.h + PADDING) / S);
+
+      for (let x = Math.max(0, minX); x <= Math.min(this.cols - 1, maxX); x++) {
+        for (let y = Math.max(0, minY); y <= Math.min(this.rows - 1, maxY); y++) {
+          this.grid[x][y] = false;
+        }
+      }
+    }
   }
-  
-  // end point perfectly on edge
-  pts.push({x: p2.x, y: p2.y});
-  
-  return pts;
+
+  findPath(startX: number, startY: number, endX: number, endY: number): {x: number, y: number}[] | null {
+    if (startX < 0 || startX >= this.cols || startY < 0 || startY >= this.rows) return null;
+    if (endX < 0 || endX >= this.cols || endY < 0 || endY >= this.rows) return null;
+
+    // Force start/end to be walkable
+    this.grid[startX][startY] = true;
+    this.grid[endX][endY] = true;
+
+    const openSet = [{ x: startX, y: startY, g: 0, f: 0, parent: null as any }];
+    const closedSet = new Set<string>();
+    
+    const heuristic = (x: number, y: number) => {
+      const dx = Math.abs(x - endX);
+      const dy = Math.abs(y - endY);
+      return Math.max(dx, dy) + (Math.SQRT2 - 1) * Math.min(dx, dy);
+    };
+
+    openSet[0].f = heuristic(startX, startY);
+
+    while (openSet.length > 0) {
+      openSet.sort((a, b) => a.f - b.f);
+      const current = openSet.shift()!;
+
+      if (current.x === endX && current.y === endY) {
+        const path = [];
+        let curr = current;
+        while (curr) {
+          path.push({x: curr.x, y: curr.y});
+          curr = curr.parent;
+        }
+        return path.reverse();
+      }
+
+      const key = `${current.x},${current.y}`;
+      if (closedSet.has(key)) continue;
+      closedSet.add(key);
+
+      const dirs = [
+        [0, -1], [1, -1], [1, 0], [1, 1],
+        [0, 1], [-1, 1], [-1, 0], [-1, -1]
+      ];
+
+      for (let i = 0; i < dirs.length; i++) {
+        const nx = current.x + dirs[i][0];
+        const ny = current.y + dirs[i][1];
+
+        if (nx < 0 || nx >= this.cols || ny < 0 || ny >= this.rows) continue;
+        if (!this.grid[nx][ny]) continue;
+
+        // Prevent cutting corners through unwalkable diagonals
+        if (dirs[i][0] !== 0 && dirs[i][1] !== 0) {
+           if (!this.grid[current.x + dirs[i][0]][current.y] || !this.grid[current.x][current.y + dirs[i][1]]) {
+              continue;
+           }
+        }
+
+        const cost = (dirs[i][0] !== 0 && dirs[i][1] !== 0) ? Math.SQRT2 : 1;
+        const g = current.g + cost;
+        const f = g + heuristic(nx, ny);
+
+        openSet.push({ x: nx, y: ny, g, f, parent: current });
+      }
+    }
+    return null;
+  }
 }
 
-function getEdgePoint(c: Chip): Pin {
+type Pin = { x: number, y: number, nx: number, ny: number };
+
+function getEdgePoint(c: Chip, S: number): Pin {
   const side = Math.floor(Math.random() * 4);
-  let px, py, nx, ny;
-  // Make pins somewhat discrete, e.g. every 20px
-  const offsetX = 20 + Math.floor(Math.random() * ((c.w - 40)/20)) * 20;
-  const offsetY = 20 + Math.floor(Math.random() * ((c.h - 40)/20)) * 20;
+  const numPinsX = Math.floor((c.w - 40) / S);
+  const numPinsY = Math.floor((c.h - 40) / S);
   
-  if (side === 0) { px = c.x + offsetX; py = c.y; nx = 0; ny = -1; } // Top
-  else if (side === 1) { px = c.x + c.w; py = c.y + offsetY; nx = 1; ny = 0; } // Right
-  else if (side === 2) { px = c.x + offsetX; py = c.y + c.h; nx = 0; ny = 1; } // Bottom
-  else { px = c.x; py = c.y + offsetY; nx = -1; ny = 0; } // Left
+  const offsetX = 20 + Math.floor(Math.random() * Math.max(1, numPinsX)) * S;
+  const offsetY = 20 + Math.floor(Math.random() * Math.max(1, numPinsY)) * S;
+  
+  let px, py, nx, ny;
+  if (side === 0) { px = c.x + offsetX; py = c.y; nx = 0; ny = -1; }
+  else if (side === 1) { px = c.x + c.w; py = c.y + offsetY; nx = 1; ny = 0; }
+  else if (side === 2) { px = c.x + offsetX; py = c.y + c.h; nx = 0; ny = 1; }
+  else { px = c.x; py = c.y + offsetY; nx = -1; ny = 0; }
   return {x: px, y: py, nx, ny};
 }
 
@@ -203,20 +246,25 @@ function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node
   const traces: Trace[] = [];
   const nodes: Node[] = [];
   const chips: Chip[] = [];
+  const S = 20; // 20px grid cell size
 
-  // Generate 3 to 7 central chips with minimum spacing
   const targetChips = 3 + Math.floor(Math.random() * 5);
-  const minSpacing = 120; // generous minimum space between chips
+  const minSpacing = 120;
   
-  for (let i = 0; i < targetChips * 5; i++) { // allow max tries to find valid spots
+  for (let i = 0; i < targetChips * 5; i++) {
     if (chips.length >= targetChips) break;
     
-    const cw = 80 + Math.random() * 100;
-    const ch = 80 + Math.random() * 100;
-    const cx = w * 0.1 + Math.random() * (w * 0.8 - cw);
-    const cy = h * 0.1 + Math.random() * (h * 0.8 - ch);
+    // Snap chip placement to grid
+    let cw = 80 + Math.random() * 100;
+    let ch = 80 + Math.random() * 100;
+    let cx = w * 0.1 + Math.random() * (w * 0.8 - cw);
+    let cy = h * 0.1 + Math.random() * (h * 0.8 - ch);
     
-    // Check spacing against existing chips
+    cw = Math.round(cw / S) * S;
+    ch = Math.round(ch / S) * S;
+    cx = Math.round(cx / S) * S;
+    cy = Math.round(cy / S) * S;
+    
     let tooClose = false;
     for (const c of chips) {
        const dist = Math.hypot((cx + cw/2) - (c.x + c.w/2), (cy + ch/2) - (c.y + c.h/2));
@@ -231,7 +279,53 @@ function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node
     }
   }
 
+  const pf = new Pathfinder(w, h, chips, S);
+
+  function connectChips(p1: Pin, p2: Pin): Point[] {
+    const cx = p1.x + p1.nx * 40;
+    const cy = p1.y + p1.ny * 40;
+    const tx = p2.x + p2.nx * 40;
+    const ty = p2.y + p2.ny * 40;
+
+    const startCellX = Math.round(cx / S);
+    const startCellY = Math.round(cy / S);
+    const endCellX = Math.round(tx / S);
+    const endCellY = Math.round(ty / S);
+
+    const cellPath = pf.findPath(startCellX, startCellY, endCellX, endCellY);
+    if (!cellPath) return []; // skip if no route found
+
+    const pts: Point[] = [];
+    pts.push({x: p1.x, y: p1.y});
+    
+    // Smooth cell path
+    let lastDirX = 0, lastDirY = 0;
+    for (let i = 0; i < cellPath.length; i++) {
+       const cp = cellPath[i];
+       const px = cp.x * S;
+       const py = cp.y * S;
+       
+       if (i > 0 && i < cellPath.length - 1) {
+          const np = cellPath[i+1];
+          const dirX = np.x - cp.x;
+          const dirY = np.y - cp.y;
+          if (dirX === lastDirX && dirY === lastDirY) continue;
+          lastDirX = dirX;
+          lastDirY = dirY;
+       } else if (i === 1) {
+          lastDirX = cellPath[1].x - cellPath[0].x;
+          lastDirY = cellPath[1].y - cellPath[0].y;
+       }
+       
+       pts.push({x: px, y: py});
+    }
+
+    pts.push({x: p2.x, y: p2.y});
+    return pts;
+  }
+
   function addBundle(spine: Point[], numTraces: number, gap: number) {
+    if (spine.length < 2) return;
     for (let t = 0; t < numTraces; t++) {
       const offsetDist = (t - (numTraces - 1) / 2) * gap;
       const tracePts = offsetPolyline(spine, offsetDist);
@@ -246,31 +340,29 @@ function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node
   // Inter-chip connections
   for (let i = 0; i < chips.length; i++) {
     for (let j = i + 1; j < chips.length; j++) {
-      // Don't connect all chips if there are many, to avoid a completely solid mess
       if (chips.length > 4 && Math.random() > 0.6) continue;
       
-      // Connect random edge of chip i to random edge of chip j
-      const p1 = getEdgePoint(chips[i]);
-      const p2 = getEdgePoint(chips[j]);
+      const p1 = getEdgePoint(chips[i], S);
+      const p2 = getEdgePoint(chips[j], S);
       
       const spine = connectChips(p1, p2);
       addBundle(spine, 4 + Math.floor(Math.random() * 4), 8 + Math.random() * 3);
     }
   }
 
-  // Peripheral connections (from chips to edges)
+  // Peripheral connections
   const numEdgeBuses = 4 + Math.floor((w * h) / 100000);
   for (let b = 0; b < numEdgeBuses; b++) {
     const c = chips[Math.floor(Math.random() * chips.length)];
-    const p1 = getEdgePoint(c);
+    const p1 = getEdgePoint(c, S);
     
-    // Pick a random screen edge point
     const edgeSide = Math.floor(Math.random() * 4);
     let edgeX = 0, edgeY = 0, nx = 0, ny = 0;
-    if (edgeSide === 0) { edgeX = Math.random() * w; edgeY = -50; nx = 0; ny = 1; }
-    else if (edgeSide === 1) { edgeX = w + 50; edgeY = Math.random() * h; nx = -1; ny = 0; }
-    else if (edgeSide === 2) { edgeX = Math.random() * w; edgeY = h + 50; nx = 0; ny = -1; }
-    else { edgeX = -50; edgeY = Math.random() * h; nx = 1; ny = 0; }
+    
+    if (edgeSide === 0) { edgeX = Math.round((Math.random() * w) / S) * S; edgeY = 0; nx = 0; ny = 1; }
+    else if (edgeSide === 1) { edgeX = Math.round(w / S) * S; edgeY = Math.round((Math.random() * h) / S) * S; nx = -1; ny = 0; }
+    else if (edgeSide === 2) { edgeX = Math.round((Math.random() * w) / S) * S; edgeY = Math.round(h / S) * S; nx = 0; ny = -1; }
+    else { edgeX = 0; edgeY = Math.round((Math.random() * h) / S) * S; nx = 1; ny = 0; }
     
     const p2: Pin = { x: edgeX, y: edgeY, nx, ny };
     
