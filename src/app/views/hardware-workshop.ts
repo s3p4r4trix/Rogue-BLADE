@@ -35,8 +35,8 @@ import { HardwareComponent, Shuriken } from '../models/hardware.model';
              @for (s of shurikens(); track s.id) {
                <button class="text-left p-3 border transition-colors flex flex-col gap-1"
                        [ngClass]="{
-                          'bg-blue-900/40 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]': activeShuriken()?.id === s.id,
-                          'bg-black border-blue-900 hover:border-blue-700': activeShuriken()?.id !== s.id
+                          'bg-blue-900/40 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]': activeShuriken().id === s.id,
+                          'bg-black border-blue-900 hover:border-blue-700': activeShuriken().id !== s.id
                        }"
                        (click)="selectShuriken(s.id)">
                    <div class="font-bold text-blue-300">{{ s.name }}</div>

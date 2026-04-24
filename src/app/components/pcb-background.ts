@@ -17,39 +17,37 @@ import { PlayerService } from '../services/player.service';
 interface Point { x: number; y: number; }
 
 interface Trace {
-  /** Ordered list of waypoints for this trace segment. */
   points: Point[];
-  /** Total arc-length of the trace (computed once). */
   length: number;
-  /** Per-segment lengths for fast interpolation. */
   segLengths: number[];
 }
 
-/** A junction via or component pad on the PCB. */
 interface Node {
   x: number;
   y: number;
-  /** Fixed radius, set once at generation time. */
   r: number;
 }
 
+interface Chip {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  label: string;
+}
+
 interface Electron {
-  /** Which trace this electron travels on. */
   trace: Trace;
-  /** Current normalised position along the trace [0..1]. */
   t: number;
-  /** Travel speed in normalised units per millisecond. */
   speed: number;
-  /** Whether the electron is currently visible/active. */
   active: boolean;
-  /** Countdown in ms before this electron fires again. */
   fireIn: number;
-  /** Trail history: recent canvas positions (oldest first). */
   trail: Point[];
+  colorTheme: 'cyan' | 'purple' | 'gold';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper: trace geometry
+// Geometry Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 function buildTrace(points: Point[]): Trace {
   const segLengths: number[] = [];
@@ -64,7 +62,6 @@ function buildTrace(points: Point[]): Trace {
   return { points, length: total, segLengths };
 }
 
-/** Interpolate a world-space position along a trace at normalised t ∈ [0,1]. */
 function tracePos(trace: Trace, t: number): Point {
   const target = Math.max(0, Math.min(trace.length, t * trace.length));
   let acc = 0;
@@ -84,114 +81,139 @@ function tracePos(trace: Trace, t: number): Point {
   return { ...trace.points[trace.points.length - 1] };
 }
 
+function lineIntersection(p1: Point, p2: Point, p3: Point, p4: Point): Point | null {
+  const d = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x);
+  if (Math.abs(d) < 1e-6) return null; // parallel
+  
+  const t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / d;
+  return {
+    x: p1.x + t * (p2.x - p1.x),
+    y: p1.y + t * (p2.y - p1.y)
+  };
+}
+
+function offsetPolyline(spine: Point[], dist: number): Point[] {
+  if (spine.length < 2) return spine;
+  if (Math.abs(dist) < 1e-4) return spine;
+  
+  const offsetSegs = [];
+  for (let i = 0; i < spine.length - 1; i++) {
+    const p1 = spine[i];
+    const p2 = spine[i+1];
+    let dx = p2.x - p1.x;
+    let dy = p2.y - p1.y;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    if (len < 1e-3) continue;
+    dx /= len; dy /= len;
+    const nx = -dy; const ny = dx;
+    offsetSegs.push({
+      A: { x: p1.x + nx * dist, y: p1.y + ny * dist },
+      B: { x: p2.x + nx * dist, y: p2.y + ny * dist }
+    });
+  }
+  
+  if (offsetSegs.length === 0) return spine;
+  
+  const pts: Point[] = [offsetSegs[0].A];
+  for (let i = 0; i < offsetSegs.length - 1; i++) {
+    const s1 = offsetSegs[i];
+    const s2 = offsetSegs[i+1];
+    const inter = lineIntersection(s1.A, s1.B, s2.A, s2.B);
+    if (inter) pts.push(inter);
+    else pts.push(s1.B); // fallback if perfectly parallel
+  }
+  pts.push(offsetSegs[offsetSegs.length - 1].B);
+  
+  return pts;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// PCB layout generator
+// PCB Layout Generator (Octilinear & Parallel Bundles)
 // ─────────────────────────────────────────────────────────────────────────────
-/**
- * Generates a coherent PCB layout filling `w × h` pixels.
- * All randomness is seeded here so the layout is stable (not flickering).
- */
-function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node[]; primaryCount: number } {
+function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node[]; chips: Chip[]; primaryCount: number } {
   const traces: Trace[] = [];
-  const nodes:  Node[]  = [];
+  const nodes: Node[] = [];
+  const chips: Chip[] = [];
 
-  // ── Main bus rails (horizontal) ────────────────────────────────────────────
-  const hRails = [0.06, 0.14, 0.22, 0.32, 0.42, 0.52, 0.62, 0.72, 0.82, 0.91, 0.97]
-    .map(f => Math.round(h * f));
-
-  // ── Main bus rails (vertical) ─────────────────────────────────────────────
-  const vRails = [0.05, 0.12, 0.21, 0.31, 0.42, 0.53, 0.63, 0.73, 0.82, 0.90, 0.97]
-    .map(f => Math.round(w * f));
-
-  // Seeded jog values so they don't change on redraw
-  const hJogs = hRails.map(y => ({
-    midX: Math.round(w * (0.25 + Math.floor(Math.random() * 4) * 0.15)),
-    jogY: y + (Math.floor(Math.random() * 2) === 0 ? 10 : -10),
-  }));
-  const vJogs = vRails.map(x => ({
-    midY: Math.round(h * (0.25 + Math.floor(Math.random() * 4) * 0.15)),
-    jogX: x + (Math.floor(Math.random() * 2) === 0 ? 10 : -10),
-  }));
-
-  // Full horizontal bus lines
-  const xStart = Math.round(w * 0.02);
-  const xEnd   = Math.round(w * 0.98);
-  for (let hi = 0; hi < hRails.length; hi++) {
-    const y    = hRails[hi];
-    const { midX, jogY } = hJogs[hi];
-    traces.push(buildTrace([
-      { x: xStart, y },
-      { x: midX - 15, y },
-      { x: midX, y: jogY },
-      { x: midX + 15, y },
-      { x: xEnd, y },
-    ]));
-    nodes.push({ x: xStart, y, r: 2.5 });
-    nodes.push({ x: xEnd,   y, r: 2.5 });
-    nodes.push({ x: midX, y: jogY, r: 3.5 });
+  // Generate large central processing chips
+  const numChips = 4 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < numChips; i++) {
+    const cw = 80 + Math.random() * 120;
+    const ch = 80 + Math.random() * 120;
+    const cx = w * 0.1 + Math.random() * (w * 0.8 - cw);
+    const cy = h * 0.1 + Math.random() * (h * 0.8 - ch);
+    chips.push({ x: cx, y: cy, w: cw, h: ch, label: `QUANTUM_CELL_ARRAY_${Math.floor(Math.random()*900)+100}` });
   }
 
-  // Full vertical bus lines
-  const yStart = Math.round(h * 0.02);
-  const yEnd   = Math.round(h * 0.98);
-  for (let vi = 0; vi < vRails.length; vi++) {
-    const x = vRails[vi];
-    const { midY, jogX } = vJogs[vi];
-    traces.push(buildTrace([
-      { x, y: yStart },
-      { x, y: midY - 15 },
-      { x: jogX, y: midY },
-      { x, y: midY + 15 },
-      { x, y: yEnd },
-    ]));
-    nodes.push({ x, y: yStart, r: 2.5 });
-    nodes.push({ x, y: yEnd,   r: 2.5 });
-    nodes.push({ x: jogX, y: midY, r: 3.5 });
+  const DIRS = [
+    { dx: 1, dy: 0 },
+    { dx: 0.707, dy: 0.707 },
+    { dx: 0, dy: 1 },
+    { dx: -0.707, dy: 0.707 },
+    { dx: -1, dy: 0 },
+    { dx: -0.707, dy: -0.707 },
+    { dx: 0, dy: -1 },
+    { dx: 0.707, dy: -0.707 }
+  ];
+
+  function generateSpine(startX: number, startY: number): Point[] {
+    const pts: Point[] = [{x: startX, y: startY}];
+    let dirIdx = Math.floor(Math.random() * 4) * 2; // start orthogonal
+    let cx = startX, cy = startY;
+    let remainingLen = Math.max(w, h) * (0.4 + Math.random() * 0.8);
+    
+    while (remainingLen > 0) {
+      const orthLen = 80 + Math.random() * 300;
+      cx += DIRS[dirIdx].dx * orthLen;
+      cy += DIRS[dirIdx].dy * orthLen;
+      pts.push({x: cx, y: cy});
+      remainingLen -= orthLen;
+      
+      const turn = Math.random() > 0.5 ? 1 : -1;
+      dirIdx = (dirIdx + turn + 8) % 8;
+      
+      const diagLen = 40 + Math.random() * 120;
+      cx += DIRS[dirIdx].dx * diagLen;
+      cy += DIRS[dirIdx].dy * diagLen;
+      pts.push({x: cx, y: cy});
+      remainingLen -= diagLen;
+      
+      const nextTurn = Math.random() > 0.5 ? 1 : -1;
+      dirIdx = (dirIdx + nextTurn + 8) % 8;
+    }
+    return pts;
   }
 
-  const primaryCount = traces.length; // bus lines are "primary"
+  // Generate trace bundles
+  const numBundles = 15 + Math.floor((w * h) / 70000);
+  
+  for (let b = 0; b < numBundles; b++) {
+    // Start at a random chip edge if possible
+    let sx = Math.random() * w;
+    let sy = Math.random() * h;
+    if (chips.length > 0 && Math.random() > 0.3) {
+       const c = chips[Math.floor(Math.random() * chips.length)];
+       sx = c.x + (Math.random() > 0.5 ? 0 : c.w);
+       sy = c.y + Math.random() * c.h;
+    }
 
-  // ── Branch traces connecting adjacent rail intersections ──────────────────
-  for (let vi = 0; vi < vRails.length - 1; vi++) {
-    for (let hi = 0; hi < hRails.length - 1; hi++) {
-      // Use deterministic pseudo-random via hash so layout is stable
-      const hash = (vi * 31 + hi * 17) % 100;
-      if (hash > 45) continue; // ~45% density
-
-      const x0 = vRails[vi];
-      const x1 = vRails[vi + 1];
-      const y0 = hRails[hi];
-      const y1 = hRails[hi + 1];
-
-      // Alternate between L and Z style traces for variety
-      if (hash % 2 === 0) {
-        // L: go horizontal then vertical
-        const midX = Math.round((x0 + x1) / 2);
-        traces.push(buildTrace([{ x: x0, y: y0 }, { x: midX, y: y0 }, { x: midX, y: y1 }]));
-      } else {
-        // Z: short diagonal hop (two right-angle bends)
-        const midX = Math.round(x0 + (x1 - x0) * 0.4);
-        const midY = Math.round(y0 + (y1 - y0) * 0.6);
-        traces.push(buildTrace([{ x: x0, y: y0 }, { x: midX, y: y0 }, { x: midX, y: midY }, { x: x1, y: midY }, { x: x1, y: y1 }]));
+    const spine = generateSpine(sx, sy);
+    const numTraces = 3 + Math.floor(Math.random() * 6);
+    const gap = 8 + Math.random() * 4;
+    
+    for (let i = 0; i < numTraces; i++) {
+      const offsetDist = (i - (numTraces - 1) / 2) * gap;
+      const tracePts = offsetPolyline(spine, offsetDist);
+      if (tracePts.length > 1) {
+         traces.push(buildTrace(tracePts));
+         // Add nodes to start/end of traces randomly
+         if (Math.random() > 0.7) nodes.push({ x: tracePts[0].x, y: tracePts[0].y, r: 2.5 });
+         if (Math.random() > 0.7) nodes.push({ x: tracePts[tracePts.length-1].x, y: tracePts[tracePts.length-1].y, r: 2.5 });
       }
     }
   }
 
-  // ── Short component stubs (resistors, capacitors, etc.) ───────────────────
-  // Each stub hangs off a rail intersection
-  const stubDensity = Math.floor((w * h) / 60000);
-  for (let i = 0; i < stubDensity; i++) {
-    const vx  = vRails[(i * 3) % vRails.length];
-    const hy  = hRails[(i * 7) % hRails.length];
-    const len = 25 + (i % 5) * 12;
-    const dir = i % 4; // 0=right, 1=down, 2=left, 3=up
-    const ex  = vx + (dir === 0 ? len : dir === 2 ? -len : 0);
-    const ey  = hy + (dir === 1 ? len : dir === 3 ? -len : 0);
-    traces.push(buildTrace([{ x: vx, y: hy }, { x: ex, y: hy }, { x: ex, y: ey }]));
-    nodes.push({ x: ex, y: ey, r: 4 }); // pad at end of stub
-  }
-
-  return { traces, nodes, primaryCount };
+  return { traces, nodes, chips, primaryCount: Math.floor(traces.length * 0.4) };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,11 +224,6 @@ function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <!--
-      Two stacked canvases:
-      - #pcbCanvas  = static PCB board (drawn once, never cleared)
-      - #elCanvas   = electron animation layer (cleared each frame)
-    -->
     <canvas #pcbCanvas
       style="position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:-2;">
     </canvas>
@@ -218,32 +235,21 @@ function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node
 export class PcbBackground implements AfterViewInit, OnDestroy {
   private platformId = inject(PLATFORM_ID);
 
-  /** The static PCB board canvas (drawn once). */
   private pcbCanvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('pcbCanvas');
-  /** The electron animation canvas (cleared each frame). */
   private elCanvasRef  = viewChild.required<ElementRef<HTMLCanvasElement>>('elCanvas');
 
   private animFrameId  = 0;
   private lastTs       = 0;
 
-  // PCB state
   private traces:       Trace[]    = [];
   private nodes:        Node[]     = [];
+  private chips:        Chip[]     = [];
   private primaryCount  = 0;
   private electrons:    Electron[] = [];
 
-  // How many trail samples to keep per electron
   private readonly TRAIL_LENGTH = 32;
+  private readonly BG_COL = '#020617'; // slate-950
 
-  // ── Palette ───────────────────────────────────────────────────────────────
-  private readonly BG_COL              = '#030014';
-  private readonly TRACE_COL_PRIMARY   = 'rgba(55, 33, 120, 0.95)';
-  private readonly TRACE_COL_SECONDARY = 'rgba(32, 28, 80, 0.80)';
-  private readonly NODE_FILL           = '#030014';
-  private readonly NODE_STROKE         = '#5b21b6';
-  private readonly ELECTRON_CORE       = '#f5f0ff';
-
-  // ─────────────────────────────────────────────────────────────────────────
   ngAfterViewInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
     this.initCanvases();
@@ -256,68 +262,57 @@ export class PcbBackground implements AfterViewInit, OnDestroy {
     window.removeEventListener('resize', this.onResize);
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
   private onResize = () => {
     cancelAnimationFrame(this.animFrameId);
     this.initCanvases();
   };
 
-  private get pcbCanvas(): HTMLCanvasElement {
-    return this.pcbCanvasRef().nativeElement;
-  }
-  private get elCanvas(): HTMLCanvasElement {
-    return this.elCanvasRef().nativeElement;
-  }
+  private get pcbCanvas(): HTMLCanvasElement { return this.pcbCanvasRef().nativeElement; }
+  private get elCanvas(): HTMLCanvasElement { return this.elCanvasRef().nativeElement; }
 
-  // ─────────────────────────────────────────────────────────────────────────
   private initCanvases(): void {
     const W = window.innerWidth;
     const H = window.innerHeight;
 
-    // Size both canvases
     this.pcbCanvas.width  = W; this.pcbCanvas.height  = H;
     this.elCanvas.width   = W; this.elCanvas.height   = H;
 
-    // Generate stable PCB layout
     const layout = generatePcbLayout(W, H);
     this.traces       = layout.traces;
     this.nodes        = layout.nodes;
+    this.chips        = layout.chips;
     this.primaryCount = layout.primaryCount;
 
-    // Draw the static PCB onto the bottom canvas (once)
     const pcbCtx = this.pcbCanvas.getContext('2d')!;
     this.drawStaticBoard(pcbCtx, W, H);
 
-    // Spawn electrons — staggered initial delays so they don't all fire together
-    const count = Math.min(22, Math.max(8, Math.floor(this.traces.length / 4)));
+    const count = Math.min(35, Math.max(15, Math.floor(this.traces.length / 3)));
     this.electrons = [];
     for (let i = 0; i < count; i++) {
-      const initialDelay = i * 400 + Math.random() * 600; // 0 – count*400 + 600 ms stagger
-      this.electrons.push(this.makeElectron(initialDelay));
+      this.electrons.push(this.makeElectron(i * 300 + Math.random() * 500));
     }
 
-    // Start animation loop
     this.lastTs = performance.now();
     this.animFrameId = requestAnimationFrame(this.loop);
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  /** Creates a new dormant electron. */
   private makeElectron(initialDelay = 0): Electron {
     const trace   = this.traces[Math.floor(Math.random() * this.traces.length)];
     const forward = Math.random() > 0.5;
+    const rTheme = Math.random();
+    const colorTheme = rTheme > 0.6 ? 'cyan' : rTheme > 0.2 ? 'purple' : 'gold';
+
     return {
       trace,
       t:      forward ? 0 : 1,
-      speed:  (forward ? 1 : -1) * (0.00007 + Math.random() * 0.00013),
+      speed:  (forward ? 1 : -1) * (0.00008 + Math.random() * 0.00015),
       active: false,
       fireIn: initialDelay,
       trail:  [],
+      colorTheme
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  /** Animation loop — only operates on the electron canvas. */
   private loop = (ts: number) => {
     const dt = Math.min(ts - this.lastTs, 50);
     this.lastTs = ts;
@@ -326,12 +321,9 @@ export class PcbBackground implements AfterViewInit, OnDestroy {
     const W   = this.elCanvas.width;
     const H   = this.elCanvas.height;
 
-    // Clear the electron canvas fully each frame — the PCB canvas underneath
-    // is untouched, so traces remain perfectly sharp.
     ctx.clearRect(0, 0, W, H);
 
     for (const e of this.electrons) {
-      // ── Dormant: count down then reactivate ──
       if (!e.active) {
         e.fireIn -= dt;
         if (e.fireIn <= 0) {
@@ -339,125 +331,145 @@ export class PcbBackground implements AfterViewInit, OnDestroy {
           const forward = Math.random() > 0.5;
           e.trace  = trace;
           e.t      = forward ? 0 : 1;
-          e.speed  = (forward ? 1 : -1) * (0.00007 + Math.random() * 0.00013);
+          e.speed  = (forward ? 1 : -1) * (0.00008 + Math.random() * 0.00015);
           e.active = true;
           e.trail  = [];
         }
         continue;
       }
 
-      // ── Move ──
       e.t += e.speed * dt;
 
       if (e.t > 1 || e.t < 0) {
         e.active = false;
-        // Randomised cool-down: 0.5 – 4.5 s
-        e.fireIn = 500 + Math.random() * 4000;
+        e.fireIn = 300 + Math.random() * 3000;
         continue;
       }
 
-      // ── Sample position & update trail ──
       const pos = tracePos(e.trace, e.t);
       e.trail.push({ ...pos });
       if (e.trail.length > this.TRAIL_LENGTH) e.trail.shift();
 
-      // ── Render ──
       this.drawElectron(ctx, e, pos);
     }
 
     this.animFrameId = requestAnimationFrame(this.loop);
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
-  /** Renders the static PCB traces and nodes onto `ctx` exactly once. */
   private drawStaticBoard(ctx: CanvasRenderingContext2D, W: number, H: number): void {
-    // Background fill
     ctx.fillStyle = this.BG_COL;
     ctx.fillRect(0, 0, W, H);
 
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
+    // Draw Traces
     for (let i = 0; i < this.traces.length; i++) {
       const t = this.traces[i];
+      if (t.points.length < 2) continue;
+      
       ctx.beginPath();
       ctx.moveTo(t.points[0].x, t.points[0].y);
       for (let j = 1; j < t.points.length; j++) {
         ctx.lineTo(t.points[j].x, t.points[j].y);
       }
-      // Primary bus traces are thicker and brighter
+      
       if (i < this.primaryCount) {
-        ctx.strokeStyle = this.TRACE_COL_PRIMARY;
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)'; // Cyan
         ctx.lineWidth   = 2.0;
       } else {
-        ctx.strokeStyle = this.TRACE_COL_SECONDARY;
-        ctx.lineWidth   = 1.0;
+        ctx.strokeStyle = 'rgba(139, 92, 246, 0.3)'; // Purple
+        ctx.lineWidth   = 1.2;
       }
       ctx.stroke();
     }
 
-    // Via dots and component pads
+    // Draw Chips
+    for (const c of this.chips) {
+      // Glow
+      ctx.shadowColor = 'rgba(56, 189, 248, 0.3)';
+      ctx.shadowBlur = 25;
+      
+      // Core rect
+      ctx.fillStyle = '#061124';
+      ctx.fillRect(c.x, c.y, c.w, c.h);
+      
+      // Border
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#1e3a8a';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(c.x, c.y, c.w, c.h);
+      
+      // Inner circuitry grid (decorative)
+      ctx.strokeStyle = 'rgba(30, 58, 138, 0.4)';
+      ctx.lineWidth = 1;
+      for (let i=10; i<c.w; i+=15) { ctx.beginPath(); ctx.moveTo(c.x+i, c.y); ctx.lineTo(c.x+i, c.y+c.h); ctx.stroke(); }
+      for (let i=10; i<c.h; i+=15) { ctx.beginPath(); ctx.moveTo(c.x, c.y+i); ctx.lineTo(c.x+c.w, c.y+i); ctx.stroke(); }
+      
+      // Label
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
+      ctx.font = '10px monospace';
+      ctx.fillText(c.label, c.x + 8, c.y + 18);
+    }
+
+    // Nodes (vias)
     for (const n of this.nodes) {
       ctx.beginPath();
       ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-      ctx.fillStyle   = this.NODE_FILL;
-      ctx.strokeStyle = this.NODE_STROKE;
-      ctx.lineWidth   = 1.5;
+      ctx.fillStyle   = '#020617';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth   = 1.0;
       ctx.fill();
       ctx.stroke();
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  /**
-   * Renders a single electron with:
-   *  - A fading trail drawn as connected segments (oldest = most transparent)
-   *  - A layered radial glow at the head
-   *  - A bright core dot
-   */
   private drawElectron(ctx: CanvasRenderingContext2D, e: Electron, pos: Point): void {
     const len = e.trail.length;
     if (len < 2) return;
 
-    // ── Fading trail ────────────────────────────────────────────────────────
-    // We draw from oldest to newest. ageRatio goes 0→1 (old→new).
-    // Opacity and width both increase toward the head for a natural comet look.
+    let r, g, b, coreColor;
+    if (e.colorTheme === 'cyan') { r=56; g=189; b=248; coreColor='#e0f2fe'; }
+    else if (e.colorTheme === 'purple') { r=168; g=85; b=247; coreColor='#faf5ff'; }
+    else { r=250; g=204; b=21; coreColor='#fefce8'; }
+
+    // Fading trail
     for (let i = 1; i < len; i++) {
-      const ageRatio   = i / len;                          // 0=oldest, 1=newest
-      const alpha      = Math.pow(ageRatio, 1.8) * 0.75;  // fast fade, bright near head
-      const width      = 0.5 + ageRatio * 2.5;
+      const ageRatio = i / len;
+      const alpha    = Math.pow(ageRatio, 1.8) * 0.9;
+      const width    = 0.5 + ageRatio * 2.5;
 
       ctx.beginPath();
       ctx.moveTo(e.trail[i - 1].x, e.trail[i - 1].y);
       ctx.lineTo(e.trail[i].x,     e.trail[i].y);
-      ctx.strokeStyle = `rgba(192, 160, 255, ${alpha})`;
+      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
       ctx.lineWidth   = width;
       ctx.lineCap     = 'round';
       ctx.stroke();
     }
 
-    // ── Outer bloom (large soft glow) ───────────────────────────────────────
-    const bloom = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 16);
-    bloom.addColorStop(0, 'rgba(200, 180, 255, 0.30)');
-    bloom.addColorStop(1, 'rgba(100,  50, 220, 0.00)');
+    // Outer bloom
+    const bloom = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 18);
+    bloom.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.35)`);
+    bloom.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.00)`);
     ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 16, 0, Math.PI * 2);
+    ctx.arc(pos.x, pos.y, 18, 0, Math.PI * 2);
     ctx.fillStyle = bloom;
     ctx.fill();
 
-    // ── Mid glow ────────────────────────────────────────────────────────────
-    const mid = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 6);
-    mid.addColorStop(0, 'rgba(230, 220, 255, 0.95)');
-    mid.addColorStop(1, 'rgba(140,  90, 250, 0.00)');
+    // Mid glow
+    const mid = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 7);
+    mid.addColorStop(0, `rgba(${r+50}, ${g+50}, ${b+50}, 0.95)`);
+    mid.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.00)`);
     ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+    ctx.arc(pos.x, pos.y, 7, 0, Math.PI * 2);
     ctx.fillStyle = mid;
     ctx.fill();
 
-    // ── Bright core dot ─────────────────────────────────────────────────────
+    // Core dot
     ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 2.2, 0, Math.PI * 2);
-    ctx.fillStyle = this.ELECTRON_CORE;
+    ctx.arc(pos.x, pos.y, 2.0, 0, Math.PI * 2);
+    ctx.fillStyle = coreColor;
     ctx.fill();
   }
 }
