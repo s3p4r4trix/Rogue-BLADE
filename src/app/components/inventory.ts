@@ -20,15 +20,18 @@ import { WorkshopService } from '../services/workshop.service';
                   cdkDropListSortingDisabled
                   id="inventory-triggers"
                   class="flex flex-col gap-2">
-                  <div *ngFor="let trigger of triggers"
-                      cdkDrag
-                      [cdkDragData]="trigger"
-                      [cdkDragDisabled]="trigger.disabled || false"
-                      class="draggable bg-cyan-900/30 border border-cyan-500 text-cyan-300 p-2 hover:bg-cyan-900/50 transition-colors"
-                      [ngClass]="{'opacity-50 cursor-not-allowed': trigger.disabled}">
-                      {{ trigger.name }}
-                      <span *ngIf="trigger.disabled" class="text-xs text-red-500 ml-1">(Missing: {{trigger.requiredSensor}})</span>
-                  </div>
+                  @for (trigger of triggers; track trigger.name) {
+                    <div cdkDrag
+                        [cdkDragData]="trigger"
+                        [cdkDragDisabled]="trigger.disabled || false"
+                        class="draggable bg-cyan-900/30 border border-cyan-500 text-cyan-300 p-2 hover:bg-cyan-900/50 transition-colors"
+                        [ngClass]="{'opacity-50 cursor-not-allowed': trigger.disabled}">
+                        {{ trigger.name }}
+                        @if (trigger.disabled) {
+                          <span class="text-xs text-red-500 ml-1">(Missing: {{trigger.requiredSensor}})</span>
+                        }
+                    </div>
+                  }
               </div>
           </div>
 
@@ -41,12 +44,13 @@ import { WorkshopService } from '../services/workshop.service';
                   cdkDropListSortingDisabled
                   id="inventory-actions"
                   class="flex flex-col gap-2">
-                  <div *ngFor="let action of actions"
-                      cdkDrag
-                      [cdkDragData]="action"
-                      class="draggable bg-orange-900/30 border border-orange-500 text-orange-300 p-2 hover:bg-orange-900/50 transition-colors">
-                      {{ action.name }}
-                  </div>
+                  @for (action of actions; track action.name) {
+                    <div cdkDrag
+                        [cdkDragData]="action"
+                        class="draggable bg-orange-900/30 border border-orange-500 text-orange-300 p-2 hover:bg-orange-900/50 transition-colors">
+                        {{ action.name }}
+                    </div>
+                  }
               </div>
           </div>
       </div>

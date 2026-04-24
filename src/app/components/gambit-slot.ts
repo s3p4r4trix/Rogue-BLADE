@@ -20,8 +20,11 @@ import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
               'border-2 border-dashed border-cyan-800 text-cyan-800': !routine().trigger,
               'bg-cyan-900/40 border border-solid border-cyan-500 text-cyan-300': routine().trigger
           }">
-          <span *ngIf="!routine().trigger">Drop IF condition here</span>
-          <span *ngIf="routine().trigger">{{ routine().trigger?.value }}</span>
+          @if (!routine().trigger) {
+            <span>Drop IF condition here</span>
+          } @else {
+            <span>{{ routine().trigger?.value }}</span>
+          }
       </div>
       
       <div class="text-green-500 font-bold w-8 text-center">-></div>
@@ -35,8 +38,11 @@ import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
               'border-2 border-dashed border-orange-800 text-orange-800': !routine().action,
               'bg-orange-900/40 border border-solid border-orange-500 text-orange-300': routine().action
           }">
-          <span *ngIf="!routine().action">Drop THEN action here</span>
-          <span *ngIf="routine().action">{{ routine().action?.value }}</span>
+          @if (!routine().action) {
+            <span>Drop THEN action here</span>
+          } @else {
+            <span>{{ routine().action?.value }}</span>
+          }
       </div>
       
       <button class="text-red-500 hover:text-red-400 font-bold px-2" (click)="clearSlot()">[X]</button>

@@ -42,7 +42,9 @@ import { WorkshopService } from './services/workshop.service';
               
               <div id="gambit-list" class="flex-1 overflow-y-auto pr-2 flex flex-col gap-4">
                   <!-- Dynamisch gerenderte Slots -->
-                  <app-gambit-slot *ngFor="let routine of routines" [routine]="routine"></app-gambit-slot>
+                  @for (routine of routines; track routine.priority) {
+                    <app-gambit-slot [routine]="routine"></app-gambit-slot>
+                  }
                   
                   <!-- Fallback (Always active) -->
                   <div class="bg-gray-900/50 border border-gray-800 p-3 flex flex-col sm:flex-row items-center gap-3 mt-4">

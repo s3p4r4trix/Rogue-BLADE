@@ -14,7 +14,9 @@ import { WorkshopService } from '../services/workshop.service';
           </button>
       </div>
       <div #consoleEl class="h-24 bg-[#0a0a0a] border border-green-900 p-2 text-xs overflow-y-auto font-mono flex flex-col">
-          <div *ngFor="let log of logs" [innerHTML]="log"></div>
+          @for (log of logs; track $index) {
+            <div [innerHTML]="log"></div>
+          }
       </div>
     </div>
   `,
