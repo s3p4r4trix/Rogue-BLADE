@@ -10,7 +10,7 @@ import { filter, map } from 'rxjs';
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <div class="fixed top-4 right-6 z-50 flex items-center gap-6 bg-[#030014]/90 border border-gray-800/80 p-3 shadow-[0_0_15px_rgba(0,0,0,0.8)] backdrop-blur-sm pointer-events-auto transition-all">
+    <div class="fixed top-4 right-6 z-50 flex items-center gap-6 bg-[#030014]/90 border border-gray-800/80 p-3 shadow-[0_0_15px_rgba(0,0,0,0.8)] backdrop-blur-sm pointer-events-auto transition-all neuro-panel">
       <div class="flex gap-6 font-mono text-xs hidden sm:flex">
         <div [class.opacity-40]="!isCreditsActive()" [class.text-green-400]="isCreditsActive()" [class.drop-shadow-[0_0_5px_rgba(74,222,128,0.8)]]="isCreditsActive()" class="transition-all duration-300">
           <span class="text-gray-500 uppercase tracking-widest mr-1">Credits:</span>
@@ -26,8 +26,9 @@ import { filter, map } from 'rxjs';
         </div>
       </div>
       <div class="w-[1px] h-6 bg-gray-700 hidden sm:block"></div>
-      <a routerLink="/settings" class="text-xs bg-gray-900 border border-gray-700 hover:border-gray-400 text-gray-400 hover:text-white px-3 py-1.5 transition-colors cursor-pointer font-mono tracking-wider flex items-center gap-2">
-        <span class="text-blue-500">⚙</span> SETTINGS
+      <a routerLink="/settings" class="text-xs bg-gray-900 border border-gray-700 hover:border-gray-400 text-gray-400 hover:text-white px-3 py-1.5 transition-colors cursor-pointer font-mono tracking-wider flex items-center gap-2 neuro-border-draw">
+        <div class="border-anim"></div><div class="border-anim-v"></div>
+        <span class="text-blue-500 relative z-10">⚙</span> <span class="relative z-10">SETTINGS</span>
       </a>
     </div>
   `,

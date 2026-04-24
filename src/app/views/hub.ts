@@ -13,7 +13,7 @@ import { PlayerService } from '../services/player.service';
       <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAiLz4KPHBhdGggZD0iTTAgMGg0djRIMEowem0yIDJoMnYySDJWMHptLTIgMmgydjJIMFYyem0wLTJoMnYySDBWMHoiIGZpbGw9IiMzMzMiIGZpbGwtb3BhY2l0eT0iMC4xIi8+Cjwvc3ZnPg==')] opacity-30 pointer-events-none"></div>
       
       <!-- Header -->
-      <header class="relative bg-[#030014]/95 border border-green-800/50 pb-4 mb-8 z-10 p-6">
+      <header class="relative bg-[#030014]/95 border border-green-800/50 pb-4 mb-8 z-10 p-6 neuro-panel">
         <h1 class="text-3xl font-bold tracking-widest text-green-500 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]">RESISTANCE HQ</h1>
         <p class="text-xs text-green-700 uppercase mt-1">Underground Sector 4 // Status: Undetected</p>
       </header>
@@ -22,43 +22,47 @@ import { PlayerService } from '../services/player.service';
       <div class="relative grid grid-cols-1 md:grid-cols-2 gap-6 z-10">
         
         <!-- Routine Compiler (Rogue OS) -->
-        <a routerLink="/routine" class="group relative block bg-[#030014]/95 border border-green-800 hover:border-green-400 p-6 transition-all duration-300 hover:bg-green-900/20">
-          <div class="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <h2 class="text-xl font-bold text-green-400 mb-2 group-hover:text-green-300 flex items-center gap-2">
+        <a routerLink="/routine" class="group relative block bg-[#030014]/95 border border-green-800 hover:border-green-400 p-6 transition-all duration-300 hover:bg-green-900/20 neuro-border-draw neuro-panel">
+          <div class="border-anim before:bg-green-400 after:bg-green-400"></div><div class="border-anim-v before:bg-green-400 after:bg-green-400"></div>
+          <div class="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity z-0"></div>
+          <h2 class="text-xl font-bold text-green-400 mb-2 group-hover:text-green-300 flex items-center gap-2 relative z-10">
             <span class="text-green-600">></span> ROGUE OS
           </h2>
-          <p class="text-sm text-gray-500 mb-4 h-10">Program your Shuriken swarm's If-Then combat logic routines.</p>
-          <div class="text-xs text-green-700 uppercase">System Status: <span class="text-green-500 font-bold">ONLINE</span></div>
+          <p class="text-sm text-gray-500 mb-4 h-10 relative z-10">Program your Shuriken swarm's If-Then combat logic routines.</p>
+          <div class="text-xs text-green-700 uppercase relative z-10">System Status: <span class="text-green-500 font-bold">ONLINE</span></div>
         </a>
 
         <!-- Hardware Workshop -->
-        <a routerLink="/hardware" class="group relative block bg-[#030014]/95 border border-blue-800 hover:border-blue-400 p-6 transition-all duration-300 hover:bg-blue-900/20">
-          <div class="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <h2 class="text-xl font-bold text-blue-400 mb-2 group-hover:text-blue-300 flex items-center gap-2">
+        <a routerLink="/hardware" class="group relative block bg-[#030014]/95 border border-blue-800 hover:border-blue-400 p-6 transition-all duration-300 hover:bg-blue-900/20 neuro-border-draw neuro-panel">
+          <div class="border-anim before:bg-blue-400 after:bg-blue-400"></div><div class="border-anim-v before:bg-blue-400 after:bg-blue-400"></div>
+          <div class="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity z-0"></div>
+          <h2 class="text-xl font-bold text-blue-400 mb-2 group-hover:text-blue-300 flex items-center gap-2 relative z-10">
             <span class="text-blue-600">></span> HARDWARE WORKSHOP
           </h2>
-          <p class="text-sm text-gray-500 mb-4 h-10">Tune engines, swap blades, and repair damaged units with Polymer.</p>
-          <div class="text-xs text-blue-700 uppercase">Ripperdoc: <span class="text-blue-500 font-bold">AVAILABLE</span></div>
+          <p class="text-sm text-gray-500 mb-4 h-10 relative z-10">Tune engines, swap blades, and repair damaged units with Polymer.</p>
+          <div class="text-xs text-blue-700 uppercase relative z-10">Ripperdoc: <span class="text-blue-500 font-bold">AVAILABLE</span></div>
         </a>
 
         <!-- Genesis Chamber -->
-        <a routerLink="/genesis" class="group relative block bg-[#030014]/95 border border-purple-800 hover:border-purple-400 p-6 transition-all duration-300 hover:bg-purple-900/20">
-          <div class="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <h2 class="text-xl font-bold text-purple-400 mb-2 group-hover:text-purple-300 flex items-center gap-2">
+        <a routerLink="/genesis" class="group relative block bg-[#030014]/95 border border-purple-800 hover:border-purple-400 p-6 transition-all duration-300 hover:bg-purple-900/20 neuro-border-draw neuro-panel">
+          <div class="border-anim"></div><div class="border-anim-v"></div>
+          <div class="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity z-0"></div>
+          <h2 class="text-xl font-bold text-purple-400 mb-2 group-hover:text-purple-300 flex items-center gap-2 relative z-10">
             <span class="text-purple-600">></span> GENESIS CHAMBER
           </h2>
-          <p class="text-sm text-gray-500 mb-4 h-10">Reverse-engineer Zenith tech. Research Tier II & III materials.</p>
-          <div class="text-xs text-purple-700 uppercase">Research Node: <span class="text-purple-500 font-bold">IDLE</span></div>
+          <p class="text-sm text-gray-500 mb-4 h-10 relative z-10">Reverse-engineer Zenith tech. Research Tier II & III materials.</p>
+          <div class="text-xs text-purple-700 uppercase relative z-10">Research Node: <span class="text-purple-500 font-bold">IDLE</span></div>
         </a>
 
         <!-- Liberation Strike -->
-        <a routerLink="/liberation" class="group relative block bg-[#030014]/95 border border-red-900 hover:border-red-500 p-6 transition-all duration-300 hover:bg-red-900/20">
-          <div class="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <h2 class="text-xl font-bold text-red-500 mb-2 group-hover:text-red-400 flex items-center gap-2">
+        <a routerLink="/liberation" class="group relative block bg-[#030014]/95 border border-red-900 hover:border-red-500 p-6 transition-all duration-300 hover:bg-red-900/20 neuro-border-draw neuro-panel">
+          <div class="border-anim before:bg-red-500 after:bg-red-500"></div><div class="border-anim-v before:bg-red-500 after:bg-red-500"></div>
+          <div class="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity z-0"></div>
+          <h2 class="text-xl font-bold text-red-500 mb-2 group-hover:text-red-400 flex items-center gap-2 relative z-10">
             <span class="text-red-700">></span> LIBERATION STRIKE
           </h2>
-          <p class="text-sm text-gray-500 mb-4 h-10">Deploy your swarm to the occupied surface and sabotage the Zenith Collective.</p>
-          <div class="text-xs text-red-700 uppercase animate-pulse">Threat Level: <span class="text-red-500 font-bold">CRITICAL</span></div>
+          <p class="text-sm text-gray-500 mb-4 h-10 relative z-10">Deploy your swarm to the occupied surface and sabotage the Zenith Collective.</p>
+          <div class="text-xs text-red-700 uppercase animate-pulse relative z-10">Threat Level: <span class="text-red-500 font-bold">CRITICAL</span></div>
         </a>
 
       </div>

@@ -65,3 +65,115 @@ body.theme-zenith::after {
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: #111; border-left: 1px solid #333; }
 ::-webkit-scrollbar-thumb { background: #00ff00; }
+
+/* ========================================= */
+/* NEUROMANCER THEME - DYNAMIC CYBER-DECK    */
+/* ========================================= */
+body.theme-neuromancer {
+  --neuro-bg: rgba(3, 0, 20, 0.85);
+  --neuro-border: rgba(167, 139, 250, 0.4);
+  --neuro-glow: rgba(167, 139, 250, 0.8);
+  --neuro-glow-intense: rgba(167, 139, 250, 1);
+  --neuro-text: #e9d5ff; /* purple-200 */
+  --neuro-text-muted: #a855f7; /* purple-500 */
+}
+
+/* Neuromancer Scrollbar override */
+body.theme-neuromancer ::-webkit-scrollbar-thumb { background: var(--neuro-glow); }
+
+body.theme-neuromancer .neuro-panel {
+  background-color: var(--neuro-bg);
+  border: 1px solid var(--neuro-border);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(167, 139, 250, 0.05);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+body.theme-neuromancer .neuro-panel:hover {
+  border-color: var(--neuro-glow);
+  box-shadow: 0 0 15px rgba(167, 139, 250, 0.3), inset 0 0 20px rgba(167, 139, 250, 0.1);
+}
+
+/* 
+  Drawing Border Animation 
+  Using an SVG or CSS clip-path trick. For simplicity and performance, 
+  we use ::before and ::after to create lines that scale.
+*/
+body.theme-neuromancer .neuro-border-draw {
+  position: relative;
+  background-color: var(--neuro-bg);
+  border: 1px solid transparent; /* The actual border is handled by pseudo elements to animate */
+}
+
+/* We create 4 lines around the box */
+body.theme-neuromancer .neuro-border-draw::before,
+body.theme-neuromancer .neuro-border-draw::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 1px solid var(--neuro-border);
+  transition: border-color 0.3s ease;
+  pointer-events: none;
+}
+
+body.theme-neuromancer .neuro-border-draw > .border-anim {
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+body.theme-neuromancer .neuro-border-draw > .border-anim::before,
+body.theme-neuromancer .neuro-border-draw > .border-anim::after {
+  content: "";
+  position: absolute;
+  background: var(--neuro-glow-intense);
+  transition: all 0.4s cubic-bezier(0.1, 0.8, 0.1, 1);
+}
+
+/* Top & Bottom lines */
+body.theme-neuromancer .neuro-border-draw > .border-anim::before {
+  top: 0; left: 0; width: 0; height: 1px;
+}
+body.theme-neuromancer .neuro-border-draw > .border-anim::after {
+  bottom: 0; right: 0; width: 0; height: 1px;
+}
+
+/* Left & Right lines - created via another inner span if we wanted full 4 sides, but let's just do top/left, bottom/right for a cool effect */
+body.theme-neuromancer .neuro-border-draw .border-anim-v {
+  position: absolute; inset: -1px; pointer-events: none; z-index: 10;
+}
+body.theme-neuromancer .neuro-border-draw .border-anim-v::before {
+  content: ""; position: absolute;
+  top: 0; right: 0; width: 1px; height: 0;
+  background: var(--neuro-glow-intense);
+  transition: all 0.4s cubic-bezier(0.1, 0.8, 0.1, 1);
+}
+body.theme-neuromancer .neuro-border-draw .border-anim-v::after {
+  content: ""; position: absolute;
+  bottom: 0; left: 0; width: 1px; height: 0;
+  background: var(--neuro-glow-intense);
+  transition: all 0.4s cubic-bezier(0.1, 0.8, 0.1, 1);
+}
+
+body.theme-neuromancer .neuro-border-draw:hover > .border-anim::before,
+body.theme-neuromancer .neuro-border-draw:hover > .border-anim::after {
+  width: 100%;
+}
+body.theme-neuromancer .neuro-border-draw:hover .border-anim-v::before,
+body.theme-neuromancer .neuro-border-draw:hover .border-anim-v::after {
+  height: 100%;
+}
+
+/* Pop-out Menu Animations */
+@keyframes slideDownMenu {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.neuro-menu-popout {
+  animation: slideDownMenu 0.2s cubic-bezier(0.1, 0.8, 0.1, 1) forwards;
+}
