@@ -27,7 +27,7 @@ import { HardwareComponent, Shuriken } from '../models/hardware.model';
       
       <div class="flex flex-col md:flex-row gap-6 h-[75vh]">
         <!-- Sidebar: Shuriken List -->
-        <div class="w-full md:w-1/3 lg:w-1/4 bg-blue-950/20 border border-blue-900/50 flex flex-col">
+        <div class="w-full md:w-1/3 lg:w-1/4 bg-[#030014]/95 border border-blue-900/50 flex flex-col z-10 relative">
            <div class="bg-blue-900/30 p-3 border-b border-blue-800">
                <h2 class="text-blue-400 font-bold uppercase tracking-wider">// SWARM FLEET</h2>
            </div>
@@ -47,7 +47,7 @@ import { HardwareComponent, Shuriken } from '../models/hardware.model';
         </div>
         
         <!-- Main Panel: Shuriken Details -->
-        <div class="flex-1 bg-blue-950/10 border border-blue-900/50 flex flex-col overflow-hidden">
+        <div class="flex-1 bg-[#030014]/95 border border-blue-900/50 flex flex-col overflow-hidden z-10 relative">
            @if (activeShuriken(); as shuriken) {
              <!-- Detail Header -->
              <div class="p-4 border-b border-blue-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-blue-900/20">

@@ -130,10 +130,29 @@ function offsetPolyline(spine: Point[], dist: number): Point[] {
 // ─────────────────────────────────────────────────────────────────────────────
 // PCB Layout Generator (Octilinear & Parallel Bundles)
 // ─────────────────────────────────────────────────────────────────────────────
+function segmentIntersection(p1: Point, p2: Point, p3: Point, p4: Point): Point | null {
+  const d = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x);
+  if (Math.abs(d) < 1e-6) return null; // parallel
+  
+  const t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / d;
+  const u = ((p1.x - p2.x) * (p1.y - p3.y) - (p1.y - p2.y) * (p1.x - p3.x)) / d;
+  
+  // We only consider strict intersections (not endpoints), except slightly relaxed to catch close calls
+  if (t > 0.05 && t < 0.95 && u > 0.05 && u < 0.95) {
+    return {
+      x: p1.x + t * (p2.x - p1.x),
+      y: p1.y + t * (p2.y - p1.y)
+    };
+  }
+  return null;
+}
+
 function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node[]; chips: Chip[]; primaryCount: number } {
   const traces: Trace[] = [];
   const nodes: Node[] = [];
   const chips: Chip[] = [];
+  
+  const drawnSegments: {A: Point, B: Point}[] = [];
 
   // Generate large central processing chips
   const numChips = 4 + Math.floor(Math.random() * 3);
@@ -143,6 +162,12 @@ function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node
     const cx = w * 0.1 + Math.random() * (w * 0.8 - cw);
     const cy = h * 0.1 + Math.random() * (h * 0.8 - ch);
     chips.push({ x: cx, y: cy, w: cw, h: ch, label: `QUANTUM_CELL_ARRAY_${Math.floor(Math.random()*900)+100}` });
+    
+    // Add chip borders to drawnSegments so traces stop at the chip edge
+    drawnSegments.push({A: {x: cx, y: cy}, B: {x: cx+cw, y: cy}});
+    drawnSegments.push({A: {x: cx+cw, y: cy}, B: {x: cx+cw, y: cy+ch}});
+    drawnSegments.push({A: {x: cx+cw, y: cy+ch}, B: {x: cx, y: cy+ch}});
+    drawnSegments.push({A: {x: cx, y: cy+ch}, B: {x: cx, y: cy}});
   }
 
   const DIRS = [
@@ -204,11 +229,56 @@ function generatePcbLayout(w: number, h: number): { traces: Trace[]; nodes: Node
     for (let i = 0; i < numTraces; i++) {
       const offsetDist = (i - (numTraces - 1) / 2) * gap;
       const tracePts = offsetPolyline(spine, offsetDist);
+      
       if (tracePts.length > 1) {
-         traces.push(buildTrace(tracePts));
-         // Add nodes to start/end of traces randomly
-         if (Math.random() > 0.7) nodes.push({ x: tracePts[0].x, y: tracePts[0].y, r: 2.5 });
-         if (Math.random() > 0.7) nodes.push({ x: tracePts[tracePts.length-1].x, y: tracePts[tracePts.length-1].y, r: 2.5 });
+         const validPts: Point[] = [tracePts[0]];
+         let truncated = false;
+         
+         // Collision checking against all drawn segments
+         for (let j = 0; j < tracePts.length - 1; j++) {
+            const p1 = tracePts[j];
+            const p2 = tracePts[j+1];
+            
+            let closestInter: Point | null = null;
+            let minDist = Infinity;
+            
+            for (const seg of drawnSegments) {
+               const inter = segmentIntersection(p1, p2, seg.A, seg.B);
+               if (inter) {
+                  const dist = Math.hypot(inter.x - p1.x, inter.y - p1.y);
+                  if (dist < minDist) {
+                     minDist = dist;
+                     closestInter = inter;
+                  }
+               }
+            }
+            
+            if (closestInter) {
+               validPts.push(closestInter);
+               truncated = true;
+               break;
+            } else {
+               validPts.push(p2);
+            }
+         }
+         
+         if (validPts.length > 1) {
+            traces.push(buildTrace(validPts));
+            
+            // Add to drawnSegments
+            for(let j=0; j<validPts.length-1; j++) {
+               drawnSegments.push({A: validPts[j], B: validPts[j+1]});
+            }
+            
+            // Always add vias to endpoints!
+            nodes.push({ x: validPts[0].x, y: validPts[0].y, r: 2.5 });
+            nodes.push({ x: validPts[validPts.length-1].x, y: validPts[validPts.length-1].y, r: 2.5 });
+            
+            // Optional mid-trace vias
+            for (let j=1; j<validPts.length-1; j++) {
+               if (Math.random() > 0.8) nodes.push({ x: validPts[j].x, y: validPts[j].y, r: 2.5 });
+            }
+         }
       }
     }
   }

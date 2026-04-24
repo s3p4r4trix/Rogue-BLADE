@@ -21,7 +21,7 @@ import { RouterLink } from '@angular/router';
         </div>
       </header>
       
-      <div class="flex items-center justify-center h-[60vh] border border-red-900/50 bg-red-950/10">
+      <div class="flex items-center justify-center h-[60vh] border border-red-900/50 bg-[#030014]/95 z-10 relative">
         <div class="text-center">
             <div class="text-red-500 text-6xl mb-4 animate-pulse">⚠</div>
             <h2 class="text-xl font-bold mb-2">MAP UNAVAILABLE</h2>
