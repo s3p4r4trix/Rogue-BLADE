@@ -10,7 +10,7 @@ import { HardwareComponent, Shuriken } from '../models/hardware.model';
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule],
   template: `
-    <div class="min-h-screen bg-black text-blue-300 p-4 md:p-8 font-mono relative">
+    <div class="min-h-screen text-blue-300 p-4 md:p-8 font-mono relative">
       <header class="mb-6 flex justify-between items-end border-b-2 border-blue-800 pb-2">
         <div class="flex items-center gap-4">
           <a routerLink="/hub" class="text-blue-500 border border-blue-800 hover:bg-blue-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors">
@@ -147,6 +147,32 @@ import { HardwareComponent, Shuriken } from '../models/hardware.model';
                      </select>
                    </div>
                 </div>
+
+                 <!-- Statistics Block -->
+                 <div class="mt-8 border-t border-blue-900/50 pt-6">
+                   <h3 class="text-lg font-bold text-blue-500 mb-4 flex items-center gap-2">
+                     <span class="text-blue-700">|</span> COMBAT STATISTICS
+                   </h3>
+                   <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                     <div class="bg-black border border-blue-900/30 p-3">
+                       <div class="text-blue-600 text-xs uppercase mb-1">Time Online</div>
+                       <div class="text-blue-300 font-bold">{{ formatTime(shuriken.stats.timeOnline) }}</div>
+                     </div>
+                     <div class="bg-black border border-blue-900/30 p-3">
+                       <div class="text-blue-600 text-xs uppercase mb-1">Enemies Terminated</div>
+                       <div class="text-red-400 font-bold">{{ shuriken.stats.enemiesKilled | number }}</div>
+                     </div>
+                     <div class="bg-black border border-blue-900/30 p-3">
+                       <div class="text-blue-600 text-xs uppercase mb-1">Structural Damage</div>
+                       <div class="text-orange-400 font-bold">{{ shuriken.stats.lostHealth | number }} HP</div>
+                     </div>
+                     <div class="bg-black border border-blue-900/30 p-3">
+                       <div class="text-blue-600 text-xs uppercase mb-1">Repair Time</div>
+                       <div class="text-yellow-400 font-bold">{{ formatTime(shuriken.stats.timeRepairing) }}</div>
+                     </div>
+                   </div>
+                 </div>
+
              </div>
            }
         </div>
@@ -179,8 +205,15 @@ export class HardwareWorkshop {
     this.router.navigate(['/routine']);
   }
 
-  getUnlocked(category: any[]): any[] {
-    return category.filter(comp => this.unlocked().includes(comp.id));
+  getUnlocked<T extends { id: string }>(items: T[]): T[] {
+    return items.filter(item => this.workshop.unlockedComponentIds().includes(item.id));
+  }
+
+  formatTime(seconds: number): string {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    return `${mins}m ${seconds % 60}s`;
   }
 
   swap(shurikenId: string, slot: keyof Shuriken, componentId: string, category: any[]) {

@@ -6,7 +6,7 @@ import { RouterLink } from '@angular/router';
   standalone: true,
   imports: [RouterLink],
   template: `
-    <div class="min-h-screen bg-black text-red-300 p-8 font-mono relative">
+    <div class="min-h-screen text-red-300 p-8 font-mono relative">
       <header class="mb-6 flex justify-between items-end border-b-2 border-red-800 pb-2">
         <div class="flex items-center gap-4">
           <a routerLink="/hub" class="text-red-500 border border-red-800 hover:bg-red-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors">

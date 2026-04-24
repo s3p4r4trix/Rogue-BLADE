@@ -80,6 +80,16 @@ export interface SemiAI extends HardwareComponent {
 }
 
 /**
+ * Individual statistics for a specific Shuriken across all runs.
+ */
+export interface ShurikenStats {
+  enemiesKilled: number;
+  timeRepairing: number; // in seconds
+  lostHealth: number;
+  timeOnline: number; // in seconds
+}
+
+/**
  * The full representation of a configured drone, passed into the combat simulation phase.
  */
 export interface Shuriken {
@@ -93,4 +103,5 @@ export interface Shuriken {
   formDesign: FormDesign | null;
   processor: Processor | null;
   semiAI: SemiAI | null;
+  stats: ShurikenStats;
 }

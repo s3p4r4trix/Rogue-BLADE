@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 /* Cyberpunk Theme Anpassungen */
-body {
+/* Theme: Ripperdoc (Default/Legacy) */
+body.theme-ripperdoc {
     background-color: #050505;
     color: #00ff00;
     font-family: 'Courier New', Courier, monospace;
@@ -11,6 +12,36 @@ body {
         linear-gradient(rgba(0, 255, 0, 0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(0, 255, 0, 0.03) 1px, transparent 1px);
     background-size: 20px 20px;
+}
+
+/* Theme: Neuromancer (Circuitry & Electrons) — canvas rendered by PcbBackground component */
+body.theme-neuromancer {
+    background-color: #030014;
+    color: #a78bfa;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* Ensure angular root sits above the fixed canvas */
+app-root {
+    position: relative;
+    z-index: 1;
+    display: block;
+}
+
+/* Theme: Zenith Glass */
+body.theme-zenith {
+    background-color: #020617;
+    color: #38bdf8;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+body.theme-zenith::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.15), transparent 60%);
+    pointer-events: none;
+    z-index: -1;
 }
 
 .neon-border {

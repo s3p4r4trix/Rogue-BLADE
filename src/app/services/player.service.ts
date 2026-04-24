@@ -1,9 +1,21 @@
-import { Injectable, signal, effect } from '@angular/core';
+import { Injectable, signal, effect, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 
 export interface PlayerResources {
   credits: number;
   polymer: number;
   scrap: number;
+}
+
+export interface PlayerProfile {
+  username: string;
+  email: string;
+}
+
+export interface PlayerStats {
+  totalPlayTime: number;
+  successfulRuns: number;
+  failedRuns: number;
 }
 
 function loadResources(): PlayerResources {
@@ -22,11 +34,25 @@ function loadResources(): PlayerResources {
 @Injectable({ providedIn: 'root' })
 export class PlayerService {
   readonly resources = signal<PlayerResources>(loadResources());
+  readonly profile = signal<PlayerProfile>({ username: 'Guest_774', email: 'guest.774@zenith-net.local' });
+  readonly stats = signal<PlayerStats>({ totalPlayTime: 0, successfulRuns: 0, failedRuns: 0 });
+  readonly theme = signal<'zenith' | 'ripperdoc' | 'neuromancer'>(
+    (localStorage.getItem('rogueBlade_theme') as 'zenith' | 'ripperdoc' | 'neuromancer') || 'neuromancer'
+  );
 
-  constructor() {
+  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
     // Automatically save resources to localStorage whenever they change
     effect(() => {
       localStorage.setItem('rogueBlade_resources', JSON.stringify(this.resources()));
+    });
+
+    effect(() => {
+      const currentTheme = this.theme();
+      localStorage.setItem('rogueBlade_theme', currentTheme);
+      if (isPlatformBrowser(this.platformId)) {
+        document.body.classList.remove('theme-zenith', 'theme-ripperdoc', 'theme-neuromancer');
+        document.body.classList.add(`theme-${currentTheme}`);
+      }
     });
   }
 
@@ -41,7 +67,7 @@ export class PlayerService {
     }
     return false;
   }
-  
+
   addPolymer(amount: number) {
     this.resources.update(r => ({ ...r, polymer: r.polymer + amount }));
   }

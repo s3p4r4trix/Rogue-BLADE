@@ -6,6 +6,7 @@ import { Inventory } from '../components/inventory';
 import { GambitSlot } from '../components/gambit-slot';
 import { CompilerConsole } from '../components/compiler-console';
 import { WorkshopService } from '../services/workshop.service';
+import { PlayerService } from '../services/player.service';
 
 @Component({
   selector: 'app-routine-compiler',
@@ -27,28 +28,35 @@ import { WorkshopService } from '../services/workshop.service';
               </div>
           </div>
           <div class="text-right flex flex-col items-end gap-2">
-              <a routerLink="/hardware" class="text-xs bg-blue-900/30 text-blue-300 hover:bg-blue-900/60 px-2 py-1 uppercase border border-blue-500 transition-colors">
-                 [⚙] Hardware Tuning
-              </a>
-              <select class="text-xs bg-green-900 text-green-300 px-2 py-1 uppercase border border-green-500 outline-none cursor-pointer"
-                      [value]="activeShuriken().id"
-                      (change)="onShurikenChange($event)">
-                 @for (s of availableShurikens(); track s.id) {
-                    <option [value]="s.id">{{ s.name }} (Cap: {{s.processor?.routineCapacity}})</option>
-                 }
-              </select>
+              <div class="text-right hidden sm:block mb-1">
+                <div class="text-green-500 text-xs">Credits: <span class="text-white">{{ player.resources().credits }}</span></div>
+                <div class="text-blue-400 text-xs">Polymer units: <span class="text-white">{{ player.resources().polymer }}</span></div>
+                <div class="text-purple-400 text-xs">Scrap in kg: <span class="text-white">{{ player.resources().scrap }}</span></div>
+              </div>
+              <div class="flex gap-2">
+                <a routerLink="/hardware" class="text-xs bg-blue-900/30 text-blue-300 hover:bg-blue-900/60 px-2 py-1 uppercase border border-blue-500 transition-colors flex items-center">
+                   [⚙] Hardware Tuning
+                </a>
+                <select class="text-xs bg-green-900 text-green-300 px-2 py-1 uppercase border border-green-500 outline-none cursor-pointer h-full"
+                        [value]="activeShuriken().id"
+                        (change)="onShurikenChange($event)">
+                   @for (s of availableShurikens(); track s.id) {
+                      <option [value]="s.id">{{ s.name }} (Cap: {{s.processor?.routineCapacity}})</option>
+                   }
+                </select>
+              </div>
           </div>
       </header>
 
       <!-- Main Content -->
       <div class="flex flex-col lg:flex-row gap-8 h-full min-h-0">
           <!-- Linke Seite: Inventar (Drag Sources) -->
-          <div class="w-full lg:w-1/3 neon-border bg-black/80 p-4 flex flex-col h-full">
+          <div class="w-full lg:w-1/3 neon-border bg-[#030014]/95 p-4 flex flex-col h-full">
               <app-inventory class="h-full flex-1 min-h-0 block"></app-inventory>
           </div>
 
           <!-- Rechte Seite: Programmierung (Drop Zones) -->
-          <div class="w-full lg:w-2/3 neon-border bg-black/80 p-4 flex flex-col h-full min-h-0">
+          <div class="w-full lg:w-2/3 neon-border bg-[#030014]/95 p-4 flex flex-col h-full min-h-0">
               <h2 class="text-lg font-bold border-b border-green-800 pb-2 mb-4">// ROUTINE COMPILER</h2>
               
               <div id="gambit-list" class="flex-1 overflow-y-auto pr-2 flex flex-col gap-4"
@@ -95,6 +103,7 @@ import { WorkshopService } from '../services/workshop.service';
 })
 export class RoutineCompiler {
   workshop = inject(WorkshopService);
+  player = inject(PlayerService);
   
   routines = this.workshop.routines;
   fallbackAction = this.workshop.fallbackAction;

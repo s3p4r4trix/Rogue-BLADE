@@ -50,7 +50,8 @@ const DEFAULT_SHURIKEN: Omit<Shuriken, 'id' | 'name'> = {
   formDesign: HARDWARE_INVENTORY.formDesigns[0],
   hull: HARDWARE_INVENTORY.hulls[0],
   processor: HARDWARE_INVENTORY.processors[0],
-  semiAI: HARDWARE_INVENTORY.semiAIs[0]
+  semiAI: HARDWARE_INVENTORY.semiAIs[0],
+  stats: { enemiesKilled: 0, timeRepairing: 0, lostHealth: 0, timeOnline: 0 }
 };
 
 function loadShurikens(): Shuriken[] {
@@ -61,8 +62,12 @@ function loadShurikens(): Shuriken[] {
   const saved = localStorage.getItem('rogueBlade_shurikens');
   if (saved) {
     try { 
-      const parsed = JSON.parse(saved);
+      let parsed = JSON.parse(saved);
       if (parsed && parsed.length > 0 && parsed[0].semiAI !== undefined) {
+        parsed = parsed.map((s: any) => ({
+          ...s,
+          stats: s.stats || { enemiesKilled: 0, timeRepairing: 0, lostHealth: 0, timeOnline: 0 }
+        }));
         return parsed;
       }
     } catch (e) {}
