@@ -15,7 +15,7 @@ import { PlayerService } from '../services/player.service';
         <header class="mb-6 flex justify-between items-end border-b-2 border-blue-800 pb-2">
           <div class="flex items-center gap-4">
             <button (click)="goBack()" class="text-blue-500 border border-blue-800 hover:bg-blue-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors cursor-pointer">
-              < Back to Hub
+              < BACK_TO_HUB
             </button>
             <div>
               <h1 class="text-2xl font-bold tracking-widest text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]">

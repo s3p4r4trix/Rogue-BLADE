@@ -127,7 +127,8 @@ export class CombatSimulationService {
 
               // 4.1.2 Matrix Multiplier
               const currentArmorType: ArmorType = enemyShields > 0 ? 'ENERGY_SHIELD' : mission.armorType;
-              const multiplier = this.effectivenessMatrix[s.damageType][currentArmorType];
+              const matrix = this.effectivenessMatrix[s.damageType] || this.effectivenessMatrix['SLASHING'];
+              const multiplier = matrix[currentArmorType] || 1.0;
               grossDamage *= multiplier;
 
               // 4.1.3 Armor Mitigation & Evasion

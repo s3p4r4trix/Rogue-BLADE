@@ -13,9 +13,9 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
     <div class="min-h-screen text-blue-300 p-4 md:p-8 font-mono relative">
       <header class="mb-6 flex justify-between items-end border-b-2 border-blue-800 pb-2">
         <div class="flex items-center gap-4">
-          <a routerLink="/hub" class="text-blue-500 border border-blue-800 hover:bg-blue-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors">
-              < Back to Hub
-          </a>
+           <a routerLink="/hub" class="text-blue-500 border border-blue-800 hover:bg-blue-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors">
+               < BACK_TO_HUB
+           </a>
           <div>
             <h1 class="text-2xl font-bold tracking-widest text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]">
                 HARDWARE // TUNING
@@ -82,10 +82,17 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                  </button>
                </div>
                
-               <button (click)="programInRogueOS()" class="bg-green-900/30 border border-green-600 text-green-400 hover:bg-green-800/50 px-4 py-2 uppercase font-bold tracking-wider transition-colors shadow-[0_0_10px_rgba(74,222,128,0.2)] neuro-border-draw">
-                  <div class="border-anim before:bg-green-500 after:bg-green-500"></div><div class="border-anim-v before:bg-green-500 after:bg-green-500"></div>
-                  <span class="relative z-10">[>] PROGRAM IN ROGUE OS</span>
-               </button>
+               <div class="flex gap-2">
+                  <button (click)="programInRogueOS()" class="bg-green-900/30 border border-green-600 text-green-400 hover:bg-green-800/50 px-4 py-2 uppercase font-bold tracking-wider transition-colors shadow-[0_0_10px_rgba(74,222,128,0.2)] neuro-border-draw">
+                     <div class="border-anim before:bg-green-500 after:bg-green-500"></div><div class="border-anim-v before:bg-green-500 after:bg-green-500"></div>
+                     <span class="relative z-10">[>] ROGUE OS</span>
+                  </button>
+
+                  <button (click)="deploy()" class="bg-red-900/30 border border-red-600 text-red-500 hover:bg-red-800/50 px-4 py-2 uppercase font-bold tracking-wider transition-colors shadow-[0_0_10px_rgba(239,68,68,0.2)] neuro-border-draw">
+                     <div class="border-anim before:bg-red-500 after:bg-red-500"></div><div class="border-anim-v before:bg-red-500 after:bg-red-500"></div>
+                     <span class="relative z-10">[>] COMBAT DEPLOY</span>
+                  </button>
+                </div>
              </div>
              
              <!-- Components Grid -->
@@ -240,6 +247,10 @@ export class HardwareWorkshop {
 
   programInRogueOS() {
     this.router.navigate(['/routine']);
+  }
+
+  deploy() {
+    this.router.navigate(['/liberation']);
   }
 
   getUnlocked<T extends { id: string }>(items: T[]): T[] {

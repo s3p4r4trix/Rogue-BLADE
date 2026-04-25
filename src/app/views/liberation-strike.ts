@@ -15,7 +15,7 @@ import { MissionContract } from '../models/mission.model';
       <header class="mb-6 flex justify-between items-end border-b-2 border-red-800 pb-2">
         <div class="flex items-center gap-4">
           <a routerLink="/hub" class="text-red-500 border border-red-800 hover:bg-red-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors">
-              < Back to Hub
+              < BACK_TO_HUB
           </a>
           <div>
             <h1 class="text-2xl font-bold tracking-widest text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">

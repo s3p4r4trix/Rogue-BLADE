@@ -10,7 +10,7 @@ import { RouterLink } from '@angular/router';
       <header class="mb-6 flex justify-between items-end border-b-2 border-purple-800 pb-2">
         <div class="flex items-center gap-4">
           <a routerLink="/hub" class="text-purple-500 border border-purple-800 hover:bg-purple-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors">
-              < Back to Hub
+              < BACK_TO_HUB
           </a>
           <div>
             <h1 class="text-2xl font-bold tracking-widest text-purple-400 drop-shadow-[0_0_5px_rgba(192,132,252,0.5)]">

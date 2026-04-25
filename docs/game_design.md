@@ -72,11 +72,13 @@ The **Slot-based Gambit System** is the core mechanic for programming AI behavio
 * **Swarm Communication:** Coordination (e.g., "If Shuriken A attacks, Shuriken B flanks").
 
 ### 6.5 Sensors (Unlocking Triggers)
-* **Biosensors:** Detect organic targets.
-* **EM-Sensors:** Detect energy fields, Zenith shields, and electronics.
-* **Radar:** Long-range monitoring; susceptible to chaff.
-* **Lidar:** Precision optical targeting for critical hits.
-* **Terahertz:** Penetrates physical obstacles (detects enemies behind walls).
+* **Optical Sensors:** Detect enemies in very close proximity (up to 20 meters).
+* **Biosensors:** Detect organic targets (up to 40 meters).
+* **Thermal Sensors:** Detect heat signatures (infrared) (up to 60 meters).
+* **EM-Sensors:** Detect energy fields, Zenith shields, and electronics (up to 80 meters).
+* **Radar:** Long-range monitoring; susceptible to chaff (up to 120 meters).
+* **Lidar:** Precision optical targeting for critical hits (up to 160 meters).
+* **Terahertz:** Penetrates physical obstacles (detects enemies behind walls) (up to 20 meters).
 
 ### 6.6 Blades & Edges
 * **Sharpened Edge:** Standard slash damage against soft targets.

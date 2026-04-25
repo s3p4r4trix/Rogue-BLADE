@@ -17,8 +17,8 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
       <!-- Header -->
       <header class="mb-6 flex justify-between items-end border-b-2 border-green-500 pb-2">
           <div class="flex items-center gap-4">
-              <a routerLink="/hub" class="text-green-500 border border-green-500 hover:bg-green-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors">
-                  < Back to Hub
+              <a routerLink="/hub" class="text-green-500 border border-green-800 hover:bg-green-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors">
+                  < BACK_TO_HUB
               </a>
               <div>
                   <h1 class="text-2xl font-bold tracking-widest text-green-400 drop-shadow-[0_0_5px_rgba(74,222,128,0.8)]">
@@ -48,9 +48,9 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                           [options]="getShurikenOptions()">
                        </app-cyber-select>
                     </div>
-                    <a routerLink="/hardware" class="text-xs bg-blue-900/30 text-blue-300 hover:bg-blue-900/60 px-2 py-1 uppercase border border-blue-500 transition-colors flex items-center neuro-border-draw">
-                       <div class="border-anim"></div><div class="border-anim-v"></div>
-                       <span class="relative z-10">⚙ Hardware Tuning</span>
+                    <a routerLink="/hardware" class="bg-blue-900/30 border border-blue-600 text-blue-300 hover:bg-blue-800/50 px-4 py-2 uppercase font-bold tracking-wider transition-colors shadow-[0_0_10px_rgba(59,130,246,0.2)] neuro-border-draw flex items-center">
+                       <div class="border-anim before:bg-blue-500 after:bg-blue-500"></div><div class="border-anim-v before:bg-blue-500 after:bg-blue-500"></div>
+                       <span class="relative z-10">[>] HARDWARE TUNING</span>
                     </a>
                   </div>
               </div>
