@@ -88,82 +88,111 @@ import { MissionContract } from '../models/mission.model';
         <!-- Bounty Board (Mission Selection) -->
         <div class="lg:col-span-2">
           <h2 class="text-xl text-red-500 font-bold mb-4 flex items-center gap-2">
-             <span class="text-red-700">|</span> BOUNTY BOARD
+             <span class="text-red-700">|</span> ACTIVE_BOUNTIES
           </h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
              @for (contract of contracts(); track contract.id) {
-               <div class="bg-[#030014]/95 border p-4 flex flex-col gap-3 transition-colors cursor-pointer neuro-border-draw relative group"
+               <div class="bg-[#050110] border-t-2 p-5 flex flex-col gap-4 transition-all duration-300 cursor-pointer relative group overflow-hidden"
                     [ngClass]="{
-                      'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]': selectedContract()?.id === contract.id,
-                      'border-red-900/50 hover:border-red-700': selectedContract()?.id !== contract.id
+                      'border-red-500 shadow-[0_10px_30px_-10px_rgba(239,68,68,0.2)] bg-[#0a051a]': selectedContract()?.id === contract.id,
+                      'border-red-900/30 hover:border-red-700/50 hover:bg-[#070215]': selectedContract()?.id !== contract.id
                     }"
                     (click)="selectContract(contract)">
                   
-                  <div class="border-anim before:bg-red-500 after:bg-red-500"></div>
-                  <div class="border-anim-v before:bg-red-500 after:bg-red-500"></div>
-                  
-                  <div class="relative z-10 flex-1">
-                    <div class="text-xs font-bold uppercase mb-1"
-                         [ngClass]="{
-                           'text-green-500': contract.difficulty.includes('Tier I'),
-                           'text-yellow-500': contract.difficulty.includes('Tier II'),
-                           'text-red-500': contract.difficulty.includes('Tier III')
-                         }">
-                      {{ contract.difficulty }}
+                  <!-- Background Pattern -->
+                  <div class="absolute inset-0 opacity-[0.03] pointer-events-none group-hover:opacity-[0.05] transition-opacity" 
+                       style="background-image: radial-gradient(#ef4444 1px, transparent 0); background-size: 20px 20px;"></div>
+
+                  <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-3">
+                      <div class="px-2 py-0.5 text-[9px] font-black tracking-tighter uppercase border border-red-500/50 bg-red-950/20 text-red-400">
+                        {{ contract.difficulty }}
+                      </div>
+                      <div class="text-[9px] text-red-900 font-mono">ID: {{ contract.id.split('-').pop() }}</div>
                     </div>
-                    <h3 class="text-lg font-bold text-red-400 leading-tight mb-2">{{ contract.targetName }}</h3>
-                    <p class="text-xs text-gray-400 mb-4 h-12">{{ contract.description }}</p>
+
+                    <h3 class="text-xl font-black tracking-tight leading-none mb-2 transition-colors uppercase"
+                        [ngClass]="selectedContract()?.id === contract.id ? 'text-white' : 'text-red-500 group-hover:text-red-400'">
+                      {{ contract.targetName }}
+                    </h3>
+                    <p class="text-xs text-gray-400 italic mb-5 leading-relaxed line-clamp-2 h-10">
+                      "{{ contract.description }}"
+                    </p>
                     
-                    <div class="space-y-1 text-[10px] mb-4 bg-red-950/20 p-2 border border-red-900/30">
-                      <div class="flex justify-between border-b border-red-900/10 pb-1">
-                        <span class="text-red-700 uppercase">Hull/Shields</span>
-                        <span class="text-red-300 font-bold">{{ contract.hull }}H / {{ contract.shields }}S</span>
+                    <!-- Defense Analysis -->
+                    <div class="bg-black/40 border border-white/5 p-4 mb-4">
+                      <div class="text-[10px] text-cyan-700 uppercase font-bold tracking-[0.2em] mb-3 border-b border-white/5 pb-2 flex justify-between">
+                        <span>Defensive_Profile</span>
+                        <span class="text-cyan-900">v4.2</span>
                       </div>
-                      <div class="flex justify-between border-b border-red-900/10 pb-1">
-                        <span class="text-red-700 uppercase">Protection</span>
-                        <span class="text-red-300">{{ contract.armorType }} ({{ contract.armorValue }}A)</span>
-                      </div>
-                      <div class="flex justify-between">
-                        <span class="text-red-700 uppercase">Evasion</span>
-                        <span class="text-red-400">{{ (contract.enemyEvasionRate * 100).toFixed(0) }}% Sign-Noise</span>
+                      <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                        <div class="flex justify-between">
+                          <span class="text-gray-500 uppercase font-bold tracking-tighter text-[10px]">Hull</span>
+                          <span class="text-cyan-400 font-mono font-bold">{{ contract.hull }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-gray-500 uppercase font-bold tracking-tighter text-[10px]">Shields</span>
+                          <span class="text-cyan-400 font-mono font-bold">{{ contract.shields }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-gray-500 uppercase font-bold tracking-tighter text-[10px]">Armor</span>
+                          <span class="text-cyan-400 font-mono">{{ contract.armorValue }} <span class="text-[9px] opacity-40">[{{ contract.armorType.split('_')[0] }}]</span></span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-gray-500 uppercase font-bold tracking-tighter text-[10px]">Evasion</span>
+                          <span class="text-red-500 font-mono font-bold">{{ (contract.enemyEvasionRate * 100).toFixed(0) }}%</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div class="space-y-1 text-xs mb-4">
-                      <div class="flex justify-between">
-                        <span class="text-red-700">Intel:</span>
-                        <span class="text-red-300 text-right">{{ contract.expectedResistance }}</span>
+                    <!-- Intelligence -->
+                    <div class="flex justify-between text-xs text-gray-400 mb-2 px-1">
+                      <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                        <span class="uppercase tracking-widest text-[10px] font-bold">{{ contract.durationSeconds }}s DEP</span>
                       </div>
-                      <div class="flex justify-between">
-                        <span class="text-red-700">Duration:</span>
-                        <span class="text-red-300 font-bold">{{ contract.durationSeconds / 60 }} min</span>
+                      <div class="text-right italic text-gray-500 text-[10px]">
+                        {{ contract.expectedResistance }}
                       </div>
                     </div>
                   </div>
 
-                  <!-- Potential Loot -->
-                  <div class="mt-auto border-t border-red-900/50 pt-3 relative z-10">
-                    <div class="text-xs text-red-600 uppercase mb-2">Est. Payout</div>
-                    <div class="flex justify-between items-center text-xs">
-                      <span class="text-blue-400 font-bold">{{ contract.potentialLoot.polymerMin }}-{{ contract.potentialLoot.polymerMax }} Poly</span>
-                      <span class="text-orange-400 font-bold">{{ contract.potentialLoot.scrapMin }}-{{ contract.potentialLoot.scrapMax }} Scrap</span>
+                  <!-- Reward Manifest (The Payout) -->
+                  <div class="mt-auto pt-4 border-t border-white/5 relative z-10">
+                    <div class="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-4 flex items-center gap-2">
+                       ESTIMATED_REWARD_MANIFEST
+                       <div class="h-[1px] flex-1 bg-white/5"></div>
                     </div>
-                    @if (contract.potentialLoot.creditsBonus > 0) {
-                      <div class="text-yellow-400 text-xs text-center mt-1 font-bold">
-                        +{{ contract.potentialLoot.creditsBonus }} CR
+                    
+                    <div class="grid grid-cols-3 gap-2">
+                      <div class="bg-white/5 p-2.5 border border-white/5 text-center group-hover:border-blue-900/50 transition-colors">
+                        <div class="text-[9px] text-gray-500 uppercase font-bold mb-1">Polymer</div>
+                        <div class="text-sm font-black text-blue-400 tracking-tighter">{{ contract.potentialLoot.polymerMin }}<span class="text-[9px] mx-0.5 opacity-30">-</span>{{ contract.potentialLoot.polymerMax }}</div>
                       </div>
-                    }
+                      <div class="bg-white/5 p-2.5 border border-white/5 text-center group-hover:border-orange-900/50 transition-colors">
+                        <div class="text-[9px] text-gray-500 uppercase font-bold mb-1">Scrap</div>
+                        <div class="text-sm font-black text-orange-400 tracking-tighter">{{ contract.potentialLoot.scrapMin }}<span class="text-[9px] mx-0.5 opacity-30">-</span>{{ contract.potentialLoot.scrapMax }}</div>
+                      </div>
+                      <div class="bg-white/5 p-2.5 border border-white/5 text-center group-hover:border-yellow-900/50 transition-colors">
+                        <div class="text-[9px] text-gray-500 uppercase font-bold mb-1">Credits</div>
+                        <div class="text-sm font-black text-yellow-500 tracking-tighter">+{{ contract.potentialLoot.creditsBonus }}</div>
+                      </div>
+                    </div>
                   </div>
 
                   @if (selectedContract()?.id === contract.id) {
-                    <div class="absolute inset-0 border-2 border-red-500 pointer-events-none z-20"></div>
+                    <div class="absolute inset-0 border border-red-500/50 pointer-events-none z-20"></div>
+                    <div class="absolute top-0 right-0 w-8 h-8 bg-red-500/10 flex items-center justify-center border-l border-b border-red-500/50">
+                      <span class="text-red-500 text-[10px]">✓</span>
+                    </div>
                   }
                </div>
              }
           </div>
-          <div class="mt-4 flex justify-end">
-            <button (click)="refreshContracts()" class="text-red-500 border border-red-800 hover:bg-red-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors cursor-pointer">
-              [ Refresh Intel ]
+          <div class="mt-8 flex justify-between items-center border-t border-red-900/20 pt-4">
+            <p class="text-[10px] text-red-900 uppercase tracking-widest">// WARNING: DEPLOYMENT IS FINAL ONCE ENGAGED</p>
+            <button (click)="refreshContracts()" class="text-red-500 border border-red-800 hover:bg-red-500 hover:text-black px-4 py-1.5 font-mono text-xs uppercase transition-all cursor-pointer">
+              [ REFRESH_INTEL ]
             </button>
           </div>
         </div>

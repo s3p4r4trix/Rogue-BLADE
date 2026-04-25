@@ -1,6 +1,7 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { MissionContract, MissionDifficulty } from '../models/mission.model';
 import { WorkshopService } from './workshop.service';
+import { PlayerService } from './player.service';
 import { ArmorType } from '../models/hardware.model';
 
 const TARGETS = [
@@ -30,6 +31,7 @@ const RESISTANCES: { label: string, type: ArmorType }[] = [
 @Injectable({ providedIn: 'root' })
 export class MissionService {
   private workshop = inject(WorkshopService);
+  private player = inject(PlayerService);
 
   readonly availableContracts = signal<MissionContract[]>([]);
   readonly activeStrikeMission = signal<MissionContract | null>(null);
@@ -80,25 +82,38 @@ export class MissionService {
     let durSecs: number;
     let pMin, pMax, sMin, sMax, cBonus;
 
-    const tierMultiplier = [0.7, 1.2, 2.5][index];
+    const stats = this.player.stats();
+    const successfulRuns = stats.successfulRuns;
+
+    // Progressive Multipliers based on success
+    // Tier I starts very easy (0.4) and scales up to 0.8
+    // Tier II starts at 1.0 and scales to 2.0
+    // Tier III starts at 2.5 and scales to 5.0
+    const tierMultiplier = [
+      Math.min(0.8, 0.4 + (successfulRuns * 0.04)), 
+      Math.min(2.0, 1.0 + (successfulRuns * 0.1)),
+      Math.min(5.0, 2.5 + (successfulRuns * 0.25))
+    ][index];
+
     const baseLoot = squadPower * tierMultiplier;
 
     if (index === 0) {
       diffStr = 'Tier I (Low)';
-      durSecs = 60; 
+      // Progressive Duration: Starts at 30s, +5s per success, max 90s
+      durSecs = Math.min(90, 30 + (successfulRuns * 5)); 
     } else if (index === 1) {
       diffStr = 'Tier II (Moderate)';
-      durSecs = 120; 
+      durSecs = Math.min(180, 60 + (successfulRuns * 10)); 
     } else {
       diffStr = 'Tier III (High)';
-      durSecs = 240; 
+      durSecs = Math.min(300, 120 + (successfulRuns * 15)); 
     }
 
     pMin = Math.floor(baseLoot * 0.5);
     pMax = Math.floor(baseLoot * 0.8);
     sMin = Math.floor(baseLoot * 0.7);
     sMax = Math.floor(baseLoot * 1.2);
-    cBonus = Math.floor(baseLoot * 2);
+    cBonus = Math.floor(baseLoot * 1.5); // Slightly reduced bonus ratio for cleaner numbers
 
     const hull = Math.floor(baseLoot * 1.5);
     const shields = resProfile.type === 'ENERGY_SHIELD' ? Math.floor(baseLoot * 1.2) : Math.floor(baseLoot * 0.2);
