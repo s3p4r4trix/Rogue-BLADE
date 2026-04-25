@@ -1,22 +1,6 @@
 import { Injectable, signal, effect, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-
-export interface PlayerResources {
-  credits: number;
-  polymer: number;
-  scrap: number;
-}
-
-export interface PlayerProfile {
-  username: string;
-  email: string;
-}
-
-export interface PlayerStats {
-  totalPlayTime: number;
-  successfulRuns: number;
-  failedRuns: number;
-}
+import { PlayerResources, PlayerProfile, PlayerStats } from '../models/player.model';
 
 function loadResources(): PlayerResources {
   const saved = localStorage.getItem('rogueBlade_resources');

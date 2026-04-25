@@ -1,19 +1,12 @@
-import { Component, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy, computed } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MissionService } from '../services/mission.service';
 import { WorkshopService } from '../services/workshop.service';
 import { PlayerService } from '../services/player.service';
-import { CombatSimulationService, StrikeResult } from '../services/combat-simulation.service';
+import { CombatSimulationService } from '../services/combat-simulation.service';
+import { StrikeResult, ShurikenStatus } from '../models/combat.model';
 
-interface ShurikenStatus {
-  id: string;
-  name: string;
-  hp: number;
-  maxHp: number;
-  shields: number;
-  maxShields: number;
-}
 
 @Component({
   selector: 'app-strike-report',
@@ -28,7 +21,7 @@ interface ShurikenStatus {
             {{ formatTime(timeRemaining()) }}
           </div>
           <div>
-            <h1 class="text-xl font-black tracking-tighter uppercase italic">Liberation_Strike // LIVE_FEED</h1>
+            <h1 class="text-xl font-black tracking-tighter uppercase italic text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">Liberation_Strike // LIVE_FEED</h1>
             <p class="text-[10px] text-green-800 uppercase tracking-widest">Target: {{ mission()?.targetName }} | Status: [ACTIVE_ENGAGEMENT]</p>
           </div>
         </div>
@@ -52,10 +45,12 @@ interface ShurikenStatus {
           <div class="absolute top-0 right-0 p-2 text-[8px] text-green-900 uppercase">Secure_Link: 128-bit_Encrypted</div>
           <div class="flex-1 overflow-y-auto space-y-1 pr-4" id="log-container">
             @for (log of visibleLogs(); track $index) {
-              <div class="text-sm animate-in fade-in slide-in-from-left-2 duration-300">
-                <span class="opacity-50 font-mono text-[10px] mr-2">[{{ $index.toString().padStart(3, '0') }}s]</span>
-                <span [ngClass]="getLogClass(log)">{{ log }}</span>
-              </div>
+              @if (!log.startsWith('[ENERGY]')) {
+                <div class="text-sm animate-in fade-in slide-in-from-left-2 duration-300">
+                  <span class="opacity-50 font-mono text-[10px] mr-2">[{{ $index.toString().padStart(3, '0') }}s]</span>
+                  <span [ngClass]="getLogClass(log)">{{ log }}</span>
+                </div>
+              }
             }
             @if (!isFinished()) {
               <div class="animate-pulse text-green-400">_</div>
@@ -89,6 +84,12 @@ interface ShurikenStatus {
                         <div class="h-full transition-all duration-1000 shadow-[0_0_5px_#22c55e]" 
                              [ngClass]="s.hp > (s.maxHp * 0.5) ? 'bg-green-500' : (s.hp > (s.maxHp * 0.2) ? 'bg-yellow-500' : 'bg-red-600')"
                              [style.width.%]="(s.hp / s.maxHp) * 100"></div>
+                      </div>
+
+                      <!-- Energy Bar -->
+                      <div class="w-full h-1 bg-yellow-900/20 relative mt-1">
+                         <div class="h-full bg-yellow-500 shadow-[0_0_5px_#eab308] transition-all duration-300" 
+                              [style.width.%]="(s.energy / s.maxEnergy) * 100"></div>
                       </div>
                    </div>
                  }
@@ -186,7 +187,9 @@ export class StrikeReport implements OnInit, OnDestroy {
       hp: s.hull?.maxHp || 100, 
       maxHp: s.hull?.maxHp || 100,
       shields: s.hull?.shieldCapacity || 0,
-      maxShields: s.hull?.shieldCapacity || 0
+      maxShields: s.hull?.shieldCapacity || 0,
+      energy: s.energyCell?.maxEnergy || 100,
+      maxEnergy: s.energyCell?.maxEnergy || 100
     })));
     this.startSimulation();
   }
@@ -242,8 +245,18 @@ export class StrikeReport implements OnInit, OnDestroy {
        ));
     }
 
+    // 4. Energy Parsing: "[ENERGY] ShurikenName: 80/100"
+    const energyMatch = log.match(/\[ENERGY\] (.*): (\d+)\/(\d+)/);
+    if (energyMatch) {
+       const name = energyMatch[1];
+       const current = parseInt(energyMatch[2]);
+       this.squadStatuses.update(statuses => statuses.map(s => 
+         s.name === name ? { ...s, energy: current } : s
+       ));
+    }
+
     if (log.includes('CRITICAL')) {
-      this.squadStatuses.update(statuses => statuses.map(s => ({ ...s, hp: 0, shields: 0 })));
+      this.squadStatuses.update(statuses => statuses.map(s => ({ ...s, hp: 0, shields: 0, energy: 0 })));
     }
   }
 
@@ -266,7 +279,7 @@ export class StrikeReport implements OnInit, OnDestroy {
     if (log.includes('[CRITICAL]') || log.includes('[FAILURE]')) return 'text-red-500 font-black italic';
     if (log.includes('[SUCCESS]') || log.includes('[SYSTEM] TARGET NEUTRALIZED')) return 'text-green-400 font-bold';
     if (log.includes('[OVERCLOCK]')) return 'text-yellow-400 font-black shadow-[0_0_10px_rgba(250,204,21,0.5)]';
-    if (log.includes('HOSTILE_ENTITY')) return 'text-orange-500';
+    if (log.includes('HOSTILE_ENTITY') || log.includes('HOSTILE:')) return 'text-orange-500 font-bold';
     if (log.includes('[SYSTEM]')) return 'text-cyan-500 opacity-80';
     if (log.includes('[MISS]')) return 'text-gray-600 italic';
     return 'text-green-600';

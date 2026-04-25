@@ -10,41 +10,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { PlayerService } from '../services/player.service';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-interface Point { x: number; y: number; }
-
-interface Trace {
-  points: Point[];
-  length: number;
-  segLengths: number[];
-}
-
-interface Node {
-  x: number;
-  y: number;
-  r: number;
-}
-
-interface Chip {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  label: string;
-}
-
-interface Electron {
-  trace: Trace;
-  t: number;
-  speed: number;
-  active: boolean;
-  fireIn: number;
-  trail: Point[];
-  colorTheme: 'cyan' | 'purple' | 'gold';
-}
+import { Point, Trace, Node, Chip, Electron } from '../models/pcb.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Geometry Helpers
