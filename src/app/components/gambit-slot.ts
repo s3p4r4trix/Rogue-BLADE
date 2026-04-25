@@ -2,6 +2,7 @@ import { Component, input, inject, ChangeDetectionStrategy, computed } from '@an
 import { CommonModule } from '@angular/common';
 import { WorkshopService } from '../services/workshop.service';
 import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
+import { CyberOption } from '../models/hardware.model';
 
 @Component({
   selector: 'app-gambit-slot',

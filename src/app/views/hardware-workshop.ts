@@ -362,7 +362,7 @@ export class HardwareWorkshop {
     }
   }
 
-  // --- Map Options for CyberSelect ---
+  // --- Map Options for Native Selects ---
   getEngineOptions(): CyberOption[] {
     return this.getUnlocked(this.inventory.engines).map((c: any) => ({ value: c.id, label: c.name }));
   }
@@ -398,7 +398,7 @@ export class HardwareWorkshop {
       .filter(s => s.semiAI && s.id !== this.activeShuriken().id)
       .map(s => ({ value: s.id, label: `${s.name} [MASTER]` }));
   }
-
+}
   setCoordMode(mode: 'SOLO' | 'MASTER' | 'SLAVE') {
     this.workshop.setCoordination(this.activeShuriken().id, mode);
   }

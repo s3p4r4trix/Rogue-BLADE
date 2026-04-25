@@ -108,6 +108,15 @@ export interface ShurikenStats {
 }
 
 /**
+ * Option configuration for UI selectors.
+ */
+export interface CyberOption {
+  value: string;
+  label: string;
+  disabled?: boolean;
+}
+
+/**
  * Final Shuriken configuration.
  */
 export interface Shuriken {
