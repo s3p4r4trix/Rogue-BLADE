@@ -114,9 +114,24 @@ import { MissionContract } from '../models/mission.model';
                     <h3 class="text-lg font-bold text-red-400 leading-tight mb-2">{{ contract.targetName }}</h3>
                     <p class="text-xs text-gray-400 mb-4 h-12">{{ contract.description }}</p>
                     
+                    <div class="space-y-1 text-[10px] mb-4 bg-red-950/20 p-2 border border-red-900/30">
+                      <div class="flex justify-between border-b border-red-900/10 pb-1">
+                        <span class="text-red-700 uppercase">Hull/Shields</span>
+                        <span class="text-red-300 font-bold">{{ contract.hull }}H / {{ contract.shields }}S</span>
+                      </div>
+                      <div class="flex justify-between border-b border-red-900/10 pb-1">
+                        <span class="text-red-700 uppercase">Protection</span>
+                        <span class="text-red-300">{{ contract.armorType }} ({{ contract.armorValue }}A)</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-red-700 uppercase">Evasion</span>
+                        <span class="text-red-400">{{ (contract.enemyEvasionRate * 100).toFixed(0) }}% Sign-Noise</span>
+                      </div>
+                    </div>
+
                     <div class="space-y-1 text-xs mb-4">
                       <div class="flex justify-between">
-                        <span class="text-red-700">Resistance:</span>
+                        <span class="text-red-700">Intel:</span>
                         <span class="text-red-300 text-right">{{ contract.expectedResistance }}</span>
                       </div>
                       <div class="flex justify-between">

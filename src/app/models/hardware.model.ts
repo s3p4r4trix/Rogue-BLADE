@@ -1,4 +1,14 @@
 /**
+ * Standardized Damage Types as per Core Mechanics & Math Logic.
+ */
+export type DamageType = 'SLASHING' | 'KINETIC' | 'ENERGY' | 'EMP';
+
+/**
+ * Standardized Armor Types as per Core Mechanics & Math Logic.
+ */
+export type ArmorType = 'UNARMORED' | 'HEAVY_ARMOR' | 'ENERGY_SHIELD';
+
+/**
  * Base interface for all Shuriken hardware parts.
  */
 export interface HardwareComponent {
@@ -8,72 +18,79 @@ export interface HardwareComponent {
 }
 
 /**
- * Determines mobility and evasion stats.
- * Directly affects the 2D auto-battler simulation movement.
+ * Mobility and evasion stats.
  */
 export interface AntiGravEngine extends HardwareComponent {
-  speed: number;
-  stealth: number;
-  energyConsumption: number;
-  evasionRate: number;
+  topSpeed: number;
+  acceleration: number;
+  evasionRate: number; // 0.0 - 1.0
+  energyDrain: number;
+  stealthValue: number;
 }
 
 /**
- * Determines defensive capabilities and overall weight.
- * Weight impacts kinetic damage output and movement inertia.
+ * Defensive capabilities and weight.
  */
 export interface HullMaterial extends HardwareComponent {
   tier: number;
-  hp: number;
-  armor: number;
+  maxHp: number;
+  armorValue: number;
+  shieldCapacity: number;
   weight: number;
 }
 
 /**
- * Determines how much energy is available to power engines and actions.
+ * Energy pool management.
  */
 export interface EnergyCell extends HardwareComponent {
   maxEnergy: number;
-  regenRate: number;
+  energyRegen: number;
   maxOutput: number;
 }
 
 /**
- * Sensors unlock specific Gambit Triggers (IF conditions).
- * E.g., a Terahertz sensor allows "Enemy behind cover" to be used.
+ * Sensor capabilities.
  */
 export interface Sensor extends HardwareComponent {
   range: number;
+  accuracy: number; // 0.0 - 1.0
   unlocksTriggerIds: string[];
 }
 
 /**
- * The offensive weapon. Determines damage type (e.g., plasma melts shields).
+ * Offensive weapon stats.
  */
 export interface Blade extends HardwareComponent {
-  damageType: 'kinetic' | 'vibro' | 'mono-molecular' | 'plasma';
-  damage: number;
+  damageType: DamageType;
+  baseDamage: number;
+  critChance: number; // 0.0 - 1.0
+  critMultiplier: number;
+  energyDrain: number;
   unlocksActionIds?: string[];
 }
 
 /**
- * Determines the overall physical shape and primary combat specialization of the Shuriken.
+ * Form / Chassis multipliers.
  */
 export interface FormDesign extends HardwareComponent {
   shape: 'disc' | 'dagger' | 'sphere' | 'tron-disc';
-  primaryDamageType: 'cutting' | 'piercing' | 'blunt' | 'burning';
+  speedMult: number;
+  weightMult: number;
+  damageMult: number;
+  critChanceMult?: number;
+  armorMult?: number;
 }
 
 /**
- * The Processor controlling the Shuriken's execution latency and capacity.
+ * Control Processor.
  */
 export interface Processor extends HardwareComponent {
   routineCapacity: number;
-  latencyModifier: number;
+  latency: number; // in seconds
 }
 
 /**
- * The Semi-AI controlling the Shuriken's personality and IFF.
+ * Semi-AI behavior.
  */
 export interface SemiAI extends HardwareComponent {
   iffAccuracy: number;
@@ -81,17 +98,17 @@ export interface SemiAI extends HardwareComponent {
 }
 
 /**
- * Individual statistics for a specific Shuriken across all runs.
+ * Persistent stats for a specific Shuriken.
  */
 export interface ShurikenStats {
   enemiesKilled: number;
-  timeRepairing: number; // in seconds
+  timeRepairing: number;
   lostHealth: number;
-  timeOnline: number; // in seconds
+  timeOnline: number;
 }
 
 /**
- * The full representation of a configured drone, passed into the combat simulation phase.
+ * Final Shuriken configuration.
  */
 export interface Shuriken {
   id: string;
@@ -105,5 +122,5 @@ export interface Shuriken {
   processor: Processor | null;
   semiAI: SemiAI | null;
   stats: ShurikenStats;
-  creationDate?: number; // timestamp
+  creationDate?: number;
 }

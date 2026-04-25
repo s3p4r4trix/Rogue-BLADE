@@ -1,5 +1,7 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { MissionContract, MissionDifficulty } from '../models/mission.model';
+import { WorkshopService } from './workshop.service';
+import { ArmorType } from '../models/hardware.model';
 
 const TARGETS = [
   'Corporate Supply Convoy',
@@ -18,15 +20,12 @@ const DESCRIPTIONS = [
   'Unknown variables. High risk, high reward.'
 ];
 
-const RESISTANCES = [
-  'Heavy Armor, Weak Shields',
-  'High Evasion, Swarm Tactics',
-  'Plasma Weapons, Slow Movement',
-  'Balanced Defense',
-  'Unknown'
+const RESISTANCES: { label: string, type: ArmorType }[] = [
+  { label: 'Heavy Armor (Mech Resistance)', type: 'HEAVY_ARMOR' },
+  { label: 'Energy Shields (Zenith Tech)', type: 'ENERGY_SHIELD' },
+  { label: 'Unarmored Swarm (Flesh)', type: 'UNARMORED' },
+  { label: 'Balanced Defense', type: 'HEAVY_ARMOR' }
 ];
-
-import { WorkshopService } from './workshop.service';
 
 @Injectable({ providedIn: 'root' })
 export class MissionService {
@@ -61,11 +60,11 @@ export class MissionService {
 
   private calculateSquadPower(): number {
     const shurikens = this.workshop.availableShurikens();
-    if (shurikens.length === 0) return 100; // Base power
+    if (shurikens.length === 0) return 100;
 
     return shurikens.reduce((acc, s) => {
       const proc = s.processor?.routineCapacity || 1;
-      const blade = s.blade?.damage || 5;
+      const blade = s.blade?.baseDamage || 5;
       const sens = s.sensor?.range || 5;
       return acc + (proc * 50) + (blade * 10) + (sens * 5);
     }, 0) / shurikens.length;
@@ -75,26 +74,24 @@ export class MissionService {
     const squadPower = this.calculateSquadPower();
     const target = TARGETS[Math.floor(Math.random() * TARGETS.length)];
     const desc = DESCRIPTIONS[Math.floor(Math.random() * DESCRIPTIONS.length)];
-    const res = RESISTANCES[Math.floor(Math.random() * RESISTANCES.length)];
+    const resProfile = RESISTANCES[Math.floor(Math.random() * RESISTANCES.length)];
     
-    // Generate difficulty based on index to ensure variety
     let diffStr: MissionDifficulty;
     let durSecs: number;
     let pMin, pMax, sMin, sMax, cBonus;
 
-    // Scaling factors based on index (difficulty tier)
     const tierMultiplier = [0.7, 1.2, 2.5][index];
     const baseLoot = squadPower * tierMultiplier;
 
     if (index === 0) {
       diffStr = 'Tier I (Low)';
-      durSecs = 45; 
+      durSecs = 60; 
     } else if (index === 1) {
       diffStr = 'Tier II (Moderate)';
-      durSecs = 90; 
+      durSecs = 120; 
     } else {
       diffStr = 'Tier III (High)';
-      durSecs = 180; 
+      durSecs = 240; 
     }
 
     pMin = Math.floor(baseLoot * 0.5);
@@ -103,20 +100,30 @@ export class MissionService {
     sMax = Math.floor(baseLoot * 1.2);
     cBonus = Math.floor(baseLoot * 2);
 
+    const hull = Math.floor(baseLoot * 1.5);
+    const shields = resProfile.type === 'ENERGY_SHIELD' ? Math.floor(baseLoot * 1.2) : Math.floor(baseLoot * 0.2);
+    const armorValue = resProfile.type === 'HEAVY_ARMOR' ? Math.floor(baseLoot * 0.15) : 0;
+    const enemyEvasionRate = resProfile.type === 'UNARMORED' ? 0.25 : 0.05;
+
     return {
       id: `mission-${Date.now()}-${index}`,
       targetName: target,
       description: desc,
       difficulty: diffStr,
       durationSeconds: durSecs,
-      expectedResistance: res,
+      expectedResistance: resProfile.label,
       potentialLoot: {
         polymerMin: pMin,
         polymerMax: pMax,
         scrapMin: sMin,
         scrapMax: sMax,
         creditsBonus: cBonus
-      }
+      },
+      hull,
+      shields,
+      armorValue,
+      armorType: resProfile.type,
+      enemyEvasionRate
     };
   }
 }

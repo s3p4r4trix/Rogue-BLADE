@@ -272,7 +272,7 @@ export class HardwareWorkshop {
     return this.getUnlocked(this.inventory.energyCells).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getProcessorOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.processors).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.routineCapacity} | Lat: ${c.latencyModifier}ms)` }));
+    return this.getUnlocked(this.inventory.processors).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.routineCapacity} | Lat: ${c.latency}s)` }));
   }
   getSemiAIOptions(): CyberOption[] {
     return this.getUnlocked(this.inventory.semiAIs).map((c: any) => ({ value: c.id, label: c.name }));

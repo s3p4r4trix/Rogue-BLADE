@@ -5,35 +5,40 @@ import { moveItemInArray } from '@angular/cdk/drag-drop';
 
 export const HARDWARE_INVENTORY = {
   engines: [
-    { id: 'eng-drifter', name: 'Kuro-Tech "Drifter" Mag-Lev', description: 'Cheap, reliable, mass-produced.', speed: 10, stealth: 5, energyConsumption: 2, evasionRate: 5 } as AntiGravEngine,
-    { id: 'eng-hauler', name: 'Atlas "Hauler" Grav-Drive', description: 'Slow but heavy lifting.', speed: 5, stealth: 2, energyConsumption: 5, evasionRate: 1 } as AntiGravEngine
+    { id: 'eng-drifter', name: 'Drifter (Basic)', description: 'Standard industrial mag-lev.', topSpeed: 50, acceleration: 10, evasionRate: 0.05, energyDrain: 5, stealthValue: 10 } as AntiGravEngine,
+    { id: 'eng-hauler', name: 'Hauler (Tank)', description: 'Slow but high weight capacity.', topSpeed: 30, acceleration: 5, evasionRate: 0.0, energyDrain: 8, stealthValue: 0 } as AntiGravEngine,
+    { id: 'eng-screamer', name: 'Screamer (Speed)', description: 'High-performance racing engine.', topSpeed: 120, acceleration: 30, evasionRate: 0.15, energyDrain: 15, stealthValue: -20 } as AntiGravEngine,
+    { id: 'eng-ghost', name: 'Ghost (Stealth)', description: 'Silenced baffles and low profile.', topSpeed: 60, acceleration: 15, evasionRate: 0.10, energyDrain: 8, stealthValue: 50 } as AntiGravEngine
   ],
   energyCells: [
-    { id: 'cell-scrap', name: 'Scrap-Built Dynamo Cell', description: 'Barely holds a charge.', maxEnergy: 50, regenRate: 1, maxOutput: 10 } as EnergyCell,
-    { id: 'cell-longhaul', name: 'Voltaic "Long-Haul" Battery', description: 'Huge pool, slow recharge.', maxEnergy: 200, regenRate: 0.5, maxOutput: 15 } as EnergyCell
+    { id: 'cell-scrap', name: 'Scrap Dynamo', description: 'Recovered from a junked hover-car.', maxEnergy: 100, energyRegen: 2, maxOutput: 10 } as EnergyCell,
+    { id: 'cell-voltiac', name: 'Voltiac Cell', description: 'Standard corporate power supply.', maxEnergy: 300, energyRegen: 5, maxOutput: 30 } as EnergyCell
   ],
   sensors: [
-    { id: 'sens-vital', name: 'Vital-Scan "Pulse" Biosensor', description: 'Tracks heartbeats.', range: 10, unlocksTriggerIds: [] } as Sensor,
-    { id: 'sens-spectra', name: 'Spectra EM-Scanner', description: 'Highlights shields.', range: 15, unlocksTriggerIds: ['Enemy has shield'] } as Sensor
+    { id: 'sens-prox', name: 'Proximity Sensor', description: 'Standard short-range detection.', range: 5, accuracy: 0.8, unlocksTriggerIds: ['ifEnemyInMeleeRange'] } as Sensor,
+    { id: 'sens-lidar', name: 'Lidar Array', description: 'High-precision laser tracking.', range: 20, accuracy: 0.95, unlocksTriggerIds: ['ifEnemyInSight', 'ifIncomingProjectile'] } as Sensor,
+    { id: 'sens-em', name: 'EM-Scanner', description: 'Detects active energy fields.', range: 15, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyIsShielded'] } as Sensor,
+    { id: 'sens-bio', name: 'Biosensor', description: 'Biological signature detection.', range: 15, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyIsOrganic'] } as Sensor
   ],
   blades: [
-    { id: 'blade-carbon', name: 'Carbon "Razor" Edge', description: 'Standard sharpened rim.', damageType: 'kinetic', damage: 10, unlocksActionIds: ['act-kinetic-ram', 'act-evasive-dash', 'act-defensive-parry'] } as Blade,
-    { id: 'blade-plasma', name: 'Z-1 "Sun-Cutter" Plasma Blade', description: 'Cuts through shields like butter.', damageType: 'plasma', damage: 25, unlocksActionIds: ['act-kinetic-ram', 'act-plasma-edge'] } as Blade,
-    { id: 'blade-breaker', name: 'Titan "Breaker" Profile', description: 'Crushes armor.', damageType: 'kinetic', damage: 25 } as Blade
+    { id: 'blade-carbon', name: 'Carbon Razor', description: 'Lightweight and surgical.', damageType: 'SLASHING', baseDamage: 20, critChance: 0.10, critMultiplier: 1.5, energyDrain: 0, unlocksActionIds: ['actionStandardStrike'] } as Blade,
+    { id: 'blade-titan', name: 'Titan Breaker', description: 'Heavy slab of tungsten.', damageType: 'KINETIC', baseDamage: 40, critChance: 0.05, critMultiplier: 2.0, energyDrain: 0, unlocksActionIds: ['actionKineticRam'] } as Blade,
+    { id: 'blade-plasma', name: 'Plasma Edge', description: 'Superheated energy field.', damageType: 'ENERGY', baseDamage: 35, critChance: 0.15, critMultiplier: 1.5, energyDrain: 25, unlocksActionIds: ['actionStandardStrike'] } as Blade
   ],
   formDesigns: [
-    { id: 'form-striker', name: 'Mk1 "Striker" Disc', description: 'Classic shuriken shape.', shape: 'disc', primaryDamageType: 'cutting' } as FormDesign,
-    { id: 'form-viper', name: 'Aero "Viper" Dagger', description: 'Sleek dart-like chassis.', shape: 'dagger', primaryDamageType: 'piercing' } as FormDesign
+    { id: 'form-striker', name: 'Striker Disc', description: 'Balanced geometry.', shape: 'disc', speedMult: 1.0, weightMult: 1.0, damageMult: 1.0 } as FormDesign,
+    { id: 'form-viper', name: 'Viper Dagger', description: 'Aerodynamic needle.', shape: 'dagger', speedMult: 1.2, weightMult: 0.8, damageMult: 0.9, critChanceMult: 1.5 } as FormDesign,
+    { id: 'form-juggernaut', name: 'Juggernaut Sphere', description: 'Reinforced ball.', shape: 'sphere', speedMult: 0.7, weightMult: 1.5, damageMult: 1.1, armorMult: 1.2 } as FormDesign
   ],
   hulls: [
-    { id: 'hull-sinter', name: 'Sinter-Scrap', description: 'Tier I Human Scrap.', tier: 1, hp: 50, armor: 2, weight: 5 } as HullMaterial,
-    { id: 'hull-durasteel', name: 'Durasteel', description: 'Tier II Pre-War Military.', tier: 2, hp: 150, armor: 10, weight: 15 } as HullMaterial
+    { id: 'hull-plasteel', name: 'Plasteel (Tier I)', description: 'Lightweight composite.', tier: 1, maxHp: 100, armorValue: 5, shieldCapacity: 0, weight: 20 } as HullMaterial,
+    { id: 'hull-durasteel', name: 'Durasteel (Tier II)', description: 'Military-grade alloy.', tier: 2, maxHp: 300, armorValue: 25, shieldCapacity: 100, weight: 60 } as HullMaterial,
+    { id: 'hull-neutronium', name: 'Neutronium (Tier III)', description: 'Densely packed matter.', tier: 3, maxHp: 1500, armorValue: 150, shieldCapacity: 500, weight: 300 } as HullMaterial
   ],
   processors: [
-    { id: 'proc-abacus', name: 'Scrap-Town "Abacus" Micro-Board', description: 'Barely holds two logic slots together.', routineCapacity: 2, latencyModifier: 50 } as Processor,
-    { id: 'proc-cortex', name: 'Kuro-Tech "Cortex" CPU', description: 'Reliable 3-slot logic board.', routineCapacity: 3, latencyModifier: 0 } as Processor,
-    { id: 'proc-overthinker', name: 'Dynacorp "Overthinker" Logic-Core', description: 'Unlocks advanced branching slots.', routineCapacity: 5, latencyModifier: -40 } as Processor,
-    { id: 'proc-omni', name: 'Zenith "Omni-Node" Quantum Core', description: 'Processes variables instantaneously.', routineCapacity: 8, latencyModifier: -150 } as Processor
+    { id: 'proc-abacus', name: 'Abacus Chip', description: 'Legacy clock-cycle board.', routineCapacity: 2, latency: 0.5 } as Processor,
+    { id: 'proc-cortex', name: 'Cortex CPU', description: 'Standard neural processor.', routineCapacity: 3, latency: 0.2 } as Processor,
+    { id: 'proc-omni', name: 'Omni-Node Core', description: 'Quantum logic core.', routineCapacity: 5, latency: 0.05 } as Processor
   ],
   semiAIs: [
     { id: 'semi-feral', name: 'Scrap-Code "Feral" Instinct-Chip', description: 'Highly aggressive pathing.', iffAccuracy: 70, behaviorBuff: 'aggressive' } as SemiAI,
@@ -57,21 +62,13 @@ const DEFAULT_SHURIKEN: Omit<Shuriken, 'id' | 'name'> = {
 
 function loadShurikens(): Shuriken[] {
   const defaults = [
-    { ...DEFAULT_SHURIKEN, id: 'shuriken-01', name: 'Shuriken #01 (Scrap)', creationDate: Date.now() },
-    { ...DEFAULT_SHURIKEN, id: 'shuriken-02', name: 'Shuriken #02 (Scrap)', creationDate: Date.now() }
+    { ...DEFAULT_SHURIKEN, id: 'shuriken-01', name: 'Rogue_Unit_01', creationDate: Date.now() },
+    { ...DEFAULT_SHURIKEN, id: 'shuriken-02', name: 'Rogue_Unit_02', creationDate: Date.now() }
   ];
   const saved = localStorage.getItem('rogueBlade_shurikens');
   if (saved) {
     try { 
-      let parsed = JSON.parse(saved);
-      if (parsed && parsed.length > 0 && parsed[0].semiAI !== undefined) {
-        parsed = parsed.map((s: any) => ({
-          ...s,
-          stats: s.stats || { enemiesKilled: 0, timeRepairing: 0, lostHealth: 0, timeOnline: 0 },
-          creationDate: s.creationDate || Date.now()
-        }));
-        return parsed;
-      }
+      return JSON.parse(saved);
     } catch (e) {}
   }
   return defaults;
@@ -83,178 +80,61 @@ function loadUnlockedComponents(): string[] {
     try { return JSON.parse(saved); } catch (e) {}
   }
   return [
-    'eng-drifter', 'cell-scrap', 'sens-vital', 'blade-carbon', 'form-striker', 'hull-sinter', 'proc-abacus', 'semi-feral'
+    'eng-drifter', 'cell-scrap', 'sens-prox', 'blade-carbon', 'form-striker', 'hull-plasteel', 'proc-abacus', 'semi-feral'
   ];
 }
 
 function loadSavedRoutinesMap(): Record<string, GambitRoutine[]> {
   const saved = localStorage.getItem('rogueBlade_routinesMap');
   if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (e) {
-      console.error('Failed to parse saved routines', e);
-    }
+    try { return JSON.parse(saved); } catch (e) {}
   }
   return {
-    'shuriken-01': [
-      { priority: 1, trigger: null, action: null },
-      { priority: 2, trigger: null, action: null }
-    ],
-    'shuriken-02': [
-      { priority: 1, trigger: null, action: null }
-    ]
+    'shuriken-01': [{ priority: 1, trigger: null, action: null }],
+    'shuriken-02': [{ priority: 1, trigger: null, action: null }]
   };
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class WorkshopService {
   readonly availableTriggers = signal<Trigger[]>([
-    { 
-      id: 'trig-enemy-5m',
-      type: 'trigger', 
-      value: 'Enemy in range', 
-      name: '[+] Enemy in range',
-      description: 'Standard proximity sensor trigger. Activates when a hostile target enters the immediate combat envelope.',
-      lore: 'Kuro-Tech pulse sensors are reliable, if a bit noisy. Guaranteed to detect anything with a heat signature.'
-    },
-    { 
-      id: 'trig-enemy-shield',
-      type: 'trigger', 
-      value: 'Enemy has shield', 
-      name: '[+] Enemy has shield',
-      description: 'Analyzes energy signatures to detect active EM shielding on the target.',
-      lore: 'In the corporate wars, shields were everything. This routine was written in the trenches of Neo-Tokyo.'
-    },
-    { 
-      id: 'trig-low-hp',
-      type: 'trigger', 
-      value: 'Self HP < 20%', 
-      name: '[+] Self HP < 20%',
-      description: 'Internal diagnostic trigger. Activates when structural integrity falls below critical levels.',
-      lore: 'Panic mode for machines. When the hull screams, the AI listens.'
-    },
-    { 
-      id: 'trig-behind-cover',
-      type: 'trigger', 
-      value: 'Enemy behind cover', 
-      name: '[!] Enemy behind cover', 
-      disabled: true, 
-      requiredSensor: 'Terahertz Sensor',
-      description: 'Advanced occlusion analysis. Detects targets hiding behind physical obstacles.',
-      lore: 'Hiding only works if they can\'t see your heartbeat through the wall.'
-    }
+    { id: 'ifEnemyInMeleeRange', type: 'trigger', value: 'Enemy in melee range', name: '[!] ifEnemyInMeleeRange', description: 'Target is within strike radius.' },
+    { id: 'ifEnemyInSight', type: 'trigger', value: 'Enemy in sight', name: '[!] ifEnemyInSight', description: 'Target detected by radar/lidar.', requiredSensor: 'Lidar Array' },
+    { id: 'ifEnemyIsShielded', type: 'trigger', value: 'Enemy has active shield', name: '[!] ifEnemyIsShielded', description: 'Target is protected by EM field.', requiredSensor: 'EM-Scanner' },
+    { id: 'ifEnemyIsOrganic', type: 'trigger', value: 'Enemy is organic', name: '[!] ifEnemyIsOrganic', description: 'Target is flesh/light armored.', requiredSensor: 'Biosensor' },
+    { id: 'ifSelfHpCritical', type: 'trigger', value: 'Hull integrity < 20%', name: '[!] ifSelfHpCritical', description: 'Critical internal damage detected.' },
+    { id: 'ifEnergyHigh', type: 'trigger', value: 'Energy pool > 80%', name: '[!] ifEnergyHigh', description: 'System capacity ready for high-drain actions.' },
+    { id: 'ifIncomingProjectile', type: 'trigger', value: 'Incoming projectile detected', name: '[!] ifIncomingProjectile', description: 'Hostile fire on collision course.', requiredSensor: 'Lidar Array' }
   ]);
 
   readonly availableActions = signal<Action[]>([
-    { 
-      id: 'act-kinetic-ram',
-      type: 'action', 
-      value: 'Kinetic Ram (Forward)', 
-      name: '[>] Kinetic Ram (Forward)', 
-      baseLatency: 50,
-      description: 'A high-speed physical collision. Deals significant damage but risks self-harm.',
-      lore: 'The simplest solution is often the most violent one.'
-    },
-    { 
-      id: 'act-evasive-dash',
-      type: 'action', 
-      value: 'Evasive Dash (Left/Right)', 
-      name: '[>] Evasive Dash (Left/Right)', 
-      baseLatency: 20,
-      description: 'Quick lateral movement to avoid incoming fire or collisions.',
-      lore: 'The best way to win a fight is to not be where the bullet is.'
-    },
-    { 
-      id: 'act-defensive-parry',
-      type: 'action', 
-      value: 'Defensive Formation (Parry)', 
-      name: '[>] Defensive Formation (Parry)', 
-      baseLatency: 20,
-      description: 'Angled hull positioning to deflect incoming kinetic projectiles.',
-      lore: 'Armor is just physics waiting for an angle.'
-    },
-    { 
-      id: 'act-plasma-edge',
-      type: 'action', 
-      value: 'Charge Plasma Edge', 
-      name: '[>] Charge Plasma Edge', 
-      baseLatency: 300,
-      description: 'Heats the blade edges to extreme temperatures. Destroys shields instantly.',
-      lore: 'Zenith tech at its finest. It cuts through durasteel like a hot knife through butter.'
-    }
+    { id: 'actionStandardStrike', type: 'action', value: 'Standard Strike', name: '[>] actionStandardStrike', energyCost: 0, description: 'Basic attack maneuver.' },
+    { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: '[>] actionKineticRam', energyCost: 15, description: 'High-speed physical collision.' },
+    { id: 'actionEvasiveManeuver', type: 'action', value: 'Evasive Maneuver', name: '[>] actionEvasiveManeuver', energyCost: 20, description: 'Briefly maximize evasion.' },
+    { id: 'actionActivateCloak', type: 'action', value: 'Activate Cloak', name: '[>] actionActivateCloak', energyCost: 10, description: 'Consume energy to disappear.' },
+    { id: 'actionRetreat', type: 'action', value: 'Emergency Retreat', name: '[>] actionRetreat', energyCost: 0, description: 'Withdraw to safety zones.' }
   ]);
 
   readonly availableShurikens = signal<Shuriken[]>(loadShurikens());
   readonly unlockedComponentIds = signal<string[]>(loadUnlockedComponents());
   readonly activeShurikenId = signal<string>(localStorage.getItem('rogueBlade_activeShuriken') || 'shuriken-01');
-
   readonly routinesMap = signal<Record<string, GambitRoutine[]>>(loadSavedRoutinesMap());
-  
-  readonly routines = computed(() => {
-    return this.routinesMap()[this.activeShurikenId()] || [];
-  });
+  readonly systemLogs = signal<string[]>(['> System ready.', '> Waiting for input...']);
+  readonly selectedInfoItem = signal<Trigger | Action | null>(null);
 
-  readonly activeShuriken = computed(() => {
-     return this.availableShurikens().find(s => s.id === this.activeShurikenId()) || this.availableShurikens()[0];
-  });
+  readonly routines = computed(() => this.routinesMap()[this.activeShurikenId()] || []);
+  readonly activeShuriken = computed(() => this.availableShurikens().find(s => s.id === this.activeShurikenId()) || this.availableShurikens()[0]);
 
-  // Filtered triggers based on active sensors
   readonly unlockedTriggers = computed(() => {
     const shuriken = this.activeShuriken();
-    if (!shuriken) return [];
-    
-    const unlockedIds = new Set<string>();
-    // Core triggers always available to all shurikens
-    unlockedIds.add('trig-enemy-5m');
-    unlockedIds.add('trig-low-hp');
-    
-    // Check sensors
-    if (shuriken.sensor?.unlocksTriggerIds) {
-      shuriken.sensor.unlocksTriggerIds.forEach(id => unlockedIds.add(id));
-    }
-    
-    return this.availableTriggers().filter(t => unlockedIds.has(t.id) || (shuriken.sensor?.unlocksTriggerIds?.includes(t.value)));
+    return this.availableTriggers().filter(t => !t.requiredSensor || shuriken.sensor?.name === t.requiredSensor);
   });
 
-  // Filtered actions based on active blade
-  readonly unlockedActions = computed(() => {
-    const shuriken = this.activeShuriken();
-    if (!shuriken) return [];
-    
-    const unlockedIds = new Set<string>();
-    // Core actions always available if any blade is equipped
-    unlockedIds.add('act-kinetic-ram');
-    unlockedIds.add('act-evasive-dash');
-    unlockedIds.add('act-defensive-parry');
-    
-    if (shuriken.blade?.unlocksActionIds) {
-      shuriken.blade.unlocksActionIds.forEach(id => unlockedIds.add(id));
-    }
-    
-    return this.availableActions().filter(a => unlockedIds.has(a.id));
-  });
-
-  isRoutineValid(routine: GambitRoutine): boolean {
-    if (!routine.trigger || !routine.action) return true; // Incomplete routines are "valid" but non-functional
-    
-    const isTriggerUnlocked = this.unlockedTriggers().some(t => t.id === routine.trigger?.id);
-    const isActionUnlocked = this.unlockedActions().some(a => a.id === routine.action?.id);
-    
-    return isTriggerUnlocked && isActionUnlocked;
-  }
+  readonly unlockedActions = computed(() => this.availableActions());
 
   readonly isSystemValid = computed(() => {
     return this.routines().every(r => this.isRoutineValid(r));
   });
-
-  readonly fallbackAction = signal<string>('Circle around character');
-  readonly systemLogs = signal<string[]>(['> System ready.', '> Waiting for input...']);
-  
-  // Tracking the currently selected component for the info panel
-  readonly selectedInfoItem = signal<Trigger | Action | null>(null);
 
   constructor() {
     effect(() => {
@@ -265,6 +145,13 @@ export class WorkshopService {
     });
   }
 
+  isRoutineValid(routine: GambitRoutine): boolean {
+    if (!routine.trigger || !routine.action) return true;
+    return this.unlockedTriggers().some(t => t.id === routine.trigger?.id) && this.unlockedActions().some(a => a.id === routine.action?.id);
+  }
+
+  setActiveShuriken(id: string) { this.activeShurikenId.set(id); }
+
   renameShuriken(id: string, newName: string) {
     this.availableShurikens.update(list => list.map(s => s.id === id ? { ...s, name: newName } : s));
   }
@@ -273,64 +160,32 @@ export class WorkshopService {
     this.availableShurikens.update(list => list.map(s => s.id === shurikenId ? { ...s, [slot]: component } : s));
   }
 
-  log(message: string, isError: boolean = false) {
-    const cssClass = isError ? 'text-red-500' : 'text-green-500';
-    this.systemLogs.update(logs => [...logs, `<span class="${cssClass}">> ${message}</span>`]);
-  }
-
-  setActiveShuriken(id: string) {
-    this.activeShurikenId.set(id);
-    this.log(`Switched to ${this.activeShuriken().name}`);
-  }
-
-  private updateActiveRoutines(updater: (routines: GambitRoutine[]) => GambitRoutine[]) {
-    this.routinesMap.update(map => {
-       const activeId = this.activeShurikenId();
-       const current = map[activeId] || [];
-       return { ...map, [activeId]: updater(current) };
-    });
-  }
-
   addRoutine() {
-    const active = this.activeShuriken();
-    const cap = active.processor?.routineCapacity || 2;
+    const cap = this.activeShuriken().processor?.routineCapacity || 2;
     if (this.routines().length >= cap) return;
-
-    this.updateActiveRoutines(routines => {
-      return [...routines, { priority: routines.length + 1, trigger: null, action: null }];
-    });
-    this.log(`Allocated new routine slot.`);
+    this.updateActiveRoutines(routines => [...routines, { priority: routines.length + 1, trigger: null, action: null }]);
   }
 
   removeRoutine(index: number) {
-    this.updateActiveRoutines(routines => {
-      const updated = routines.filter((_, i) => i !== index);
-      return updated.map((r, i) => ({ ...r, priority: i + 1 }));
-    });
-    this.log(`Deallocated routine slot.`);
-  }
-
-  reorderRoutines(previousIndex: number, currentIndex: number) {
-    this.updateActiveRoutines(routines => {
-      const updated = [...routines];
-      moveItemInArray(updated, previousIndex, currentIndex);
-      return updated.map((r, i) => ({ ...r, priority: i + 1 }));
-    });
-    this.log(`Routines reprioritized.`);
+    this.updateActiveRoutines(routines => routines.filter((_, i) => i !== index).map((r, i) => ({ ...r, priority: i + 1 })));
   }
 
   moveRoutineUp(index: number) {
     if (index <= 0) return;
-    this.reorderRoutines(index, index - 1);
+    this.updateActiveRoutines(routines => {
+      const updated = [...routines];
+      moveItemInArray(updated, index, index - 1);
+      return updated.map((r, i) => ({ ...r, priority: i + 1 }));
+    });
   }
 
   moveRoutineDown(index: number) {
     if (index >= this.routines().length - 1) return;
-    this.reorderRoutines(index, index + 1);
-  }
-
-  setInfoItem(item: Trigger | Action | null) {
-    this.selectedInfoItem.set(item);
+    this.updateActiveRoutines(routines => {
+      const updated = [...routines];
+      moveItemInArray(updated, index, index + 1);
+      return updated.map((r, i) => ({ ...r, priority: i + 1 }));
+    });
   }
 
   setTrigger(index: number, trigger: Trigger) {
@@ -339,7 +194,6 @@ export class WorkshopService {
       if (updated[index]) updated[index] = { ...updated[index], trigger };
       return updated;
     });
-    this.log(`Set TRIGGER: [${trigger.value}]`);
   }
 
   setAction(index: number, action: Action) {
@@ -348,7 +202,6 @@ export class WorkshopService {
       if (updated[index]) updated[index] = { ...updated[index], action };
       return updated;
     });
-    this.log(`Set ACTION: [${action.value}]`);
   }
 
   clearSlot(index: number) {
@@ -357,36 +210,17 @@ export class WorkshopService {
       if (updated[index]) updated[index] = { ...updated[index], trigger: null, action: null };
       return updated;
     });
-    this.log('Slot reset.');
   }
+
+  setInfoItem(item: any) { this.selectedInfoItem.set(item); }
+
+  private updateActiveRoutines(updater: (routines: GambitRoutine[]) => GambitRoutine[]) {
+    this.routinesMap.update(map => ({ ...map, [this.activeShurikenId()]: updater(map[this.activeShurikenId()] || []) }));
+  }
+
+  fallbackAction() { return 'actionStandardStrike'; }
 
   compileCode() {
-    this.log('==============================');
-    this.log('Starting compilation...');
-
-    let routinesFound = 0;
-    let hasError = false;
-
-    for (const routine of this.routines()) {
-      if (routine.trigger && routine.action) {
-        routinesFound++;
-        this.log(`Routine Prio ${routine.priority}: IF [${routine.trigger.value}] THEN [${routine.action.value}] - OK`);
-      } else if (routine.trigger || routine.action) {
-        this.log(`ERROR in Prio ${routine.priority}: Routine incomplete!`, true);
-        hasError = true;
-      }
-    }
-
-    if (!hasError) {
-      if (routinesFound > 0) {
-        setTimeout(() => {
-          this.log(`Upload of ${routinesFound} routines to ${this.activeShuriken().name} successful.`);
-          this.log('Shuriken is ready for deployment.');
-        }, 800);
-      } else {
-        this.log('ERROR: No valid routines found.', true);
-      }
-    }
+    this.systemLogs.update(logs => [...logs, '> Compiling routines...', '> Upload successful.']);
   }
 }
-

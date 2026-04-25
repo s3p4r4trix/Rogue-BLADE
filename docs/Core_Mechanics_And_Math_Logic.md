@@ -22,7 +22,7 @@ When a Shuriken is fully assembled, its components calculate these final attribu
 * **`maxEnergy`** (Integer): Maximum energy pool.
 * **`energyRegen`** (Integer): Energy recovered per second.
 * **`energyDrain`** (Integer): Passive energy consumed per second while flying/attacking.
-* **`maxGambitSlots`** (Integer): Total IF/THEN routines available.
+* **`routineCapacity`** (Integer): Total IF/THEN routines available.
 * **`latency`** (Float): Milliseconds of delay between a Trigger (IF) happening and the Action (THEN) executing. Lower is better.
 
 ### Offensive

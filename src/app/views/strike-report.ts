@@ -10,6 +10,9 @@ interface ShurikenStatus {
   id: string;
   name: string;
   hp: number;
+  maxHp: number;
+  shields: number;
+  maxShields: number;
 }
 
 @Component({
@@ -65,17 +68,27 @@ interface ShurikenStatus {
            <!-- Squad Monitor -->
            <div class="flex-1 border border-green-900/30 p-4 bg-green-950/5 overflow-y-auto">
               <h3 class="text-[10px] uppercase font-bold text-green-800 mb-4 tracking-[0.2em]">// SQUAD_MONITOR</h3>
-              <div class="space-y-4">
+              <div class="space-y-6">
                  @for (s of squadStatuses(); track s.id) {
-                   <div class="space-y-1">
+                   <div class="space-y-2">
                       <div class="flex justify-between items-center">
                         <span class="text-[10px] font-bold" [ngClass]="s.hp > 0 ? 'text-green-500' : 'text-red-900'">{{ s.name }}</span>
-                        <span class="text-[9px] font-mono">{{ s.hp }} HP</span>
+                        <span class="text-[9px] font-mono text-gray-500">{{ Math.ceil(s.hp) }} / {{ s.maxHp }} HP</span>
                       </div>
-                      <div class="w-full h-1.5 bg-green-900/20 border border-green-900/30">
+                      
+                      <!-- Shield Bar -->
+                      @if (s.maxShields > 0) {
+                        <div class="w-full h-1 bg-cyan-900/20 relative">
+                           <div class="h-full bg-cyan-400 shadow-[0_0_5px_#22d3ee] transition-all duration-500" 
+                                [style.width.%]="(s.shields / s.maxShields) * 100"></div>
+                        </div>
+                      }
+
+                      <!-- Hull Bar -->
+                      <div class="w-full h-2 bg-green-900/20 border border-green-900/30">
                         <div class="h-full transition-all duration-1000 shadow-[0_0_5px_#22c55e]" 
-                             [ngClass]="s.hp > 50 ? 'bg-green-500' : (s.hp > 20 ? 'bg-yellow-500' : 'bg-red-600')"
-                             [style.width.%]="s.hp"></div>
+                             [ngClass]="s.hp > (s.maxHp * 0.5) ? 'bg-green-500' : (s.hp > (s.maxHp * 0.2) ? 'bg-yellow-500' : 'bg-red-600')"
+                             [style.width.%]="(s.hp / s.maxHp) * 100"></div>
                       </div>
                    </div>
                  }
@@ -151,6 +164,8 @@ export class StrikeReport implements OnInit, OnDestroy {
   enemyIntegrity = signal(100);
   timeRemaining = signal(0);
 
+  Math = Math;
+
   // Counters for the UI
   currentPolymer = signal(0);
   currentScrap = signal(0);
@@ -164,8 +179,15 @@ export class StrikeReport implements OnInit, OnDestroy {
       return;
     }
     this.timeRemaining.set(this.mission()!.durationSeconds);
-    // Initialize squad status bars
-    this.squadStatuses.set(this.shurikens().map(s => ({ id: s.id, name: s.name, hp: 100 })));
+    // Initialize squad status bars with shields
+    this.squadStatuses.set(this.shurikens().map(s => ({ 
+      id: s.id, 
+      name: s.name, 
+      hp: s.hull?.maxHp || 100, 
+      maxHp: s.hull?.maxHp || 100,
+      shields: s.hull?.shieldCapacity || 0,
+      maxShields: s.hull?.shieldCapacity || 0
+    })));
     this.startSimulation();
   }
 
@@ -192,26 +214,36 @@ export class StrikeReport implements OnInit, OnDestroy {
   }
 
   private processLogEvent(log: string) {
-    // 1. Enemy HP Parsing
-    const enemyMatch = log.match(/Hostile .* \[REMAINING: (\d+)\]/);
+    // 1. Enemy HP Parsing (Total HP is hull + shields)
+    const enemyMatch = log.match(/\[REM: (\d+)\]/);
     if (enemyMatch && this.result()) {
       const remaining = parseInt(enemyMatch[1]);
       const percentage = (remaining / this.result()!.initialEnemyHP) * 100;
       this.enemyIntegrity.set(percentage);
     }
 
-    // 2. Shuriken HP Parsing: "Counter-Strike -> ShurikenName (-10 HP) [REMAINING: 45]"
-    const shurikenMatch = log.match(/Counter-Strike -> (.*) \(-(\d+) HP\) \[REMAINING: (\d+)\]/);
-    if (shurikenMatch) {
-       const name = shurikenMatch[1];
-       const remaining = parseInt(shurikenMatch[3]);
+    // 2. Shuriken Shield Parsing: "Beam-Pulse -> ShurikenName (Shields: -10)"
+    const shieldMatch = log.match(/Beam-Pulse -> (.*) \(Shields: -(\d+)\)/);
+    if (shieldMatch) {
+       const name = shieldMatch[1];
+       const dmg = parseInt(shieldMatch[2]);
+       this.squadStatuses.update(statuses => statuses.map(s => 
+         s.name === name ? { ...s, shields: Math.max(0, s.shields - dmg) } : s
+       ));
+    }
+
+    // 3. Shuriken Hull Parsing: "Impact -> ShurikenName (Hull: -10) [REM: 45 HP]"
+    const hullMatch = log.match(/Impact -> (.*) \(Hull: -(\d+)\) \[REM: (\d+) HP\]/);
+    if (hullMatch) {
+       const name = hullMatch[1];
+       const remaining = parseInt(hullMatch[3]);
        this.squadStatuses.update(statuses => statuses.map(s => 
          s.name === name ? { ...s, hp: remaining } : s
        ));
     }
 
     if (log.includes('CRITICAL')) {
-      this.squadStatuses.update(statuses => statuses.map(s => ({ ...s, hp: 0 })));
+      this.squadStatuses.update(statuses => statuses.map(s => ({ ...s, hp: 0, shields: 0 })));
     }
   }
 
@@ -231,10 +263,12 @@ export class StrikeReport implements OnInit, OnDestroy {
   }
 
   getLogClass(log: string): string {
-    if (log.includes('CRITICAL') || log.includes('FAILURE')) return 'text-red-500 font-bold';
-    if (log.includes('SUCCESS') || log.includes('NEUTRALIZED')) return 'text-green-400 font-bold';
+    if (log.includes('[CRITICAL]') || log.includes('[FAILURE]')) return 'text-red-500 font-black italic';
+    if (log.includes('[SUCCESS]') || log.includes('[SYSTEM] TARGET NEUTRALIZED')) return 'text-green-400 font-bold';
+    if (log.includes('[OVERCLOCK]')) return 'text-yellow-400 font-black shadow-[0_0_10px_rgba(250,204,21,0.5)]';
     if (log.includes('HOSTILE_ENTITY')) return 'text-orange-500';
     if (log.includes('[SYSTEM]')) return 'text-cyan-500 opacity-80';
+    if (log.includes('[MISS]')) return 'text-gray-600 italic';
     return 'text-green-600';
   }
 
@@ -260,7 +294,7 @@ export class StrikeReport implements OnInit, OnDestroy {
         credits: res.totalCredits
       });
     }
-    this.missionService.refreshContracts(); // Refresh bounty board for new missions
+    this.missionService.refreshContracts();
     this.missionService.clearStrike();
     this.router.navigate(['/liberation']);
   }

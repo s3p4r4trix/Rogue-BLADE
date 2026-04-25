@@ -28,6 +28,7 @@ export interface Action {
   description?: string;
   lore?: string;
   baseLatency?: number; // Spool-up time in ms
+  energyCost?: number;
 }
 
 /**
