@@ -2,13 +2,12 @@ import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { WorkshopService, HARDWARE_INVENTORY } from '../services/workshop.service';
 import { CommonModule } from '@angular/common';
-import { HardwareComponent, Shuriken } from '../models/hardware.model';
-import { CyberSelect, CyberOption } from '../components/cyber-select';
+import { HardwareComponent, Shuriken, CyberOption } from '../models/hardware.model';
 
 @Component({
   selector: 'app-hardware-workshop',
   standalone: true,
-  imports: [CommonModule, RouterLink, CyberSelect],
+  imports: [CommonModule, RouterLink],
   template: `
     <div class="min-h-screen text-blue-300 p-4 md:p-8 font-mono relative">
       <header class="mb-6 flex justify-between items-end border-b-2 border-blue-800 pb-2">
@@ -398,7 +397,7 @@ export class HardwareWorkshop {
       .filter(s => s.semiAI && s.id !== this.activeShuriken().id)
       .map(s => ({ value: s.id, label: `${s.name} [MASTER]` }));
   }
-}
+
   setCoordMode(mode: 'SOLO' | 'MASTER' | 'SLAVE') {
     this.workshop.setCoordination(this.activeShuriken().id, mode);
   }
