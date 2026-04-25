@@ -64,5 +64,6 @@ We are currently building **Phase 1 (The Workshop / Routine - Modular system)**.
 * **ALWAYS add useful, comprehensive comments to quickly grasp the underlying concepts and their inner workings.**
 * **All text in the application MUST be in English.**
 * Whenever generating code, provide complete, runnable snippets.
-* **Game Design Consistency:** Always refer to and adhere to the overall game design and mechanics specified in `docs/game_design.md` when generating or modifying code.
+* **Game Design Consistency:** Always refer to and adhere to the overall game design and mechanics specified in `docs/game_design.md`. 
+* **Core Mechanics & Math Logic:** The file `docs/Core_Mechanics_And_Math_Logic.md` is the absolute source of truth for all mathematical calculations, stat distributions, and combat mechanics. Always refer to this file first for logic implementation. You MUST keep this file up to date whenever core mechanics are modified or added.
 * **UI/UX Smoothness:** The UI must feel smooth and responsive in handling. Ensure interactions, transitions, and layout shifts are visually polished and free of jank.

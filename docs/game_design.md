@@ -1,7 +1,8 @@
-# Game Design Document: Rogue:BLADE (Mobile / Auto-Battler)
+Game Design Document: Rogue:BLADE (Mobile / Auto-Battler)
 
 ## 1. Lore & Storyline (The Conflict)
 Earth has fallen. The **"Zenith Collective"** – a highly advanced, interstellar race – conquered the planet in a devastating blitzkrieg. Human mega-cities are now controlled by massive alien monoliths and drone swarms. The remnants of humanity have retreated into abandoned subway systems and underground bunkers.
+
 The player takes on the role of a brilliant cyber-engineer of the last human resistance. From a damp underground workshop in the beginning, you build, program, and reverse-engineer "Smart-Shurikens" – autonomous, silent blade-drones designed to strike the Zenith Collective from the shadows and liberate the mega-city, sector by sector.
 
 ## 2. Core Concept & Game Idea
@@ -15,25 +16,25 @@ The game is optimized for short "on-the-go" sessions. The loop is divided into t
     * **Hardware Tuning & Reverse-Engineering:** Customizing engines, materials, blades, cells, sensors, and chassis forms.
     * **Maintenance:** Choosing between passive (Nanites) or active (Polymer) repair.
     * **Workshop Management:** Progression through rescuing NPCs (Mechanics, Hackers) and unlocking the Genesis Chamber.
-
+    
 * **Phase 2: The Liberation Strike (Passive - Observe & Learn)**
     * **Path Selection:** Choosing a route through the occupied city (Patrols, Alien Depots, SOS-Signals, Bosses) similar to "Slay the Spire."
     * **Execution:** Shurikens act 100% autonomously based on Phase 1 programming.
     * **Learning Effect:** Players analyze failures against Zenith technology and adapt their routines for the next run.
 
-## 4. The Software System (Rogue-BLADE Logic System)
-The **Slot-based Rogue-BLADE Logic System** is the core mechanic for programming AI behavior. The system is designed to be simple enough for mobile play but complex enough to allow for strategic depth. Trigger can be research
+## 4. ARPG Loot System & Economy
+Hardware components function similarly to gear in Action RPGs (like Diablo). This creates an addictive "loot hunt" loop.
 
-* **Trigger (IF):** e.g., "Enemy in range," "Enemy has Energy Shield > 0%", "Self HP < 20%", "Enemy status: Marked", "Self status: Undetected." (Note: Many triggers require specific sensors).
+* **Drops & Rarities:** After successfully completing a strike or defeating elite enemies, players receive hardware drops categorized by rarity (e.g., Common, Uncommon, Rare, Epic, Legendary).
+* **Randomized Rolls:** Hardware components drop with randomized stat values within a specific range. Players will constantly hunt for "God Rolls" (e.g., finding two "Tier II Durasteel Hulls," but one rolled with +15% HP and +5 Armor, making it strictly better).
+* **Scrapping & Selling:** The inventory is limited. Unwanted or obsolete hardware parts can be sold to black-market NPCs for "Credits" or scrapped down into raw materials (Polymers/Alloys) to fuel the Genesis Chamber research.
+
+## 5. The Software System (Gambit UI)
+The **Slot-based Gambit System** is the core mechanic for programming AI behavior.
+* **Trigger (IF):** e.g., "Enemy in range," "Zenith Shield > 0," "Self HP < 20%," "Enemy status: Marked," "Self status: Undetected." (Note: Many triggers require specific sensors).
 * **Action (THEN):** e.g., "Parry," "Kinetic Ram," "Guard Character," "Mark Target," "Ambush Strike (Critical)."
 * **Priority:** The vertical order of slots determines the importance of actions.
-* **Synergies:** Players can assign roles. For example, a "Marker" shuriken applies debuffs, while a "Striker" shuriken attacks only marked targets. Shuriken with an advanced AI installed can delegate tasks to other simple shurikens in the swarm and change their priorities on the fly. Shuriken without an AI can only perform basic attacks and can be assigned specific attacks based on the type of enemy in range.
-
-## 5. Maintenance & Economy
-Shurikens take damage during runs but are automatically teleported back to the HQ before being permanently destroyed to avoid player frustration.
-* **Passive Repair (Nanites):** Restores durability slowly over real time.
-* **Active Repair (Polymer):** Costs scavenged "Credits" or "Polymer Solution" for instant 100% restoration.
-* **Scaling:** Players start with one rusty, scrap-built shuriken and gradually build a full resistance swarm.
+* **Synergies:** Players can assign roles. For example, a "Marker" shuriken applies debuffs, while a "Striker" shuriken attacks only marked targets.
 
 ## 6. Hardware System
 
@@ -45,42 +46,32 @@ Shurikens take damage during runs but are automatically teleported back to the H
 
 ### 6.2 Hull Materials (Lore-Integrated Tiered Progression)
 **Tier I: Remnants of Humanity (Weak & Common)**
-1.  **Sinter-Scrap:** Cheap, compressed junk. Fragile and brittle.
-2.  **Plasteel:** Lightweight polymer-metal mix. Good against basic projectiles.
-3.  **Poly-Titanium:** Titanium with carbon nanotubes. High strength-to-weight ratio.
+* **Sinter-Scrap:** Cheap, compressed junk. Fragile and brittle.
+* **Plasteel:** Lightweight polymer-metal mix. Good against basic projectiles.
+* **Poly-Titanium:** Titanium with carbon nanotubes. High strength-to-weight ratio.
 
 **Tier II: Pre-Invasion Military Tech (Solid & Rare)**
-4.  **Durasteel:** Old industrial standard. Heavy, heat-resistant, and extremely tough.
-5.  **Tritanium:** Crystalline alloy used in fallen starships. High density, resists plasma.
-6.  **Kinetic-Graphene (Reactive Metal):** Flexible until impact; hardens in microseconds upon hit.
+* **Durasteel:** Old industrial standard. Heavy, heat-resistant, and extremely tough.
+* **Tritanium:** Crystalline alloy used in fallen starships. High density, resists plasma.
+* **Kinetic-Graphene (Reactive Metal):** Flexible until impact; hardens in microseconds upon hit.
 
 **Tier III: Reverse-Engineered Zenith Tech (Exotic & God-Tier)**
-7.  **Null-Field Steel:** Extracted from alien drones. Absorbs/dissipates energy (Plasma/Lasers).
-8.  **Neutronium-Cast:** Extremely dense material from dead stars. Near-indestructible but requires elite engines to fly.
-9.  **Adamant-Quantum-Grid:** Atoms bound by quantum entanglement. Physically impossible to break or cut.
-10. **Singularity Matrix (Aetherium):** Exists partially out of phase. Attacks simply pass through or are diverted to a micro-dimension.
+* **Null-Field Steel:** Extracted from alien drones. Absorbs/dissipates energy (Plasma/Lasers).
+* **Neutronium-Cast:** Extremely dense material from dead stars. Near-indestructible but requires elite engines to fly.
+* **Adamant-Quantum-Grid:** Atoms bound by quantum entanglement. Physically impossible to break or cut.
+* **Singularity Matrix (Aetherium):** Exists partially out of phase. Attacks simply pass through or are diverted to a micro-dimension.
 
 ### 6.3 Energy Cells
 * **Capacity:** Total energy stored.
 * **Regeneration:** Charging speed during combat.
 * **Max Output:** Required for burst maneuvers or cloaking devices.
 
-### 6.4 Processor (Compute / Logic)
-* **Routine Capacity:** Determines the maximum number of available Gambit Slots.
-* **Latency Modifier:** Modifies the base processing time of routines (in milliseconds). Negative values speed up reactions, positive values add hesitation.
-
-#### Combat Simulation: The "Cycle Latency" Mechanic
-In the 2D auto-battler, a Shuriken doesn't just attack instantly; it has a calculation phase.
-* **Routine Cost (Thinking):** Every programmed Gambit slot adds a fixed base execution latency (e.g., +20ms). A complex 8-rule drone takes longer to "decide" its next move than a simple 1-rule drone.
-* **Action Cost (Doing):** Actions have their own spool-up latency (e.g., "Evasive Dash" takes 20ms, "Charge Plasma Edge" takes 300ms).
-* **The Processor:** The Processor chip applies its `Latency Modifier` to this total. A junk processor adds delays, causing the drone to pause vulnerably in combat. An elite quantum processor provides a massive negative modifier, allowing the drone to calculate complex routines instantly.
-
-### 6.5 Semi-AI (The Brain / Personality)
+### 6.4 Semi-AI (The Brain)
 * **IFF:** Identification Friend or Foe accuracy.
-* **Behavior Buff:** Passive behavioral modifiers (e.g., Aggressive vs. Defensive pathing).
+* **Reaction Bonus:** Reduces latency in "If-Then" routine execution.
 * **Swarm Communication:** Coordination (e.g., "If Shuriken A attacks, Shuriken B flanks").
 
-### 6.6 Sensors (Unlocking Triggers)
+### 6.5 Sensors (Unlocking Triggers)
 * **Biosensors:** Detect organic targets.
 * **EM-Sensors:** Detect energy fields, Zenith shields, and electronics.
 * **Radar:** Long-range monitoring; susceptible to chaff.
@@ -108,7 +99,6 @@ The Zenith Collective and their assimilated troops demand specific programming:
 * **Corrupted Netrunners:** Human traitors who invert or scramble your priority lists.
 * **Illusion Constructs:** Drop chaff and fog to blind Radar and Lidar.
 * **Snipers:** Require defensive "Bodyguard" programming.
-
 **Specific Counters to Sensors:**
 * **Necro-Cyborgs / Drones:** Invisible to **Biosensors**.
 * **Stealth-Mechs:** Zero-emission tech; invisible to **EM-Sensors**.
@@ -130,3 +120,11 @@ The Zenith Collective and their assimilated troops demand specific programming:
 * **Shuriken Skins:** Holographic Zenith-Skins, rusty Punk-Skins, Ancient Chakrams.
 * **Particle Trails:** Engine exhaust (e.g., Red Rebellion Plasma vs. Cold Alien Blue, Digital Glitch).
 * **Hub Customization:** Cosmetic upgrades for the player's basement workshop.
+
+## 11. Future Expansion: Nanite Experience Pool (RPG Mechanics)
+(Design Note: Scheduled for implementation after the core combat and ARPG loot loops are fully validated).
+
+To foster player attachment to specific Shurikens within their swarm, each drone will feature an internal **Nanite Pool** that functions as an Experience (XP) system.
+* **Gaining XP:** After defeating an enemy or successfully completing a strike, the Shuriken earns experience, feeding the Nanites.
+* **Leveling Up:** When the XP pool reaches a threshold, the Shuriken levels up.
+* **Stat Boosting:** Upon leveling, the player can permanently boost one of the Shuriken's overall base stats. Selectable boosts include: baseDamage, critChance, critMultiplier, energyRegen, maxEnergy, armorValue, evasionRate, stealthValue, baseWeight, topSpeed, and acceleration.
