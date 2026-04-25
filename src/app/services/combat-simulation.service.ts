@@ -72,6 +72,8 @@ export class CombatSimulationService {
         critChance: (blade?.critChance || 0.05) * f_critMult,
         critMultiplier: blade?.critMultiplier || 1.5,
         latency: proc?.latency || 0.2,
+        coordinationMode: s.coordinationMode,
+        masterId: s.masterId,
         isExhausted: false
       };
     });
