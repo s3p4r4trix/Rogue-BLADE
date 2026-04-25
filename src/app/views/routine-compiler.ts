@@ -6,12 +6,11 @@ import { GambitSlot } from '../components/gambit-slot';
 import { CompilerConsole } from '../components/compiler-console';
 import { WorkshopService } from '../services/workshop.service';
 import { PlayerService } from '../services/player.service';
-import { CyberSelect, CyberOption } from '../components/cyber-select';
 
 @Component({
   selector: 'app-routine-compiler',
   standalone: true,
-  imports: [CommonModule, RouterLink, Inventory, GambitSlot, CompilerConsole, CyberSelect],
+  imports: [CommonModule, RouterLink, Inventory, GambitSlot, CompilerConsole],
   template: `
     <div class="h-screen flex flex-col p-4 sm:p-8 overflow-hidden">
       <!-- Header -->
@@ -42,14 +41,16 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                   <h2 class="text-lg font-bold tracking-widest">// ROUTINE_MANAGER</h2>
                   <div class="flex gap-2">
                     <div class="w-64">
-                       <app-cyber-select 
-                          [value]="activeShuriken().id" 
-                          (valueChange)="onShurikenChange($event)"
-                          [options]="getShurikenOptions()">
-                       </app-cyber-select>
+                       <select class="cyber-native-select"
+                               [value]="activeShuriken().id"
+                               (change)="onNativeShurikenChange($event)">
+                         @for (opt of getShurikenOptions(); track opt.value) {
+                           <option [value]="opt.value">{{ opt.label }}</option>
+                         }
+                       </select>
                     </div>
                     <a routerLink="/hardware" class="bg-blue-900/30 border border-blue-600 text-blue-300 hover:bg-blue-800/50 px-4 py-2 uppercase font-bold tracking-wider transition-colors shadow-[0_0_10px_rgba(59,130,246,0.2)] neuro-border-draw flex items-center">
-                       <div class="border-anim before:bg-blue-500 after:bg-blue-500"></div><div class="border-anim-v before:bg-blue-500 after:bg-blue-500"></div>
+                       <div class="border-anim before:bg-blue-500 after:bg-green-500"></div><div class="border-anim-v before:bg-blue-500 after:bg-green-500"></div>
                        <span class="relative z-10">[>] HARDWARE TUNING</span>
                     </a>
                   </div>
@@ -60,7 +61,7 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                       
                       <!-- Dynamisch gerenderte Slots -->
                       @for (routine of routines(); track routine.priority; let i = $index) {
-                        <app-gambit-slot [routine]="routine" [index]="i" [style.z-index]="100 - i"></app-gambit-slot>
+                        <app-gambit-slot [routine]="routine" [index]="i"></app-gambit-slot>
                       }
                       
                       <!-- Add Routine Button -->
@@ -95,7 +96,18 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
       </div>
     </div>
   `,
-  styles: [],
+  styles: [`
+    .cyber-native-select {
+      @apply w-full bg-black border border-green-900/50 text-green-400 px-3 py-2 outline-none appearance-none cursor-pointer relative z-10 transition-all duration-300 text-sm font-bold;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2322c55e'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 1rem;
+    }
+    .cyber-native-select:hover { @apply border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.1)]; }
+    .cyber-native-select:focus { @apply border-green-400 shadow-[0_0_15px_rgba(74,222,128,0.2)]; }
+    .cyber-native-select option { @apply bg-[#030014] text-green-300; }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RoutineCompiler {
@@ -111,14 +123,15 @@ export class RoutineCompiler {
     return this.routines().length >= (this.activeShuriken().processor?.routineCapacity || 2);
   }
 
-  getShurikenOptions(): CyberOption[] {
+  getShurikenOptions() {
     return this.availableShurikens().map(s => ({
       value: s.id,
       label: `${s.name} (Cap: ${s.processor?.routineCapacity || 2})`
     }));
   }
 
-  onShurikenChange(id: string | undefined) {
+  onNativeShurikenChange(event: Event) {
+    const id = (event.target as HTMLSelectElement).value;
     if (id) {
       this.workshop.setActiveShuriken(id);
     }

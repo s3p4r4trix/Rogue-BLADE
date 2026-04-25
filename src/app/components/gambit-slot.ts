@@ -2,12 +2,11 @@ import { Component, input, inject, ChangeDetectionStrategy, computed } from '@an
 import { CommonModule } from '@angular/common';
 import { WorkshopService } from '../services/workshop.service';
 import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
-import { CyberSelect, CyberOption } from './cyber-select';
 
 @Component({
   selector: 'app-gambit-slot',
   standalone: true,
-  imports: [CommonModule, CyberSelect],
+  imports: [CommonModule],
   template: `
     <div class="bg-[#030014]/95 border p-3 flex flex-col sm:flex-row items-center gap-3 relative group neuro-panel transition-colors duration-500 overflow-visible hover:z-[1000] focus-within:z-[1000]"
          [ngClass]="isInvalid() ? 'border-red-600/50 bg-red-950/10' : 'border-green-900/50'">
@@ -36,13 +35,14 @@ import { CyberSelect, CyberOption } from './cyber-select';
             <button (click)="showTriggerInfo()" class="text-[10px] text-cyan-500 hover:text-cyan-300 underline uppercase cursor-pointer">ⓘ Info</button>
           }
         </div>
-        <app-cyber-select 
-          [value]="routine().trigger?.value"
-          [options]="triggerOptions"
-          (valueChange)="onTriggerChange($event)"
-          placeholder="-- Select Trigger --"
-          class="block w-full">
-        </app-cyber-select>
+        <select class="cyber-native-select"
+                [value]="routine().trigger?.value || ''"
+                (change)="onNativeTriggerChange($event)">
+          <option value="" disabled>-- Select Trigger --</option>
+          @for (opt of triggerOptions; track opt.value) {
+            <option [value]="opt.value" [disabled]="opt.disabled">{{ opt.label }}</option>
+          }
+        </select>
       </div>
       
       <div class="text-green-500 font-bold hidden sm:block" [ngClass]="{'text-red-500': isInvalid()}">➔</div>
@@ -50,19 +50,20 @@ import { CyberSelect, CyberOption } from './cyber-select';
       <!-- Action Selection -->
       <div class="flex-1 flex flex-col gap-1 w-full">
         <div class="flex justify-between items-center px-1">
-          <label class="text-[10px] uppercase font-bold tracking-widest"
+          <label class="text-xs uppercase font-bold tracking-widest"
                  [ngClass]="isInvalid() ? 'text-red-500' : 'text-orange-600'">THEN (Action)</label>
           @if (routine().action) {
             <button (click)="showActionInfo()" class="text-[10px] text-orange-500 hover:text-orange-300 underline uppercase cursor-pointer">ⓘ Info</button>
           }
         </div>
-        <app-cyber-select 
-          [value]="routine().action?.value"
-          [options]="actionOptions"
-          (valueChange)="onActionChange($event)"
-          placeholder="-- Select Action --"
-          class="block w-full">
-        </app-cyber-select>
+        <select class="cyber-native-select"
+                [value]="routine().action?.value || ''"
+                (change)="onNativeActionChange($event)">
+          <option value="" disabled>-- Select Action --</option>
+          @for (opt of actionOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
       </div>
       
       <!-- Slot Actions -->
@@ -79,7 +80,18 @@ import { CyberSelect, CyberOption } from './cyber-select';
       </div>
     </div>
   `,
-  styles: [],
+  styles: [`
+    .cyber-native-select {
+      @apply w-full bg-black border border-green-900/50 text-green-400 px-2 py-1.5 outline-none appearance-none cursor-pointer relative z-10 transition-all duration-300 text-sm font-bold;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2322c55e'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.5rem center;
+      background-size: 0.8rem;
+    }
+    .cyber-native-select:hover { @apply border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.1)]; }
+    .cyber-native-select:focus { @apply border-green-400 shadow-[0_0_15px_rgba(74,222,128,0.2)]; }
+    .cyber-native-select option { @apply bg-[#030014] text-green-300; }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GambitSlot {
@@ -109,13 +121,15 @@ export class GambitSlot {
     return this.index() === this.workshop.routines().length - 1;
   }
 
-  onTriggerChange(value: string | undefined) {
+  onNativeTriggerChange(event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
     if (!value) return;
     const trigger = this.workshop.availableTriggers().find(t => t.value === value);
     if (trigger) this.workshop.setTrigger(this.index(), trigger);
   }
 
-  onActionChange(value: string | undefined) {
+  onNativeActionChange(event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
     if (!value) return;
     const action = this.workshop.availableActions().find(a => a.value === value);
     if (action) this.workshop.setAction(this.index(), action);

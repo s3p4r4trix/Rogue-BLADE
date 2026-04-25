@@ -109,91 +109,107 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                 <h3 class="text-blue-500 font-bold mb-4 uppercase border-b border-blue-900/50 pb-2">// HARDWARE LOADOUT</h3>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                    <!-- Engine -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw">
+                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw relative">
                      <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10">Anti-Grav Engine</div>
-                     <app-cyber-select class="relative z-10 block"
-                                       [value]="shuriken.engine?.id" 
-                                       (valueChange)="swap(shuriken.id, 'engine', $event, inventory.engines)"
-                                       [options]="getEngineOptions()">
-                     </app-cyber-select>
+                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10 font-bold">Anti-Grav Engine</div>
+                     <select class="cyber-native-select"
+                             [value]="shuriken.engine?.id" 
+                             (change)="onNativeSwap(shuriken.id, 'engine', $event, inventory.engines)">
+                        @for (opt of getEngineOptions(); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                     </select>
                    </div>
                    
                    <!-- Hull -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw">
+                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw relative">
                      <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10">Hull Material</div>
-                     <app-cyber-select class="relative z-10 block"
-                                       [value]="shuriken.hull?.id" 
-                                       (valueChange)="swap(shuriken.id, 'hull', $event, inventory.hulls)"
-                                       [options]="getHullOptions()">
-                     </app-cyber-select>
+                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10 font-bold">Hull Material</div>
+                     <select class="cyber-native-select"
+                             [value]="shuriken.hull?.id" 
+                             (change)="onNativeSwap(shuriken.id, 'hull', $event, inventory.hulls)">
+                        @for (opt of getHullOptions(); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                     </select>
                    </div>
                    
                    <!-- Energy Cell -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw">
+                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw relative">
                      <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10">Energy Cell</div>
-                     <app-cyber-select class="relative z-10 block"
-                                       [value]="shuriken.energyCell?.id" 
-                                       (valueChange)="swap(shuriken.id, 'energyCell', $event, inventory.energyCells)"
-                                       [options]="getEnergyCellOptions()">
-                     </app-cyber-select>
+                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10 font-bold">Energy Cell</div>
+                     <select class="cyber-native-select"
+                             [value]="shuriken.energyCell?.id" 
+                             (change)="onNativeSwap(shuriken.id, 'energyCell', $event, inventory.energyCells)">
+                        @for (opt of getEnergyCellOptions(); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                     </select>
                    </div>
 
                    <!-- Processor -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw">
+                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw relative">
                      <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10">Processor (Compute)</div>
-                     <app-cyber-select class="relative z-10 block"
-                                       [value]="shuriken.processor?.id" 
-                                       (valueChange)="swap(shuriken.id, 'processor', $event, inventory.processors)"
-                                       [options]="getProcessorOptions()">
-                     </app-cyber-select>
+                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10 font-bold">Processor (Compute)</div>
+                     <select class="cyber-native-select"
+                             [value]="shuriken.processor?.id" 
+                             (change)="onNativeSwap(shuriken.id, 'processor', $event, inventory.processors)">
+                        @for (opt of getProcessorOptions(); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                     </select>
                    </div>
 
                    <!-- Semi-AI -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw">
+                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw relative">
                      <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10">Semi-AI (Brain)</div>
-                     <app-cyber-select class="relative z-10 block"
-                                       [value]="shuriken.semiAI?.id" 
-                                       (valueChange)="swap(shuriken.id, 'semiAI', $event, inventory.semiAIs)"
-                                       [options]="getSemiAIOptions()">
-                     </app-cyber-select>
+                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10 font-bold">Semi-AI (Brain)</div>
+                     <select class="cyber-native-select"
+                             [value]="shuriken.semiAI?.id || ''" 
+                             (change)="onNativeSwap(shuriken.id, 'semiAI', $event, inventory.semiAIs)">
+                        @for (opt of getSemiAIOptions(); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                     </select>
                    </div>
 
                    <!-- Blade -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw">
+                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw relative">
                      <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10">Blade Edge</div>
-                     <app-cyber-select class="relative z-10 block"
-                                       [value]="shuriken.blade?.id" 
-                                       (valueChange)="swap(shuriken.id, 'blade', $event, inventory.blades)"
-                                       [options]="getBladeOptions()">
-                     </app-cyber-select>
+                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10 font-bold">Blade Edge</div>
+                     <select class="cyber-native-select"
+                             [value]="shuriken.blade?.id" 
+                             (change)="onNativeSwap(shuriken.id, 'blade', $event, inventory.blades)">
+                        @for (opt of getBladeOptions(); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                     </select>
                    </div>
 
                    <!-- Sensor -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw">
+                   <div class="bg-black border border-blue-900/50 p-3 transition-colors hover:border-blue-700 neuro-border-draw relative">
                      <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10">Sensor Array</div>
-                     <app-cyber-select class="relative z-10 block"
-                                       [value]="shuriken.sensor?.id" 
-                                       (valueChange)="swap(shuriken.id, 'sensor', $event, inventory.sensors)"
-                                       [options]="getSensorOptions()">
-                     </app-cyber-select>
+                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10 font-bold">Sensor Array</div>
+                     <select class="cyber-native-select"
+                             [value]="shuriken.sensor?.id" 
+                             (change)="onNativeSwap(shuriken.id, 'sensor', $event, inventory.sensors)">
+                        @for (opt of getSensorOptions(); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                     </select>
                    </div>
                    
                    <!-- Form Design -->
-                   <div class="bg-black border border-blue-900/50 p-3 lg:col-span-2 transition-colors hover:border-blue-700 neuro-border-draw">
+                   <div class="bg-black border border-blue-900/50 p-3 lg:col-span-2 transition-colors hover:border-blue-700 neuro-border-draw relative">
                      <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10">Form Design</div>
-                     <app-cyber-select class="relative z-10 block"
-                                       [value]="shuriken.formDesign?.id" 
-                                       (valueChange)="swap(shuriken.id, 'formDesign', $event, inventory.formDesigns)"
-                                       [options]="getFormDesignOptions()">
-                     </app-cyber-select>
+                     <div class="text-xs text-blue-600 uppercase mb-1 relative z-10 font-bold">Form Design</div>
+                     <select class="cyber-native-select"
+                             [value]="shuriken.formDesign?.id" 
+                             (change)="onNativeSwap(shuriken.id, 'formDesign', $event, inventory.formDesigns)">
+                        @for (opt of getFormDesignOptions(); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                     </select>
                    </div>
                 </div>
 
@@ -235,10 +251,13 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                        @if (shuriken.coordinationMode === 'SLAVE') {
                          <div class="animate-in slide-in-from-top-2 duration-300">
                             <div class="text-[9px] text-blue-800 uppercase mb-1 font-bold tracking-tighter">Select Master Unit (Active AI Required):</div>
-                            <app-cyber-select [value]="shuriken.masterId"
-                                              (valueChange)="setMaster($event)"
-                                              [options]="getMasterOptions()">
-                            </app-cyber-select>
+                            <select class="cyber-native-select"
+                                    [value]="shuriken.masterId"
+                                    (change)="onNativeMaster($event)">
+                                @for (opt of getMasterOptions(); track opt.value) {
+                                  <option [value]="opt.value">{{ opt.label }}</option>
+                                }
+                            </select>
                          </div>
                        }
                      </div>
@@ -280,7 +299,18 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
       </div>
     </div>
   `,
-  styles: [],
+  styles: [`
+    .cyber-native-select {
+      @apply w-full bg-black border border-blue-900/50 text-blue-400 px-3 py-2 outline-none appearance-none cursor-pointer relative z-10 transition-all duration-300;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%233b82f6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 1rem;
+    }
+    .cyber-native-select:hover { @apply border-blue-600 shadow-[0_0_10px_rgba(59,130,246,0.1)]; }
+    .cyber-native-select:focus { @apply border-blue-400 shadow-[0_0_15px_rgba(96,165,250,0.2)]; }
+    .cyber-native-select option { @apply bg-[#030014] text-blue-300; }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HardwareWorkshop {
@@ -321,15 +351,22 @@ export class HardwareWorkshop {
     return `${mins}m ${seconds % 60}s`;
   }
 
-  swap(shurikenId: string, slot: keyof Shuriken, componentId: string | undefined, category: any[]) {
+  onNativeSwap(shurikenId: string, slot: keyof Shuriken, event: Event, category: any[]) {
+    const componentId = (event.target as HTMLSelectElement).value;
     if (componentId === '') {
       this.workshop.equipComponent(shurikenId, slot, null);
       return;
     }
-    if (!componentId) return;
     const comp = category.find(c => c.id === componentId);
     if (comp) {
       this.workshop.equipComponent(shurikenId, slot, comp);
+    }
+  }
+
+  onNativeMaster(event: Event) {
+    const masterId = (event.target as HTMLSelectElement).value;
+    if (masterId) {
+      this.workshop.setCoordination(this.activeShuriken().id, 'SLAVE', masterId);
     }
   }
 
