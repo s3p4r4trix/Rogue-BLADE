@@ -8,8 +8,8 @@ import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="bg-[#030014]/95 border p-3 flex flex-col sm:flex-row items-center gap-3 group neuro-panel transition-all duration-500 overflow-visible"
-         [ngClass]="isInvalid() ? 'border-red-600/50 bg-red-950/10' : 'border-green-900/50'">
+    <div class="bg-black/40 border p-3 flex flex-col sm:flex-row items-center gap-3 group transition-all duration-300"
+         [ngClass]="isInvalid() ? 'border-red-900/50 bg-red-950/5' : 'border-green-900/20 hover:border-green-800/50 focus-within:border-green-600/50'">
       
       <!-- Movement Controls -->
       <div class="flex flex-col gap-1 pr-2 border-r border-green-900/30">
@@ -30,7 +30,7 @@ import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
       <div class="flex-1 flex flex-col gap-1 w-full">
         <div class="flex justify-between items-center px-1">
           <label class="text-[10px] uppercase font-bold tracking-widest"
-                 [ngClass]="isInvalid() ? 'text-red-500' : 'text-cyan-600'">IF (Trigger)</label>
+                 [ngClass]="isInvalid() ? 'text-red-500' : 'text-cyan-700'">// IF_CONDITION</label>
           @if (routine().trigger) {
             <button (click)="showTriggerInfo()" class="text-[10px] text-cyan-500 hover:text-cyan-300 underline uppercase cursor-pointer">ⓘ Info</button>
           }
@@ -50,8 +50,8 @@ import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
       <!-- Action Selection -->
       <div class="flex-1 flex flex-col gap-1 w-full">
         <div class="flex justify-between items-center px-1">
-          <label class="text-xs uppercase font-bold tracking-widest"
-                 [ngClass]="isInvalid() ? 'text-red-500' : 'text-orange-600'">THEN (Action)</label>
+          <label class="text-[10px] uppercase font-bold tracking-widest"
+                 [ngClass]="isInvalid() ? 'text-red-500' : 'text-orange-700'">// THEN_EXECUTION</label>
           @if (routine().action) {
             <button (click)="showActionInfo()" class="text-[10px] text-orange-500 hover:text-orange-300 underline uppercase cursor-pointer">ⓘ Info</button>
           }

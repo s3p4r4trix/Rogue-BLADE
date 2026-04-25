@@ -109,9 +109,8 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                 <h3 class="text-blue-500 font-bold mb-4 uppercase border-b border-blue-900/50 pb-2">// HARDWARE LOADOUT</h3>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                    <!-- Engine -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-all hover:border-blue-700 neuro-border-draw">
-                     <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold">Anti-Grav Engine</div>
+                   <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// ENGINE_UNIT</div>
                      <select class="cyber-native-select"
                              [value]="shuriken.engine?.id" 
                              (change)="onNativeSwap(shuriken.id, 'engine', $event, inventory.engines)">
@@ -122,9 +121,8 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                    </div>
                    
                    <!-- Hull -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-all hover:border-blue-700 neuro-border-draw">
-                     <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold">Hull Material</div>
+                   <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// HULL_PLATE</div>
                      <select class="cyber-native-select"
                              [value]="shuriken.hull?.id" 
                              (change)="onNativeSwap(shuriken.id, 'hull', $event, inventory.hulls)">
@@ -135,9 +133,8 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                    </div>
                    
                    <!-- Energy Cell -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-all hover:border-blue-700 neuro-border-draw">
-                     <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold">Energy Cell</div>
+                   <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// ENERGY_CORE</div>
                      <select class="cyber-native-select"
                              [value]="shuriken.energyCell?.id" 
                              (change)="onNativeSwap(shuriken.id, 'energyCell', $event, inventory.energyCells)">
@@ -148,9 +145,8 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                    </div>
 
                    <!-- Processor -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-all hover:border-blue-700 neuro-border-draw">
-                     <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold">Processor (Compute)</div>
+                   <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// COMPUTE_LOGIC</div>
                      <select class="cyber-native-select"
                              [value]="shuriken.processor?.id" 
                              (change)="onNativeSwap(shuriken.id, 'processor', $event, inventory.processors)">
@@ -161,9 +157,8 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                    </div>
 
                    <!-- Semi-AI -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-all hover:border-blue-700 neuro-border-draw">
-                     <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold">Semi-AI (Brain)</div>
+                   <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// SEMI_AI_BRAIN</div>
                      <select class="cyber-native-select"
                              [value]="shuriken.semiAI?.id || ''" 
                              (change)="onNativeSwap(shuriken.id, 'semiAI', $event, inventory.semiAIs)">
@@ -174,9 +169,8 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                    </div>
 
                    <!-- Blade -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-all hover:border-blue-700 neuro-border-draw">
-                     <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold">Blade Edge</div>
+                   <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// BLADE_EDGE</div>
                      <select class="cyber-native-select"
                              [value]="shuriken.blade?.id" 
                              (change)="onNativeSwap(shuriken.id, 'blade', $event, inventory.blades)">
@@ -187,9 +181,8 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                    </div>
 
                    <!-- Sensor -->
-                   <div class="bg-black border border-blue-900/50 p-3 transition-all hover:border-blue-700 neuro-border-draw">
-                     <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold">Sensor Array</div>
+                   <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// SENSOR_ARRAY</div>
                      <select class="cyber-native-select"
                              [value]="shuriken.sensor?.id" 
                              (change)="onNativeSwap(shuriken.id, 'sensor', $event, inventory.sensors)">
@@ -200,9 +193,8 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                    </div>
                    
                    <!-- Form Design -->
-                   <div class="bg-black border border-blue-900/50 p-3 lg:col-span-2 transition-all hover:border-blue-700 neuro-border-draw">
-                     <div class="border-anim"></div><div class="border-anim-v"></div>
-                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold">Form Design</div>
+                   <div class="bg-black/50 border border-blue-900/30 p-3 lg:col-span-2 transition-colors hover:border-blue-600 focus-within:border-blue-500">
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// CHASSIS_DESIGN</div>
                      <select class="cyber-native-select"
                              [value]="shuriken.formDesign?.id" 
                              (change)="onNativeSwap(shuriken.id, 'formDesign', $event, inventory.formDesigns)">
