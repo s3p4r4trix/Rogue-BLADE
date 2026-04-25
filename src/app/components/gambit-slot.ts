@@ -8,7 +8,7 @@ import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="bg-[#030014]/95 border p-3 flex flex-col sm:flex-row items-center gap-3 relative group neuro-panel transition-colors duration-500 overflow-visible hover:z-[1000] focus-within:z-[1000]"
+    <div class="bg-[#030014]/95 border p-3 flex flex-col sm:flex-row items-center gap-3 group neuro-panel transition-all duration-500 overflow-visible"
          [ngClass]="isInvalid() ? 'border-red-600/50 bg-red-950/10' : 'border-green-900/50'">
       
       <!-- Movement Controls -->

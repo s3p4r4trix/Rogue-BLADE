@@ -40,7 +40,7 @@ import { PlayerService } from '../services/player.service';
               <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-green-800 pb-2 mb-4 gap-4">
                   <h2 class="text-lg font-bold tracking-widest">// ROUTINE_MANAGER</h2>
                   <div class="flex gap-2">
-                    <div class="w-64 relative focus-within:z-50">
+                    <div class="w-64">
                        <select class="cyber-native-select"
                                [value]="activeShuriken().id"
                                (change)="onNativeShurikenChange($event)">
