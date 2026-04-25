@@ -67,7 +67,16 @@ Forms apply a global multiplier to the final stats.
 * **Cortex CPU:** slots: 3, latency: 0.2s
 * **Omni-Node Core:** slots: 5, latency: 0.05s
 
-## 3. Combat Mechanics & Math Formulas
+### F. Semi-AI (The Brain - OPTIONAL)
+A Shuriken with an equipped Semi-AI is designated as a **MASTER**. A Shuriken without a Semi-AI is designated as **SOLO** unless slaved to a Master.
+*   **Swarm Coordination:** Masters manage **SLAVE** units. Slaves receive the Master's `iffAccuracy` and a 15% Latency reduction.
+*   **Operational Risk:** If a Master is destroyed, all its Slaves suffer a 50% Latency penalty for the remainder of the strike.
+
+## 3. Deployment Constraints
+*   **Mandatory Hardware:** All slots (Engine, Hull, Sensor, Blade, Processor, Energy Cell, Form Design) MUST be filled for deployment.
+*   **Optional Slot:** `semiAI` is the only slot that may remain empty. Units without an AI function as autonomous "Dumb-Drones" with base stats.
+
+## 4. Combat Mechanics & Math Formulas
 
 ### 3.1 Acceleration & Movement Math
 

@@ -66,10 +66,12 @@ The **Slot-based Gambit System** is the core mechanic for programming AI behavio
 * **Regeneration:** Charging speed during combat.
 * **Max Output:** Required for burst maneuvers or cloaking devices.
 
-### 6.4 Semi-AI (The Brain)
-* **IFF:** Identification Friend or Foe accuracy.
-* **Reaction Bonus:** Reduces latency in "If-Then" routine execution.
-* **Swarm Communication:** Coordination (e.g., "If Shuriken A attacks, Shuriken B flanks").
+### 6.4 Semi-AI (The Brain - OPTIONAL)
+*   **Unlocked Later:** This slot is optional. Early-game drones are "Dumb" (Solo).
+*   **Master Status:** Equipping a Semi-AI makes the Shuriken a **Swarm Master**.
+*   **Slave Management:** Masters can be linked to other "Dumb" Shurikens (Slaves).
+*   **IFF & Reactions:** Slaves utilize the Master's advanced IFF accuracy and receive coordination buffs.
+*   **Swarm Communication:** Coordination (e.g., "If Shuriken A attacks, Shuriken B flanks"). Requires a Master.
 
 ### 6.5 Sensors (Unlocking Triggers)
 * **Optical Sensors:** Detect enemies in very close proximity (up to 20 meters).

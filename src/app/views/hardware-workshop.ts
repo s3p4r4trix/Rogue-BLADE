@@ -88,12 +88,21 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                      <span class="relative z-10">[>] ROGUE OS</span>
                   </button>
 
-                  <button (click)="deploy()" class="bg-red-900/30 border border-red-600 text-red-500 hover:bg-red-800/50 px-4 py-2 uppercase font-bold tracking-wider transition-colors shadow-[0_0_10px_rgba(239,68,68,0.2)] neuro-border-draw">
+                  <button (click)="deploy()" 
+                          [disabled]="!workshop.isFleetValid()"
+                          class="bg-red-900/30 border border-red-600 text-red-500 hover:bg-red-800/50 px-4 py-2 uppercase font-bold tracking-wider transition-colors shadow-[0_0_10px_rgba(239,68,68,0.2)] neuro-border-draw"
+                          [ngClass]="{'opacity-30 cursor-not-allowed grayscale': !workshop.isFleetValid()}">
                      <div class="border-anim before:bg-red-500 after:bg-red-500"></div><div class="border-anim-v before:bg-red-500 after:bg-red-500"></div>
-                     <span class="relative z-10">[>] COMBAT DEPLOY</span>
+                     <span class="relative z-10">{{ workshop.isFleetValid() ? '[>] COMBAT DEPLOY' : '[!] HW_INCOMPLETE' }}</span>
                   </button>
                 </div>
              </div>
+
+             @if (!workshop.isFleetValid()) {
+               <div class="bg-red-900/20 border border-red-900/50 p-2 text-[10px] text-red-500 uppercase tracking-widest animate-pulse text-center">
+                 Critical Error: Mandatory hardware slots detected as NULL. Deployment inhibited.
+               </div>
+             }
              
              <!-- Components Grid -->
              <div class="p-4 md:p-6 overflow-y-auto flex-1">
@@ -188,34 +197,82 @@ import { CyberSelect, CyberOption } from '../components/cyber-select';
                    </div>
                 </div>
 
-                  <!-- Statistics Block -->
-                  <div class="mt-8 border-t border-blue-900/50 pt-6">
-                    <h3 class="text-lg font-bold text-blue-500 mb-4 flex items-center gap-2">
+                <!-- Swarm Coordination -->
+                <div class="mt-8 bg-[#030014]/95 border border-blue-900/50 p-4 neuro-panel">
+                   <h3 class="text-blue-500 font-bold mb-4 uppercase border-b border-blue-900/50 pb-2">// SWARM COORDINATION</h3>
+                   
+                   @if (shuriken.semiAI) {
+                     <div class="flex items-center gap-4 text-sm bg-blue-900/10 p-3 border border-blue-800">
+                       <div class="w-4 h-4 bg-blue-500 shadow-[0_0_10px_#3b82f6] animate-pulse rounded-full"></div>
+                       <div class="flex-1">
+                         <span class="text-blue-400 font-bold uppercase tracking-widest">Master Node Active</span>
+                         <p class="text-[10px] text-blue-700">Equipped AI provides coordination to all slaved units in the swarm.</p>
+                       </div>
+                     </div>
+                   } @else {
+                     <div class="flex flex-col gap-4">
+                       <div class="flex items-center justify-between">
+                         <span class="text-xs text-blue-600 uppercase font-mono">Coordination Mode:</span>
+                         <div class="flex gap-2">
+                           <button (click)="setCoordMode('SOLO')" 
+                                   class="px-3 py-1 text-[10px] border transition-all duration-300 font-bold"
+                                   [ngClass]="shuriken.coordinationMode === 'SOLO' ? 'bg-blue-600 text-black border-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.3)]' : 'bg-black border-blue-900 text-blue-900'">
+                             SOLO
+                           </button>
+                           <button (click)="setCoordMode('SLAVE')" 
+                                   [disabled]="!hasAvailableMasters()"
+                                   class="px-3 py-1 text-[10px] border transition-all duration-300 font-bold"
+                                   [ngClass]="{
+                                     'bg-blue-600 text-black border-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.3)]': shuriken.coordinationMode === 'SLAVE',
+                                     'bg-black border-blue-900 text-blue-900': shuriken.coordinationMode !== 'SLAVE',
+                                     'opacity-30 cursor-not-allowed': !hasAvailableMasters()
+                                   }">
+                             SLAVE
+                           </button>
+                         </div>
+                       </div>
+                       
+                       @if (shuriken.coordinationMode === 'SLAVE') {
+                         <div class="animate-in slide-in-from-top-2 duration-300">
+                            <div class="text-[9px] text-blue-800 uppercase mb-1 font-bold tracking-tighter">Select Master Unit (Active AI Required):</div>
+                            <app-cyber-select [value]="shuriken.masterId"
+                                              (valueChange)="setMaster($event)"
+                                              [options]="getMasterOptions()">
+                            </app-cyber-select>
+                         </div>
+                       }
+                     </div>
+                   }
+                </div>
+
+                <!-- Statistics Block -->
+                <div class="mt-8 border-t border-blue-900/50 pt-6">
+                  <h3 class="text-lg font-bold text-blue-500 mb-4 flex items-center gap-2">
                       <span class="text-blue-700">|</span> COMBAT STATISTICS
-                    </h3>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
-                      <div class="bg-black border border-blue-900/30 p-3">
-                        <div class="text-blue-600 text-xs uppercase mb-1">Joined Swarm</div>
-                        <div class="text-blue-300 font-bold">{{ shuriken.creationDate | date:'mediumDate' }}</div>
-                      </div>
-                     <div class="bg-black border border-blue-900/30 p-3">
-                       <div class="text-blue-600 text-xs uppercase mb-1">Time Online</div>
-                       <div class="text-blue-300 font-bold">{{ formatTime(shuriken.stats.timeOnline) }}</div>
-                     </div>
-                     <div class="bg-black border border-blue-900/30 p-3">
-                       <div class="text-blue-600 text-xs uppercase mb-1">Enemies Terminated</div>
-                       <div class="text-red-400 font-bold">{{ shuriken.stats.enemiesKilled | number }}</div>
-                     </div>
-                     <div class="bg-black border border-blue-900/30 p-3">
-                       <div class="text-blue-600 text-xs uppercase mb-1">Structural Damage</div>
-                       <div class="text-orange-400 font-bold">{{ shuriken.stats.lostHealth | number }} HP</div>
-                     </div>
-                     <div class="bg-black border border-blue-900/30 p-3">
-                       <div class="text-blue-600 text-xs uppercase mb-1">Repair Time</div>
-                       <div class="text-yellow-400 font-bold">{{ formatTime(shuriken.stats.timeRepairing) }}</div>
-                     </div>
-                   </div>
-                 </div>
+                  </h3>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
+                    <div class="bg-black border border-blue-900/30 p-3">
+                      <div class="text-blue-600 text-xs uppercase mb-1">Joined Swarm</div>
+                      <div class="text-blue-300 font-bold">{{ shuriken.creationDate | date:'mediumDate' }}</div>
+                    </div>
+                    <div class="bg-black border border-blue-900/30 p-3">
+                      <div class="text-blue-600 text-xs uppercase mb-1">Time Online</div>
+                      <div class="text-blue-300 font-bold">{{ formatTime(shuriken.stats.timeOnline) }}</div>
+                    </div>
+                    <div class="bg-black border border-blue-900/30 p-3">
+                      <div class="text-blue-600 text-xs uppercase mb-1">Enemies Terminated</div>
+                      <div class="text-red-400 font-bold">{{ shuriken.stats.enemiesKilled | number }}</div>
+                    </div>
+                    <div class="bg-black border border-blue-900/30 p-3">
+                      <div class="text-blue-600 text-xs uppercase mb-1">Structural Damage</div>
+                      <div class="text-orange-400 font-bold">{{ shuriken.stats.lostHealth | number }} HP</div>
+                    </div>
+                    <div class="bg-black border border-blue-900/30 p-3">
+                      <div class="text-blue-600 text-xs uppercase mb-1">Repair Time</div>
+                      <div class="text-yellow-400 font-bold">{{ formatTime(shuriken.stats.timeRepairing) }}</div>
+                    </div>
+                  </div>
+                </div>
 
              </div>
            }
@@ -265,6 +322,10 @@ export class HardwareWorkshop {
   }
 
   swap(shurikenId: string, slot: keyof Shuriken, componentId: string | undefined, category: any[]) {
+    if (componentId === '') {
+      this.workshop.equipComponent(shurikenId, slot, null);
+      return;
+    }
     if (!componentId) return;
     const comp = category.find(c => c.id === componentId);
     if (comp) {
@@ -286,7 +347,8 @@ export class HardwareWorkshop {
     return this.getUnlocked(this.inventory.processors).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.routineCapacity} | Lat: ${c.latency}s)` }));
   }
   getSemiAIOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.semiAIs).map((c: any) => ({ value: c.id, label: c.name }));
+    const options = this.getUnlocked(this.inventory.semiAIs).map((c: any) => ({ value: c.id, label: c.name }));
+    return [{ value: '', label: 'NONE [SOLO_MODE]' }, ...options];
   }
   getBladeOptions(): CyberOption[] {
     return this.getUnlocked(this.inventory.blades).map((c: any) => ({ value: c.id, label: c.name }));
@@ -296,5 +358,25 @@ export class HardwareWorkshop {
   }
   getFormDesignOptions(): CyberOption[] {
     return this.getUnlocked(this.inventory.formDesigns).map((c: any) => ({ value: c.id, label: `${c.name} (${c.shape})` }));
+  }
+
+  hasAvailableMasters(): boolean {
+    return this.workshop.availableShurikens().some(s => s.semiAI && s.id !== this.activeShuriken().id);
+  }
+
+  getMasterOptions(): CyberOption[] {
+    return this.workshop.availableShurikens()
+      .filter(s => s.semiAI && s.id !== this.activeShuriken().id)
+      .map(s => ({ value: s.id, label: `${s.name} [MASTER]` }));
+  }
+
+  setCoordMode(mode: 'SOLO' | 'MASTER' | 'SLAVE') {
+    this.workshop.setCoordination(this.activeShuriken().id, mode);
+  }
+
+  setMaster(masterId: string | undefined) {
+    if (masterId) {
+      this.workshop.setCoordination(this.activeShuriken().id, 'SLAVE', masterId);
+    }
   }
 }

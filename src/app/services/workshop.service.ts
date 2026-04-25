@@ -59,7 +59,8 @@ const DEFAULT_SHURIKEN: Omit<Shuriken, 'id' | 'name'> = {
   formDesign: HARDWARE_INVENTORY.formDesigns[0],
   hull: HARDWARE_INVENTORY.hulls[0],
   processor: HARDWARE_INVENTORY.processors[0],
-  semiAI: HARDWARE_INVENTORY.semiAIs[0],
+  semiAI: null, // Optional, unlocked later
+  coordinationMode: 'SOLO',
   stats: { enemiesKilled: 0, timeRepairing: 0, lostHealth: 0, timeOnline: 0 }
 };
 
@@ -83,7 +84,7 @@ function loadUnlockedComponents(): string[] {
     try { return JSON.parse(saved); } catch (e) {}
   }
   return [
-    'eng-drifter', 'cell-scrap', 'sens-optical', 'blade-edge', 'form-standard', 'hull-scrap', 'proc-abacus', 'semi-feral'
+    'eng-drifter', 'cell-scrap', 'sens-optical', 'blade-edge', 'form-standard', 'hull-scrap', 'proc-abacus'
   ];
 }
 
@@ -169,9 +170,17 @@ export class WorkshopService {
       if (!repaired.processor || !repaired.processor.routineCapacity) repaired.processor = HARDWARE_INVENTORY.processors[0];
       if (!repaired.engine || !repaired.engine.topSpeed) repaired.engine = HARDWARE_INVENTORY.engines[0];
       if (!repaired.energyCell || !repaired.energyCell.maxEnergy) repaired.energyCell = HARDWARE_INVENTORY.energyCells[0];
-      if (!repaired.semiAI || !repaired.semiAI.iffAccuracy) repaired.semiAI = HARDWARE_INVENTORY.semiAIs[0];
+      if (!repaired.semiAI || !repaired.semiAI.iffAccuracy) {
+         // Only reset if it exists but is broken. If null, keep as null.
+         if (repaired.semiAI) repaired.semiAI = null; 
+      }
       if (!repaired.formDesign || !repaired.formDesign.speedMult) repaired.formDesign = HARDWARE_INVENTORY.formDesigns[0];
       
+      // Coordination Migration
+      if (!repaired.coordinationMode) repaired.coordinationMode = 'SOLO';
+      if (repaired.semiAI && repaired.coordinationMode === 'SOLO') repaired.coordinationMode = 'MASTER';
+      if (!repaired.semiAI && repaired.coordinationMode === 'MASTER') repaired.coordinationMode = 'SOLO';
+
       return repaired;
     }));
   }
@@ -181,6 +190,14 @@ export class WorkshopService {
     return this.unlockedTriggers().some(t => t.id === routine.trigger?.id) && this.unlockedActions().some(a => a.id === routine.action?.id);
   }
 
+  isShurikenValid(s: Shuriken): boolean {
+    return !!(s.engine && s.hull && s.energyCell && s.sensor && s.blade && s.processor && s.formDesign);
+  }
+
+  isFleetValid(): boolean {
+    return this.availableShurikens().every(s => this.isShurikenValid(s));
+  }
+
   setActiveShuriken(id: string) { this.activeShurikenId.set(id); }
 
   renameShuriken(id: string, newName: string) {
@@ -188,7 +205,25 @@ export class WorkshopService {
   }
 
   equipComponent(shurikenId: string, slot: keyof Shuriken, component: any) {
-    this.availableShurikens.update(list => list.map(s => s.id === shurikenId ? { ...s, [slot]: component } : s));
+    this.availableShurikens.update(list => list.map(s => {
+      if (s.id !== shurikenId) return s;
+      const updated = { ...s, [slot]: component };
+      
+      // Auto-update coordination mode based on AI slot
+      if (slot === 'semiAI') {
+        if (component) {
+          updated.coordinationMode = 'MASTER';
+        } else {
+          updated.coordinationMode = 'SOLO';
+          updated.masterId = undefined;
+        }
+      }
+      return updated;
+    }));
+  }
+
+  setCoordination(shurikenId: string, mode: 'SOLO' | 'MASTER' | 'SLAVE', masterId?: string) {
+    this.availableShurikens.update(list => list.map(s => s.id === shurikenId ? { ...s, coordinationMode: mode, masterId } : s));
   }
 
   addRoutine() {

@@ -120,7 +120,12 @@ export interface Shuriken {
   blade: Blade | null;
   formDesign: FormDesign | null;
   processor: Processor | null;
-  semiAI: SemiAI | null;
+  semiAI: SemiAI | null; // Optional slot
+  
+  // Coordination Mode
+  coordinationMode: 'SOLO' | 'MASTER' | 'SLAVE';
+  masterId?: string; // If SLAVE, which master are we following?
+
   stats: ShurikenStats;
   creationDate?: number;
 }

@@ -90,8 +90,28 @@ export class CombatSimulationService {
     for (let tick = 1; tick <= totalTicks; tick++) {
       const time = tick;
       
+      // Calculate active masters for this tick
+      const activeMasters = shurikenStates.filter(s => s.hp > 0 && s.coordinationMode === 'MASTER');
+
       shurikenStates.forEach(s => {
         if (s.hp <= 0) return;
+
+        // Swarm Coordination Buffs/Penalties
+        let effectiveLatency = s.latency;
+        if (s.coordinationMode === 'SLAVE' && s.masterId) {
+           const myMaster = shurikenStates.find(m => m.id === s.masterId);
+           if (myMaster && myMaster.hp > 0) {
+              // Neural Link ACTIVE: 15% Latency Reduction
+              effectiveLatency *= 0.85;
+              if (tick === 1) logs.push(`[SYSTEM] ${s.name}: Neural Link with ${myMaster.name} ESTABLISHED.`);
+           } else {
+              // Command Node LOST: 50% Latency Penalty
+              effectiveLatency *= 1.5;
+              if (myMaster && tick > 1 && !logs.some(l => l.includes(`Neural Link with ${myMaster.name} SEVERED`))) {
+                 logs.push(`[WARNING] ${s.name}: Command Node ${myMaster.name} LOST. Neural Link SEVERED.`);
+              }
+           }
+        }
 
         // 3.0 Physics & Energy Update
         s.energy = Math.min(s.maxEnergy, s.energy + s.energyRegen - s.passiveDrain);
@@ -111,40 +131,43 @@ export class CombatSimulationService {
 
         // 4.1 Damage Calculation (Attack Phase)
         if ((enemyHull + enemyShields) > 0) {
-           // Energy exhaustion check for Energy weapons
-           if (s.isExhausted && s.damageType === 'ENERGY') {
-              logs.push(`[T+${time}s] ${s.name}: [EXHAUSTED] Energy blade offline.`);
-           } else {
-              // 4.1.1 Roll for Crit
-              const isCrit = Math.random() <= s.critChance;
-              let grossDamage = s.baseDamage * (isCrit ? s.critMultiplier : 1.0);
-
-              // 3.2 Momentum Scaling (Kinetic Only)
-              if (s.damageType === 'KINETIC') {
-                 const momentumMultiplier = 1.0 + ((s.currentSpeed / 100) * (s.baseWeight / 100));
-                 grossDamage *= momentumMultiplier;
-              }
-
-              // 4.1.2 Matrix Multiplier
-              const currentArmorType: ArmorType = enemyShields > 0 ? 'ENERGY_SHIELD' : mission.armorType;
-              const matrix = this.effectivenessMatrix[s.damageType] || this.effectivenessMatrix['SLASHING'];
-              const multiplier = matrix[currentArmorType] || 1.0;
-              grossDamage *= multiplier;
-
-              // 4.1.3 Armor Mitigation & Evasion
-              if (Math.random() <= mission.enemyEvasionRate) {
-                 logs.push(`[T+${time}s] ${s.name}: [EVADED] Hostile maneuver successful.`);
+           // Latency Check: Simulating processing time
+           if (tick % Math.max(1, Math.floor(effectiveLatency * 10)) === 0) {
+              // Energy exhaustion check for Energy weapons
+              if (s.isExhausted && s.damageType === 'ENERGY') {
+                 logs.push(`[T+${time}s] ${s.name}: [EXHAUSTED] Energy blade offline.`);
               } else {
-                 let netDamage = Math.max(1, grossDamage - (enemyShields > 0 ? 0 : mission.armorValue));
-                 
-                 if (enemyShields > 0) {
-                    const sDmg = Math.min(enemyShields, netDamage);
-                    enemyShields -= sDmg;
-                    logs.push(`[T+${time}s] ${s.name}: ${isCrit ? '[CRIT] ' : ''}Shield Hit (-${Math.ceil(sDmg)} S) [REM: ${Math.ceil(enemyShields + enemyHull)}]`);
+                 // 4.1.1 Roll for Crit
+                 const isCrit = Math.random() <= s.critChance;
+                 let grossDamage = s.baseDamage * (isCrit ? s.critMultiplier : 1.0);
+
+                 // 3.2 Momentum Scaling (Kinetic Only)
+                 if (s.damageType === 'KINETIC') {
+                    const momentumMultiplier = 1.0 + ((s.currentSpeed / 100) * (s.baseWeight / 100));
+                    grossDamage *= momentumMultiplier;
+                 }
+
+                 // 4.1.2 Matrix Multiplier
+                 const currentArmorType: ArmorType = enemyShields > 0 ? 'ENERGY_SHIELD' : mission.armorType;
+                 const matrix = this.effectivenessMatrix[s.damageType] || this.effectivenessMatrix['SLASHING'];
+                 const multiplier = matrix[currentArmorType] || 1.0;
+                 grossDamage *= multiplier;
+
+                 // 4.1.3 Armor Mitigation & Evasion
+                 if (Math.random() <= mission.enemyEvasionRate) {
+                    logs.push(`[T+${time}s] ${s.name}: [EVADED] Hostile maneuver successful.`);
                  } else {
-                    const hDmg = Math.min(enemyHull, netDamage);
-                    enemyHull -= hDmg;
-                    logs.push(`[T+${time}s] ${s.name}: ${isCrit ? '[CRIT] ' : ''}Hull Hit (-${Math.ceil(hDmg)} H) [REM: ${Math.ceil(enemyHull)}]`);
+                    let netDamage = Math.max(1, grossDamage - (enemyShields > 0 ? 0 : mission.armorValue));
+                    
+                    if (enemyShields > 0) {
+                       const sDmg = Math.min(enemyShields, netDamage);
+                       enemyShields -= sDmg;
+                       logs.push(`[T+${time}s] ${s.name}: ${isCrit ? '[CRIT] ' : ''}Shield Hit (-${Math.ceil(sDmg)} S) [REM: ${Math.ceil(enemyShields + enemyHull)}]`);
+                    } else {
+                       const hDmg = Math.min(enemyHull, netDamage);
+                       enemyHull -= hDmg;
+                       logs.push(`[T+${time}s] ${s.name}: ${isCrit ? '[CRIT] ' : ''}Hull Hit (-${Math.ceil(hDmg)} H) [REM: ${Math.ceil(enemyHull)}]`);
+                    }
                  }
               }
            }
