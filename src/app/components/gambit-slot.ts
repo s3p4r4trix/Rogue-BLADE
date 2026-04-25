@@ -97,7 +97,7 @@ import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
 export class GambitSlot {
   routine = input.required<GambitRoutine>();
   index = input.required<number>();
-  
+
   workshop = inject(WorkshopService);
 
   isInvalid = computed(() => !this.workshop.isRoutineValid(this.routine()));
