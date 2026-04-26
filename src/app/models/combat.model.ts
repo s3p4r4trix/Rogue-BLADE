@@ -10,6 +10,8 @@ export interface StrikeResult {
   logs: string[];
   initialSquadHP: number;
   initialEnemyHP: number;
+  initialEnemyHull: number;
+  initialEnemyShields: number;
 }
 
 export interface ShurikenSimulationState {

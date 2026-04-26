@@ -119,6 +119,21 @@ When a Shuriken attacks an enemy, the damageType is checked against the enemy's 
 
 (Note: Net damage always deals at least 1 point of damage unless completely evaded, to prevent zero-damage infinite loops).
 
+### 4.2 Combat Frequency & Cooldowns
+ 
+ Combat is not purely turn-based but uses a high-frequency simulation (0.1s increments).
+ 
+* **Shuriken Attack Speed (Kinetic Latency Scaling):** A Shuriken's reaction time is affected by its physical inertia (Weight) and its responsiveness (Acceleration).
+    * **Formula:** `effectiveLatency = baseLatency * (1.0 + (baseWeight / 500) - (acceleration / 50))`
+    * **Minimum Floor:** `effectiveLatency` cannot drop below `0.2x` of `baseLatency`.
+    * **Result:** Heavy, low-acceleration drones attack slowly but hit with more momentum. Light, high-acceleration drones strike with high frequency but less kinetic impact.
+
+* **Hostile Attack Speed (Tiered Cooldowns):** Hostile aggression scales with mission difficulty.
+    * **Tier I:** 1.5s - 2.5s cooldown.
+    * **Tier II:** 0.8s - 1.5s cooldown.
+    * **Tier III:** 0.4s - 0.8s cooldown.
+ * **Targeting:** Hostiles randomly target any allied Shuriken that is not currently **Stealthed**.
+
 ## 5. The Gambit System (Logic Routines)
 
 The AI is programmed using a Priority Slot System. The simulation checks Slots from 1 to N. The first valid IF condition triggers its corresponding THEN action.

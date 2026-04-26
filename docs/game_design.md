@@ -110,6 +110,14 @@ The Zenith Collective and their assimilated troops demand specific programming:
 * **Smoke-Generators:** Block/refract **Lidar** lasers.
 * **Lead-Armor Brutes:** Absorb/block **Terahertz** waves.
 
+## 7.1 Onboarding & Early-Game Balancing
+To ensure a smooth player onboarding experience, the first successful Liberation Strike utilizes a simplified combat profile:
+* **Target Resistance:** Forced to `UNARMORED`.
+* **Shields:** Disabled (0).
+* **Armor Value:** Disabled (0).
+* **Duration:** Shorter (approx. 30-45 seconds).
+This allows players to validate their basic "If-Then" routines and see significant impact (30+ damage per hit) before facing Zenith defensive tech like Shields and Heavy Armor.
+
 ## 8. The Workshop (Meta-Progression)
 * **Repair Deck & NPC Mechanic:** A rescued "Ripperdoc" for drones. Upgrading them increases Nanite speed or reduces Polymer costs.
 * **Server Room & NPC Programmer:** Netrunners who hack the Zenith network. Upgrading them unlocks more Gambit slots and reduces reaction latency.

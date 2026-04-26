@@ -75,69 +75,97 @@ export class CombatSimulationService {
       const initialSquadHP = shurikenStates.reduce((acc, s) => acc + s.hp + s.shields, 0);
 
       let success = false;
+      let enemyAttackCooldown = 0;
+
+      // Track next available action time for each shuriken
+      const shurikenNextAction = new Map<string, number>();
+      shurikenStates.forEach(s => shurikenNextAction.set(s.id, 0));
 
       logs.push(`[SYSTEM] STRIKE INITIATED: ${mission.targetName}`);
       logs.push(`[SYSTEM] RESISTANCE: ${mission.expectedResistance} [H:${enemyHull} S:${enemyShields} A:${mission.armorValue}]`);
 
-      for (let tick = 1; tick <= totalTicks; tick++) {
+      // Simulation runs in 0.1s increments for precision, but logs are tagged by second
+      const timeStep = 0.1;
+      const totalTime = mission.durationSeconds;
+
+      for (let time = 0; time <= totalTime; time += timeStep) {
+         const currentSecond = Math.floor(time);
+         
+         // 1. Shuriken Actions
          shurikenStates.forEach(s => {
             if (s.hp <= 0) return;
 
-            // 3.0 Physics & Energy Update
-            s.isStealthed = false; // Reset stealth/evasion buffs each tick unless action reapplies
-            s.evasionBuff = 0;
-
-            s.energy = Math.min(s.maxEnergy, s.energy + s.energyRegen - s.passiveDrain);
+            // Physics & Energy Update (scaled by timeStep)
+            s.energy = Math.min(s.maxEnergy, s.energy + (s.energyRegen - s.passiveDrain) * timeStep);
             s.isExhausted = s.energy <= 0;
+            if (s.energy < 0) s.energy = 0;
 
             let effectiveTopSpeed = s.topSpeed;
-            if (s.isExhausted) {
-               effectiveTopSpeed *= 0.5;
-               if (s.energy < 0) s.energy = 0;
+            if (s.isExhausted) effectiveTopSpeed *= 0.5;
+            s.currentSpeed = Math.min(effectiveTopSpeed, s.currentSpeed + (s.acceleration * (1 - (s.baseWeight / 1000))) * timeStep);
+
+            // Action Check
+            const weightFactor = s.baseWeight / 500;
+            const accFactor = s.acceleration / 50;
+            const latencyMult = Math.max(0.2, 1.0 + weightFactor - accFactor);
+            const effectiveLatency = s.latency * latencyMult;
+
+            if (time >= (shurikenNextAction.get(s.id) || 0)) {
+               const validRoutine = s.routines.find(r => {
+                  if (!r.trigger || !r.action) return false;
+                  return this.evaluateTrigger(r.trigger.id, s, { enemyHull, enemyShields, mission, tick: currentSecond, logs });
+               });
+
+               const actionToTake = validRoutine?.action?.id || 'actionStandardStrike';
+               const enemyRef = { hull: enemyHull, shields: enemyShields };
+               
+               // Prefix log with timestamp for the UI parser
+               const logCountBefore = logs.length;
+               this.executeAction(actionToTake, s, { enemyRef, mission, tick: currentSecond, logs });
+               
+               // If an action generated logs, update the next action time using effective latency
+               if (logs.length > logCountBefore) {
+                  shurikenNextAction.set(s.id, time + effectiveLatency);
+               }
+               
+               enemyHull = enemyRef.hull;
+               enemyShields = enemyRef.shields;
             }
-
-            s.currentSpeed = Math.min(effectiveTopSpeed, s.currentSpeed + (s.acceleration * (1 - (s.baseWeight / 1000))));
-
-            // 5.0 Gambit Evaluation
-            const validRoutine = s.routines.find(r => {
-               if (!r.trigger || !r.action) return false;
-               return this.evaluateTrigger(r.trigger.id, s, { enemyHull, enemyShields, mission, tick, logs });
-            });
-
-            const actionToTake = validRoutine?.action?.id || 'actionStandardStrike';
-            const enemyRef = { hull: enemyHull, shields: enemyShields };
-            this.executeAction(actionToTake, s, { enemyRef, mission, tick, logs });
-            enemyHull = enemyRef.hull;
-            enemyShields = enemyRef.shields;
          });
 
-         // Enemy Counter-Attack
-         if ((enemyHull + enemyShields) > 0) {
-            shurikenStates.forEach(s => {
-               if (s.hp <= 0 || s.isStealthed) return;
+         // 2. Enemy Counter-Attack (Fair Cooldown scaling with Tier)
+         if ((enemyHull + enemyShields) > 0 && time >= enemyAttackCooldown) {
+            const targets = shurikenStates.filter(s => s.hp > 0 && !s.isStealthed);
+            if (targets.length > 0) {
+               const s = targets[Math.floor(Math.random() * targets.length)];
+               
+               let enemyDmg = Math.floor(10 + (currentSecond * 0.5));
+               let effectiveEvasion = s.evasionRate + s.evasionBuff;
+               if (s.isExhausted) effectiveEvasion = 0;
 
-               if (Math.random() < 0.2) { // 20% chance for enemy to target this shuriken
-                  let enemyDmg = Math.floor(10 + (tick * 0.4));
-                  let effectiveEvasion = s.evasionRate + s.evasionBuff;
-                  if (s.isExhausted) effectiveEvasion = 0;
-
-                  if (Math.random() <= effectiveEvasion) {
-                     logs.push(`${s.name}: [EVADED] Evasive thrusters active.`);
-                  } else {
-                     if (s.shields > 0) {
-                        const sDmg = Math.min(s.shields, enemyDmg);
-                        s.shields -= sDmg;
-                        enemyDmg -= sDmg;
-                        logs.push(`HOSTILE: Beam-Pulse -> ${s.name} (Shields: -${Math.ceil(sDmg)})`);
-                     }
-                     if (enemyDmg > 0 && s.hp > 0) {
-                        const netDmg = Math.max(1, enemyDmg - (s.armorValue / 5));
-                        s.hp = Math.max(0, s.hp - netDmg);
-                        logs.push(`HOSTILE: Impact -> ${s.name} (Hull: -${Math.ceil(netDmg)}) [REM: ${Math.ceil(s.hp)} HP]`);
-                     }
+               if (Math.random() <= effectiveEvasion) {
+                  logs.push(`${s.name}: [EVADED] Evasive thrusters active.`);
+               } else {
+                  if (s.shields > 0) {
+                     const sDmg = Math.min(s.shields, enemyDmg);
+                     s.shields -= sDmg;
+                     enemyDmg -= sDmg;
+                     logs.push(`HOSTILE: Beam-Pulse -> ${s.name} (Shields: -${Math.ceil(sDmg)})`);
+                  }
+                  if (enemyDmg > 0 && s.hp > 0) {
+                     const netDmg = Math.max(1, enemyDmg - (s.armorValue / 5));
+                     s.hp = Math.max(0, s.hp - netDmg);
+                     logs.push(`HOSTILE: Impact -> ${s.name} (Hull: -${Math.ceil(netDmg)}) [REM: ${Math.ceil(s.hp)} HP]`);
                   }
                }
-            });
+               
+               // Enemy attack frequency scales with Tier
+               let minCd = 1.5, maxCd = 2.5;
+               if (mission.difficulty.includes('Tier II')) { minCd = 0.8; maxCd = 1.5; }
+               else if (mission.difficulty.includes('Tier III')) { minCd = 0.4; maxCd = 0.8; }
+               
+               enemyAttackCooldown = time + minCd + (Math.random() * (maxCd - minCd));
+            }
          }
 
          if (shurikenStates.every(s => s.hp <= 0)) {
@@ -157,7 +185,17 @@ export class CombatSimulationService {
       const scrap = Math.floor(this.rng(mission.potentialLoot.scrapMin, mission.potentialLoot.scrapMax) * lootMultiplier);
       const credits = Math.floor(mission.potentialLoot.creditsBonus * lootMultiplier);
 
-      return { success, totalPolymer: polymer, totalScrap: scrap, totalCredits: credits, logs, initialSquadHP, initialEnemyHP };
+      return { 
+         success, 
+         totalPolymer: polymer, 
+         totalScrap: scrap, 
+         totalCredits: credits, 
+         logs, 
+         initialSquadHP, 
+         initialEnemyHP,
+         initialEnemyHull: mission.hull,
+         initialEnemyShields: mission.shields
+      };
    }
 
    private evaluateTrigger(id: string, s: ShurikenSimulationState, ctx: SimulationContext): boolean {

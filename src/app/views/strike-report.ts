@@ -68,8 +68,49 @@ import { StrikeResult, ShurikenStatus } from '../models/combat.model';
            <div class="flex-1 border border-white/5 p-5 bg-[#050110]/50 overflow-y-auto">
               <h3 class="text-[9px] uppercase font-black text-gray-500 mb-6 tracking-[0.4em] flex items-center gap-3">
                 <span class="w-2 h-[1px] bg-red-500"></span>
-                SQUAD_VITAL_TELEMETRY
+                 SQUAD_VITAL_TELEMETRY
               </h3>
+
+              <!-- Hostile Intel (The new Status Bar) -->
+              <div class="mb-10 p-4 border border-red-900/30 bg-red-950/10 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-1 text-[7px] text-red-900 uppercase font-black">Target_Lock: Active</div>
+                <h4 class="text-[9px] text-red-500 font-black mb-3 tracking-widest uppercase flex items-center gap-2">
+                  <span class="w-1 h-1 bg-red-500 animate-ping"></span>
+                  HOSTILE_ENTITY_DETECTION
+                </h4>
+                
+                <div class="space-y-4">
+                  <div class="flex justify-between items-end">
+                    <span class="text-xs font-black text-gray-100 uppercase tracking-tighter">{{ mission()?.targetName }}</span>
+                    <span class="text-[10px] font-mono text-red-500">{{ Math.ceil(enemyHull() + enemyShields()) }} <span class="opacity-30">/</span> {{ result()?.initialEnemyHP }}</span>
+                  </div>
+                  
+                  <div class="space-y-1.5">
+                    <!-- Enemy Shields -->
+                    @if (enemyMaxShields() > 0) {
+                      <div class="flex justify-between items-center text-[8px] text-cyan-700 uppercase font-bold tracking-tighter">
+                        <span>Shield_Array</span>
+                        <span>{{ Math.ceil((enemyShields() / enemyMaxShields()) * 100) }}%</span>
+                      </div>
+                      <div class="w-full h-1 bg-cyan-950/20">
+                        <div class="h-full bg-cyan-500 transition-all duration-300" [style.width.%]="(enemyShields() / enemyMaxShields()) * 100"></div>
+                      </div>
+                    }
+
+                    <!-- Enemy Hull -->
+                    <div class="flex justify-between items-center text-[8px] text-red-900 uppercase font-bold tracking-tighter">
+                      <span>Hull_Integrity</span>
+                      <span>{{ Math.ceil((enemyHull() / enemyMaxHull()) * 100) }}%</span>
+                    </div>
+                    <div class="w-full h-2 bg-red-950/20">
+                      <div class="h-full bg-red-600 transition-all duration-300" 
+                           [ngClass]="{'animate-pulse bg-red-500': enemyHull() < (enemyMaxHull() * 0.3)}"
+                           [style.width.%]="(enemyHull() / enemyMaxHull()) * 100"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="space-y-8">
                  @for (s of squadStatuses(); track s.id) {
                    <div class="space-y-3 group">
@@ -180,6 +221,10 @@ export class StrikeReport implements OnInit, OnDestroy {
   
   squadStatuses = signal<ShurikenStatus[]>([]);
   enemyIntegrity = signal(100);
+  enemyHull = signal(0);
+  enemyMaxHull = signal(0);
+  enemyShields = signal(0);
+  enemyMaxShields = signal(0);
   timeRemaining = signal(0);
 
   Math = Math;
@@ -219,6 +264,13 @@ export class StrikeReport implements OnInit, OnDestroy {
     const res = this.combat.simulateStrike(this.mission()!, this.shurikens());
     this.result.set(res);
     
+    // Initialize enemy status
+    this.enemyMaxHull.set(res.initialEnemyHull);
+    this.enemyHull.set(res.initialEnemyHull);
+    this.enemyMaxShields.set(res.initialEnemyShields);
+    this.enemyShields.set(res.initialEnemyShields);
+    this.enemyIntegrity.set(100);
+
     let logIndex = 0;
     this.intervalId = setInterval(() => {
       if (logIndex < res.logs.length) {
@@ -234,12 +286,30 @@ export class StrikeReport implements OnInit, OnDestroy {
   }
 
   private processLogEvent(log: string) {
-    // 1. Enemy HP Parsing (Total HP is hull + shields)
-    const enemyMatch = log.match(/\[REM: (\d+)\]/);
-    if (enemyMatch && this.result()) {
-      const remaining = parseInt(enemyMatch[1]);
-      const percentage = (remaining / this.result()!.initialEnemyHP) * 100;
-      this.enemyIntegrity.set(percentage);
+    // 1. Enemy Damage Parsing
+    // Shield Hit: "Carbon Razor: Shield Hit (-10 S) [REM: 190]"
+    const enemyShieldMatch = log.match(/Shield Hit \(-(\d+) S\)/);
+    if (enemyShieldMatch) {
+       const dmg = parseInt(enemyShieldMatch[1]);
+       this.enemyShields.update(s => Math.max(0, s - dmg));
+    }
+
+    // Hull Hit: "Carbon Razor: Hull Hit (-10 H) [REM: 90]"
+    const enemyHullMatch = log.match(/Hull Hit \(-(\d+) H\) \[REM: (\d+)\]/);
+    if (enemyHullMatch) {
+       const dmg = parseInt(enemyHullMatch[1]);
+       const remaining = parseInt(enemyHullMatch[2]);
+       this.enemyHull.set(remaining);
+       
+       const totalNow = remaining + this.enemyShields();
+       const percentage = (totalNow / (this.result()?.initialEnemyHP || 1)) * 100;
+       this.enemyIntegrity.set(percentage);
+    }
+
+    if (log.includes('MISSION OBJECTIVE NEUTRALIZED')) {
+      this.enemyHull.set(0);
+      this.enemyShields.set(0);
+      this.enemyIntegrity.set(0);
     }
 
     // 2. Shuriken Shield Parsing: "Beam-Pulse -> ShurikenName (Shields: -10)"

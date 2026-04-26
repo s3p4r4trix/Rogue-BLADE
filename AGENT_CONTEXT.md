@@ -42,16 +42,16 @@ The programming relies on a "Gambit" system (Slot-based priority list).
 * **Action (THEN):** e.g., "Kinetic Ram", "Parry projectile", "Mark Target".
 * **Routine:** A combination of 1 Trigger and 1 Action assigned to a Priority Slot (1, 2, 3... and a Fallback).
 
-## 5. Current Development Goal (Milestone 1)
+## 5. Current Development Goal (Milestone 2)
 
-We are currently building **Phase 1 (The Workshop / Routine - Modular system)**. We need to build the UI where the player can drag and drop Triggers and Actions into Priority Slots to compile a Shuriken's AI routine. *A static HTML/Tailwind prototype already exists and will be provided in a subsequent prompt.*
+We are currently building **Phase 2 (The Liberation Strike / Passive Combat)**. We have established the core combat simulation, damage matrices, and mission generation systems.
 
 ### Immediate Tasks for the Agent:
 
-1. **Architecture Setup:** Create the necessary TypeScript `interfaces` and `types` for the Hardware and Gambit systems.
-2. **State Management:** Create a `WorkshopService` using Angular Signals to manage the available inventory (Triggers/Actions) and the currently equipped Gambits of the active Shuriken.
-3. **Component Generation:** Translate the static HTML prototype into modular Angular components (e.g., `InventoryComponent`, `GambitSlotComponent`, `CompilerConsoleComponent`).
-4. **Drag & Drop Implementation:** Implement `@angular/cdk/drag-drop` to allow dragging triggers/actions from the inventory into the gambit slots, ensuring validation (e.g., only Triggers can be dropped into the "IF" zone).
+1. **Combat Simulation:** Refine the high-frequency (0.1s) battle engine to ensure fair hostile attack speeds and accurate shuriken latency processing.
+2. **Game Balancing:** Implement onboarding mechanics (Unarmored/Shield-less starts) and progressive difficulty scaling based on player success.
+3. **Live Feed UX:** Polish the Strike Report view with immersive tactical data and smooth log processing.
+4. **Math Integrity:** Ensure all combat logic strictly adheres to `docs/Core_Mechanics_And_Math_Logic.md`.
 
 ## 6. Coding Guidelines
 

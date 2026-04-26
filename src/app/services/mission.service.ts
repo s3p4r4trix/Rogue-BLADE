@@ -73,17 +73,24 @@ export class MissionService {
   }
 
   private generateSingleContract(index: number): MissionContract {
+    const stats = this.player.stats();
+    const successfulRuns = stats.successfulRuns;
     const squadPower = this.calculateSquadPower();
+
     const target = TARGETS[Math.floor(Math.random() * TARGETS.length)];
     const desc = DESCRIPTIONS[Math.floor(Math.random() * DESCRIPTIONS.length)];
-    const resProfile = RESISTANCES[Math.floor(Math.random() * RESISTANCES.length)];
+    
+    // Force Unarmored/No-Shield for the first few successful runs
+    let resProfile;
+    if (true) { // ToDo: Remove this check - only for testing
+      resProfile = RESISTANCES.find(r => r.type === 'UNARMORED') || RESISTANCES[2];
+    } else {
+      resProfile = RESISTANCES[Math.floor(Math.random() * RESISTANCES.length)];
+    }
     
     let diffStr: MissionDifficulty;
     let durSecs: number;
     let pMin, pMax, sMin, sMax, cBonus;
-
-    const stats = this.player.stats();
-    const successfulRuns = stats.successfulRuns;
 
     // Progressive Multipliers based on success
     // Tier I starts very easy (0.4) and scales up to 0.8
@@ -116,9 +123,10 @@ export class MissionService {
     cBonus = Math.floor(baseLoot * 1.5); // Slightly reduced bonus ratio for cleaner numbers
 
     const hull = Math.floor(baseLoot * 1.5);
-    const shields = resProfile.type === 'ENERGY_SHIELD' ? Math.floor(baseLoot * 1.2) : Math.floor(baseLoot * 0.2);
-    const armorValue = resProfile.type === 'HEAVY_ARMOR' ? Math.floor(baseLoot * 0.15) : 0;
-    const enemyEvasionRate = resProfile.type === 'UNARMORED' ? 0.25 : 0.05;
+    // Force 0 shields for early game
+    const shields = (successfulRuns < 3) ? 0 : (resProfile.type === 'ENERGY_SHIELD' ? Math.floor(baseLoot * 1.2) : Math.floor(baseLoot * 0.2));
+    const armorValue = (successfulRuns < 3) ? 0 : (resProfile.type === 'HEAVY_ARMOR' ? Math.floor(baseLoot * 0.15) : 0);
+    const enemyEvasionRate = resProfile.type === 'UNARMORED' ? 0.10 : 0.05; // Slightly lower initial evasion
 
     return {
       id: `mission-${Date.now()}-${index}`,
