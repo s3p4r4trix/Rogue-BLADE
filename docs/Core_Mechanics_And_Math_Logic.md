@@ -140,41 +140,41 @@ The AI is programmed using a Priority Slot System. The simulation checks Slots f
 
 ### 5.1 Triggers (IF Components)
 
-Every trigger must evaluate to a boolean (true / false). Many triggers are locked unless the specific sensor is equipped in the hardware phase.
+Every trigger must evaluate to a boolean (true / false). Many triggers are locked unless the specific sensor is equipped in the hardware phase. In the Rogue OS UI, these are presented with tactical designations.
 
-* **`ifEnemyInMeleeRange`**
+* **`ifEnemyInMeleeRange`** (Tactical: **Enemy: Close Proximity**)
     * **reqSensor:** None (Proximity)
     * **logic:** Returns true if an enemy is within collision/strike radius.
 
-* **`ifEnemyInSight`**
+* **`ifEnemyInSight`** (Tactical: **Enemy: Detected**)
     * **reqSensor:** Radar / Lidar
     * **logic:** Returns true if an enemy is within the global tracking radius.
 
-* **`ifEnemyIsShielded`**
+* **`ifEnemyIsShielded`** (Tactical: **Enemy: Shield Active**)
     * **reqSensor:** EM-Scanner
     * **logic:** Returns true if the target has an active Energy Shield.
 
-* **`ifEnemyIsOrganic`**
+* **`ifEnemyIsOrganic`** (Tactical: **Enemy: Soft Target**)
     * **reqSensor:** Biosensor
     * **logic:** Returns true if the target armor type is UNARMORED/Flesh.
 
-* **`ifEnemyBehindCover`**
+* **`ifEnemyBehindCover`** (Tactical: **Enemy: Obscured**)
     * **reqSensor:** Terahertz Array
     * **logic:** Returns true if target is obscured by a wall/obstacle.
 
-* **`ifTargetIsMarked`**
+* **`ifTargetIsMarked`** (Tactical: **Enemy: Marked**)
     * **reqSensor:** None (Reads Swarm Data)
     * **logic:** Returns true if any enemy currently has the 'Marked' status.
 
-* **`ifSelfHpCritical`**
+* **`ifSelfHpCritical`** (Tactical: **Self: Hull Breach**)
     * **reqSensor:** None (Internal System)
     * **logic:** Returns true if currentHp < 20% of maxHp.
 
-* **`ifEnergyHigh`**
+* **`ifEnergyHigh`** (Tactical: **Self: Power Overload**)
     * **reqSensor:** None (Internal System)
     * **logic:** Returns true if currentEnergy > 80% of maxEnergy.
 
-* **`ifIncomingProjectile`**
+* **`ifIncomingProjectile`** (Tactical: **Self: Incoming Fire**)
     * **reqSensor:** Lidar
     * **logic:** Returns true if an enemy projectile is on a collision course with this Shuriken.
 
@@ -182,30 +182,30 @@ Every trigger must evaluate to a boolean (true / false). Many triggers are locke
 
 Actions dictate the behavior of the Shuriken once a trigger is met. Some actions have specific energy costs or hardware synergies.
 
-* **`actionStandardStrike`**
+* **`actionStandardStrike`** (Tactical: **Execute: Standard Strike**)
     * **behavior:** Moves toward the target and executes a standard attack using the equipped blade profile.
     * **energyCost:** 0 (Base cost)
 
-* **`actionKineticRam`**
+* **`actionKineticRam`** (Tactical: **Execute: Kinetic Ram**)
     * **behavior:** Maximizes acceleration in a straight line toward the target to maximize the momentum multiplier.
     * **energyCost:** 15
 
-* **`actionEvasiveManeuver`**
+* **`actionEvasiveManeuver`** (Tactical: **Execute: Evasive Action**)
     * **behavior:** Briefly increases evasionRate to 1.0 (100%) and moves erratically. Cancels current attack.
     * **energyCost:** 20
 
-* **`actionApplyMark`**
+* **`actionApplyMark`** (Tactical: **Execute: Apply Mark**)
     * **behavior:** Attacks with the intent to apply the "Marked" status effect instead of dealing max damage.
     * **energyCost:** 5
 
-* **`actionDefendAlly`**
+* **`actionDefendAlly`** (Tactical: **Execute: Defend Ally**)
     * **behavior:** Repaths to orbit the nearest allied Shuriken (or the player's core) to intercept incoming attacks.
     * **energyCost:** 0
 
-* **`actionActivateCloak`**
+* **`actionActivateCloak`** (Tactical: **Execute: Ghost Protocol**)
     * **behavior:** Consumes energy per second to push stealthValue to maximum, making the Shuriken untargetable by normal enemies.
     * **energyCost:** 10 per second
 
-* **`actionRetreat`**
+* **`actionRetreat`** (Tactical: **Execute: Emergency Withdrawal**)
     * **behavior:** Moves to the furthest possible edge of the combat zone away from the highest density of enemies to regenerate shields/HP.
-    * **energyCost:** 0
+    * **energyCost:** 0

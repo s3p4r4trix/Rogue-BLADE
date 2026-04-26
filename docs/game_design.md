@@ -31,10 +31,80 @@ Hardware components function similarly to gear in Action RPGs (like Diablo). Thi
 
 ## 5. The Software System (Gambit UI)
 The **Slot-based Gambit System** is the core mechanic for programming AI behavior.
-* **Trigger (IF):** e.g., "Enemy in range," "Zenith Shield > 0," "Self HP < 20%," "Enemy status: Marked," "Self status: Undetected." (Note: Many triggers require specific sensors).
-* **Action (THEN):** e.g., "Parry," "Kinetic Ram," "Guard Character," "Mark Target," "Ambush Strike (Critical)."
 * **Priority:** The vertical order of slots determines the importance of actions.
 * **Synergies:** Players can assign roles. For example, a "Marker" shuriken applies debuffs, while a "Striker" shuriken attacks only marked targets.
+
+### 5.1 Triggers (IF Components)
+
+Every trigger must evaluate to a boolean (true / false). Many triggers are locked unless the specific sensor is equipped in the hardware phase. In the Rogue OS UI, these are presented with tactical designations.
+
+* **`ifEnemyInMeleeRange`** (Designation: **Enemy: Close Proximity**)
+    * **reqSensor:** None (Proximity)
+    * **logic:** Returns true if an enemy is within collision/strike radius.
+
+* **`ifEnemyInSight`** (Designation: **Enemy: Detected**)
+    * **reqSensor:** Radar / Lidar
+    * **logic:** Returns true if an enemy is within the global tracking radius.
+
+* **`ifEnemyIsShielded`** (Designation: **Enemy: Shield Active**)
+    * **reqSensor:** EM-Scanner
+    * **logic:** Returns true if the target has an active Energy Shield.
+
+* **`ifEnemyIsOrganic`** (Designation: **Enemy: Soft Target**)
+    * **reqSensor:** Biosensor
+    * **logic:** Returns true if the target armor type is UNARMORED/Flesh.
+
+* **`ifEnemyBehindCover`** (Designation: **Enemy: Obscured**)
+    * **reqSensor:** Terahertz Array
+    * **logic:** Returns true if target is obscured by a wall/obstacle.
+
+* **`ifTargetIsMarked`** (Designation: **Enemy: Marked**)
+    * **reqSensor:** None (Reads Swarm Data)
+    * **logic:** Returns true if any enemy currently has the 'Marked' status.
+
+* **`ifSelfHpCritical`** (Designation: **Self: Hull Breach**)
+    * **reqSensor:** None (Internal System)
+    * **logic:** Returns true if currentHp < 20% of maxHp.
+
+* **`ifEnergyHigh`** (Designation: **Self: Power Overload**)
+    * **reqSensor:** None (Internal System)
+    * **logic:** Returns true if currentEnergy > 80% of maxEnergy.
+
+* **`ifIncomingProjectile`** (Designation: **Self: Incoming Fire**)
+    * **reqSensor:** Lidar
+    * **logic:** Returns true if an enemy projectile is on a collision course with this Shuriken.
+
+### 5.2 Actions (THEN Components)
+
+Actions dictate the behavior of the Shuriken once a trigger is met. Some actions have specific energy costs or hardware synergies.
+
+* **`actionStandardStrike`** (Designation: **Execute: Standard Strike**)
+    * **behavior:** Moves toward the target and executes a standard attack using the equipped blade profile.
+    * **energyCost:** 0 (Base cost)
+
+* **`actionKineticRam`** (Designation: **Execute: Kinetic Ram**)
+    * **behavior:** Maximizes acceleration in a straight line toward the target to maximize the momentum multiplier.
+    * **energyCost:** 15
+
+* **`actionEvasiveManeuver`** (Designation: **Execute: Evasive Action**)
+    * **behavior:** Briefly increases evasionRate to 1.0 (100%) and moves erratically. Cancels current attack.
+    * **energyCost:** 20
+
+* **`actionApplyMark`** (Designation: **Execute: Apply Mark**)
+    * **behavior:** Attacks with the intent to apply the "Marked" status effect instead of dealing max damage.
+    * **energyCost:** 5
+
+* **`actionDefendAlly`** (Designation: **Execute: Defend Ally**)
+    * **behavior:** Repaths to orbit the nearest allied Shuriken (or the player's core) to intercept incoming attacks.
+    * **energyCost:** 0
+
+* **`actionActivateCloak`** (Designation: **Execute: Ghost Protocol**)
+    * **behavior:** Consumes energy per second to push stealthValue to maximum, making the Shuriken untargetable by normal enemies.
+    * **energyCost:** 10 per second
+
+* **`actionRetreat`** (Designation: **Execute: Emergency Withdrawal**)
+    * **behavior:** Moves to the furthest possible edge of the combat zone away from the highest density of enemies to regenerate shields/HP.
+    * **energyCost:** 0
 
 ## 6. Hardware System
 
@@ -140,3 +210,9 @@ To foster player attachment to specific Shurikens within their swarm, each drone
 * **Gaining XP:** After defeating an enemy or successfully completing a strike, the Shuriken earns experience, feeding the Nanites.
 * **Leveling Up:** When the XP pool reaches a threshold, the Shuriken levels up.
 * **Stat Boosting:** Upon leveling, the player can permanently boost one of the Shuriken's overall base stats. Selectable boosts include: baseDamage, critChance, critMultiplier, energyRegen, maxEnergy, armorValue, evasionRate, stealthValue, baseWeight, topSpeed, and acceleration.
+
+## 12. Development Status (Rogue OS Refinement)
+*   **[x] Tactical Naming:** Conditions and Actions use player-friendly tactical terminology.
+*   **[x] System Reference v2:** Integrated "Tactical Wiki" with real-time search and auto-diagnostic display.
+*   **[x] Smart Onboarding:** New shurikens are pre-loaded with a "Standard Tactical Routine" (Close Proximity Strike / Long Range Ram).
+*   **[ ] Combat Latency UI:** Visualization of effective latency based on hardware weight/acceleration in the Routine Compiler.

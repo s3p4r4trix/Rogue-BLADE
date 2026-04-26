@@ -38,10 +38,13 @@ import { CyberOption } from '../models/hardware.model';
         </div>
         <select class="cyber-native-select"
                 [value]="routine().trigger?.value || ''"
-                (change)="onNativeTriggerChange($event)">
+                (change)="onNativeTriggerChange($event)"
+                (focus)="showTriggerInfo()">
           <option value="" disabled>-- Select Trigger --</option>
-          @for (opt of triggerOptions; track opt.value) {
-            <option [value]="opt.value" [disabled]="opt.disabled">{{ opt.label }}</option>
+          @for (opt of triggerOptions(); track opt.value) {
+            <option [value]="opt.value" [disabled]="opt.disabled">
+              {{ opt.label }} {{ opt.disabled ? '— [IN_USE]' : '' }}
+            </option>
           }
         </select>
       </div>
@@ -59,7 +62,8 @@ import { CyberOption } from '../models/hardware.model';
         </div>
         <select class="cyber-native-select"
                 [value]="routine().action?.value || ''"
-                (change)="onNativeActionChange($event)">
+                (change)="onNativeActionChange($event)"
+                (focus)="showActionInfo()">
           <option value="" disabled>-- Select Action --</option>
           @for (opt of actionOptions; track opt.value) {
             <option [value]="opt.value">{{ opt.label }}</option>
@@ -103,13 +107,19 @@ export class GambitSlot {
 
   isInvalid = computed(() => !this.workshop.isRoutineValid(this.routine()));
 
-  get triggerOptions(): CyberOption[] {
+  triggerOptions = computed(() => {
+    const routines = this.workshop.routines();
+    const usedTriggerIds = routines
+      .filter((_, i) => i !== this.index())
+      .map(r => r.trigger?.id)
+      .filter(id => !!id);
+
     return this.workshop.unlockedTriggers().map(t => ({
       value: t.value,
       label: t.name,
-      disabled: t.disabled
+      disabled: t.disabled || usedTriggerIds.includes(t.id)
     }));
-  }
+  });
 
   get actionOptions(): CyberOption[] {
     return this.workshop.unlockedActions().map(a => ({
@@ -126,14 +136,20 @@ export class GambitSlot {
     const value = (event.target as HTMLSelectElement).value;
     if (!value) return;
     const trigger = this.workshop.availableTriggers().find(t => t.value === value);
-    if (trigger) this.workshop.setTrigger(this.index(), trigger);
+    if (trigger) {
+      this.workshop.setTrigger(this.index(), trigger);
+      this.workshop.setInfoItem(trigger);
+    }
   }
 
   onNativeActionChange(event: Event) {
     const value = (event.target as HTMLSelectElement).value;
     if (!value) return;
     const action = this.workshop.availableActions().find(a => a.value === value);
-    if (action) this.workshop.setAction(this.index(), action);
+    if (action) {
+      this.workshop.setAction(this.index(), action);
+      this.workshop.setInfoItem(action);
+    }
   }
 
   moveUp() {

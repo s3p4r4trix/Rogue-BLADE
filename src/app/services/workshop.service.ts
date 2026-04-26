@@ -93,30 +93,45 @@ function loadSavedRoutinesMap(): Record<string, GambitRoutine[]> {
   if (saved) {
     try { return JSON.parse(saved); } catch (e) {}
   }
+  
+  // Default routines for new players
+  const defaultRoutines: GambitRoutine[] = [
+    { 
+      priority: 1, 
+      trigger: { id: 'ifEnemyInMeleeRange', type: 'trigger', value: 'Enemy in melee range', name: 'Enemy: Close Proximity', description: 'Target is within strike radius.' }, 
+      action: { id: 'actionStandardStrike', type: 'action', value: 'Standard Strike', name: 'Execute: Standard Strike', energyCost: 0, description: 'Basic attack maneuver.', baseLatency: 200 } 
+    },
+    { 
+      priority: 2, 
+      trigger: { id: 'ifEnemyInSight', type: 'trigger', value: 'Enemy in sight', name: 'Enemy: Detected', description: 'Target detected by radar/lidar.', requiredSensor: 'Radar/Lidar' }, 
+      action: { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: 'Execute: Kinetic Ram', energyCost: 15, description: 'High-speed physical collision.', baseLatency: 500 } 
+    }
+  ];
+
   return {
-    'shuriken-01': [{ priority: 1, trigger: null, action: null }],
-    'shuriken-02': [{ priority: 1, trigger: null, action: null }]
+    'shuriken-01': [...defaultRoutines],
+    'shuriken-02': [...defaultRoutines]
   };
 }
 
 @Injectable({ providedIn: 'root' })
 export class WorkshopService {
   readonly availableTriggers = signal<Trigger[]>([
-    { id: 'ifEnemyInMeleeRange', type: 'trigger', value: 'Enemy in melee range', name: '[!] ifEnemyInMeleeRange', description: 'Target is within strike radius.' },
-    { id: 'ifEnemyInSight', type: 'trigger', value: 'Enemy in sight', name: '[!] ifEnemyInSight', description: 'Target detected by radar/lidar.', requiredSensor: 'Thermal Sensors' },
-    { id: 'ifEnemyIsShielded', type: 'trigger', value: 'Enemy has active shield', name: '[!] ifEnemyIsShielded', description: 'Target is protected by EM field.', requiredSensor: 'EM-Sensors' },
-    { id: 'ifEnemyIsOrganic', type: 'trigger', value: 'Enemy is organic', name: '[!] ifEnemyIsOrganic', description: 'Target is flesh/light armored.', requiredSensor: 'Biosensors' },
-    { id: 'ifSelfHpCritical', type: 'trigger', value: 'Hull integrity < 20%', name: '[!] ifSelfHpCritical', description: 'Critical internal damage detected.' },
-    { id: 'ifEnergyHigh', type: 'trigger', value: 'Energy pool > 80%', name: '[!] ifEnergyHigh', description: 'System capacity ready for high-drain actions.' },
-    { id: 'ifIncomingProjectile', type: 'trigger', value: 'Incoming projectile detected', name: '[!] ifIncomingProjectile', description: 'Hostile fire on collision course.', requiredSensor: 'Lidar Array' }
+    { id: 'ifEnemyInMeleeRange', type: 'trigger', value: 'Enemy in melee range', name: 'Enemy: Close Proximity', description: 'Target is within strike radius.' },
+    { id: 'ifEnemyInSight', type: 'trigger', value: 'Enemy in sight', name: 'Enemy: Detected', description: 'Target detected by radar/lidar.', requiredSensor: 'Radar/Lidar' },
+    { id: 'ifEnemyIsShielded', type: 'trigger', value: 'Enemy has active shield', name: 'Enemy: Shield Active', description: 'Target is protected by EM field.', requiredSensor: 'EM-Sensors' },
+    { id: 'ifEnemyIsOrganic', type: 'trigger', value: 'Enemy is organic', name: 'Enemy: Soft Target', description: 'Target is flesh/light armored.', requiredSensor: 'Biosensors' },
+    { id: 'ifSelfHpCritical', type: 'trigger', value: 'Hull integrity < 20%', name: 'Self: Hull Breach', description: 'Critical internal damage detected.' },
+    { id: 'ifEnergyHigh', type: 'trigger', value: 'Energy pool > 80%', name: 'Self: Power Overload', description: 'System capacity ready for high-drain actions.' },
+    { id: 'ifIncomingProjectile', type: 'trigger', value: 'Incoming projectile detected', name: 'Self: Incoming Fire', description: 'Hostile fire on collision course.', requiredSensor: 'Lidar Array' }
   ]);
 
   readonly availableActions = signal<Action[]>([
-    { id: 'actionStandardStrike', type: 'action', value: 'Standard Strike', name: '[>] actionStandardStrike', energyCost: 0, description: 'Basic attack maneuver.' },
-    { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: '[>] actionKineticRam', energyCost: 15, description: 'High-speed physical collision.' },
-    { id: 'actionEvasiveManeuver', type: 'action', value: 'Evasive Maneuver', name: '[>] actionEvasiveManeuver', energyCost: 20, description: 'Briefly maximize evasion.' },
-    { id: 'actionActivateCloak', type: 'action', value: 'Activate Cloak', name: '[>] actionActivateCloak', energyCost: 10, description: 'Consume energy to disappear.' },
-    { id: 'actionRetreat', type: 'action', value: 'Emergency Retreat', name: '[>] actionRetreat', energyCost: 0, description: 'Withdraw to safety zones.' }
+    { id: 'actionStandardStrike', type: 'action', value: 'Standard Strike', name: 'Execute: Standard Strike', energyCost: 0, description: 'Basic attack maneuver.', baseLatency: 200 },
+    { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: 'Execute: Kinetic Ram', energyCost: 15, description: 'High-speed physical collision.', baseLatency: 500 },
+    { id: 'actionEvasiveManeuver', type: 'action', value: 'Evasive Maneuver', name: 'Execute: Evasive Action', energyCost: 20, description: 'Briefly maximize evasion.', baseLatency: 100 },
+    { id: 'actionActivateCloak', type: 'action', value: 'Activate Cloak', name: 'Execute: Ghost Protocol', energyCost: 10, description: 'Consume energy to disappear.', baseLatency: 300 },
+    { id: 'actionRetreat', type: 'action', value: 'Emergency Retreat', name: 'Execute: Emergency Withdrawal', energyCost: 0, description: 'Withdraw to safety zones.', baseLatency: 0 }
   ]);
 
   readonly availableShurikens = signal<Shuriken[]>(loadShurikens());
