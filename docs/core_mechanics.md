@@ -137,7 +137,7 @@ When a Shuriken attacks an enemy, the damageType is checked against the enemy's 
 ### 5.0 Priority & Fallback Logic
 The AI checks Slots from 1 to N. 
 * **Action Fallbacks:** If an IF condition is met, but the THEN action cannot be executed (e.g., insufficient energy), the simulation skips the current routine and evaluates the next one in the list.
-* **Default Slot:** Every Shuriken has a hidden, uneditable final slot: `IF Enemy Exists -> THEN Standard Strike`. This ensures drones never idle if they have energy and a target.
+* **Default Slot:** Every Shuriken has a hidden, uneditable final slot: `IF Enemy Detected -> THEN Standard Strike`. This ensures drones never idle if they have energy and a target, but they must first locate the target via sensors.
 
 ### 5.1 Triggers (IF Components)
 Every trigger must evaluate to a boolean (true / false). Many triggers are locked unless the specific sensor is equipped in the hardware phase. In the Rogue OS UI, these are presented with tactical designations.
@@ -245,8 +245,13 @@ All movement uses smooth acceleration toward a target velocity. The acceleration
     vy += (targetVy - vy) * min(1, accelFactor * 0.1)
     ```
 
+#### Obstacle Avoidance (Feeler System)
+Both drones and enemies utilize a "feeler" point projected 50 units ahead of their current `rotation`. If this point intersects an obstacle AABB, a steering force is applied away from the `obstacle.center`.
+* **Blending:** `targetVelocity = (desiredVector * 0.4) + (steeringVector * 0.6)`
+* **Result:** Units steer proactively around cover rather than colliding and stopping.
+
 #### Pursuit (actionStandardStrike)
-Moves in a straight, interpolated line directly toward a visible target entity. (Formerly termed 'Seek').
+Moves in a straight, interpolated line directly toward a visible target entity. (Requires active sensor lock).
 ```
 direction = normalize(target.position - drone.position)
 targetVelocity = direction * topSpeed
@@ -261,9 +266,9 @@ targetVelocity = direction * topSpeed
 ```
 
 #### Patrol (Idle Navigation)
-Moves at 60% top speed between random waypoints within the arena.
+When no target is known or seen, the unit moves at 80% top speed between random waypoints within the arena to scan for threats.
 ```
-targetVelocity = normalize(waypoint - entity.position) * (topSpeed * 0.6)
+targetVelocity = normalize(waypoint - entity.position) * (topSpeed * 0.8)
 ```
 
 #### Orbit (actionDefendAlly)
@@ -326,6 +331,9 @@ AI entities project path safety to steer around cover.
 Simple Euclidean distance check between entities on the 2D ground plane.
 * **Radar Range:** `sensorRange` (default 120 units). Returns `true` if `dist(drone, target) <= sensorRange`.
 * **Melee Range:** `meleeRange` (default 20 units). Returns `true` if `dist(drone, target) <= meleeRange`.
+
+#### Initial Detection (No Omniscience)
+Drones start a mission with `lastSeenPos = null` and begin in the **PATROLLING** state. They have no information about enemy coordinates until they achieve a "Sensor Lock" (Range <= sensorRange AND LOS is clear).
 
 #### Line of Sight (ifEnemyBehindCover)
 A parametric ray is cast from the drone's position to the target. If the ray segment intersects any obstacle AABB, the target is **obscured** (returns `true`).

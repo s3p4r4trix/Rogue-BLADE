@@ -54,7 +54,7 @@ We are currently building **Phase 2 (The Liberation Strike / Passive Combat)**. 
 5. **Visual Feedback:** Hit flash VFX (white ring + flash on enemy), ⚡ strike-ready indicator, LAST CONTACT crosshair marker for search state, and full debug overlays.
 6. **Combat Simulation:** Refine the high-frequency (0.1s) battle engine to ensure fair hostile attack speeds and accurate shuriken latency processing.
 7. **Game Balancing:** Implement onboarding mechanics (Unarmored/Shield-less starts) and progressive difficulty scaling based on player success.
-8. **Math Integrity:** Ensure all combat logic strictly adheres to `docs/Core_Mechanics_And_Math_Logic.md`.
+8. **Math Integrity:** Ensure all combat logic strictly adheres to `docs/core_mechanics.md`.
 
 ## 6. Coding Guidelines
 
@@ -68,5 +68,5 @@ We are currently building **Phase 2 (The Liberation Strike / Passive Combat)**. 
 * **All text in the application MUST be in English.**
 * Whenever generating code, provide complete, runnable snippets.
 * **Game Design Consistency:** Always refer to and adhere to the overall game design and mechanics specified in `docs/game_design.md`. 
-* **Core Mechanics & Math Logic:** The file `docs/Core_Mechanics_And_Math_Logic.md` is the absolute source of truth for all mathematical calculations, stat distributions, and combat mechanics. Always refer to this file first for logic implementation. You MUST keep this file up to date whenever core mechanics are modified or added.
+* **Core Mechanics & Math Logic:** The file `docs/core_mechanics.md` is the absolute source of truth for all mathematical calculations, stat distributions, and combat mechanics. Always refer to this file first for logic implementation. You MUST keep this file up to date whenever core mechanics are modified or added.
 * **UI/UX Smoothness:** The UI must feel smooth and responsive in handling. Ensure interactions, transitions, and layout shifts are visually polished and free of jank.

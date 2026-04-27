@@ -254,15 +254,16 @@ The Liberation Strike's **Phase 2 (Passive)** is accompanied by a **Tactical Map
 
 ### 13.4 AI Movement Behaviors
 These are the core spatial behaviors mapped to existing GDD actions:
-*   **Pursuit (Standard Strike):** Drone moves in a straight line toward its visible target with smooth acceleration. (Previously termed 'Seek').
+*   **Pursuit (Standard Strike):** Drone moves in a straight line toward its visible target with smooth acceleration. Requires active sensor lock.
 *   **Fighting (Active Strike):** High-intensity engagement when in melee range, at strike velocity, and with clear LOS. Prioritizes direct, aggressive movement to impact the target.
+*   **Steering & Obstacle Avoidance:** Units project "feelers" to detect upcoming collisions and apply steering forces to navigate around cover without losing momentum.
 *   **Orbit (Repositioning):** Drone maintains a fixed radius around the target and continuously rotates. Used after a strike to build speed for the next pass or when waiting for cooldowns.
 *   **Flee (Emergency Withdrawal):** Triggered when HP drops below 20% and no other routines restricts this behavior. The drone calculates the vector away from the nearest enemy and moves toward the nearest arena boundary.
     *   **Disengagement:** Upon reaching the arena edge, the drone must remain there for **2 seconds** without being destroyed.
     *   **Exit:** After the 2-second hold, the drone leaves the combat zone (state: `WITHDRAWN`). This preserves the hardware for future missions at a significantly lower repair cost compared to full destruction.
     *   **Mission End:** If all drones are either `WITHDRAWN` or `DESTROYED`, the mission ends in failure (unless the objective was already met).
 *   **Search (LOS Lost):** When an enemy disappears behind cover, the drone navigates to its **last-seen position** and performs an expanding spiral search while scanning its FOV. After a set time (`SEARCH_LINGER_TIME = 3s`), the last-seen memory is cleared and the drone falls back to patrolling.
-*   **Patrol (Idle Movement):** When no target is known or seen, the unit moves slowly between random waypoints, actively scanning its surroundings with its sensors.
+*   **Patrol (Idle Movement):** When no target is known or seen (common at mission start), the unit moves at 80% top speed between random waypoints, actively scanning its surroundings with its sensors.
 *   **Idle (Observation):** Stationary state where the unit rotates its sensors/FOV to scan for incoming threats.
 
 ### 13.4.1 Minimum Strike Velocity
@@ -274,6 +275,7 @@ Drones must reach a minimum speed threshold (`MIN_STRIKE_SPEED = 40%` of `topSpe
 ### 13.5 Sensors & Spatial Detection
 *   **Radius Checks:** Euclidean distance checks for Radar range (120 units) and Melee range (20 units).
 *   **Line of Sight (LOS):** A parametric raycast from the drone to its target. If the ray intersects any obstacle AABB, the target is considered **obscured** (behind cover). This directly maps to the `ifEnemyBehindCover` trigger.
+*   **Lock-on Requirement:** Drones do not start with knowledge of enemy positions. They must achieve a sensor lock (within range + LOS) to begin offensive behaviors.
 *   **Last-Seen Memory:** When a drone has clear LOS, it continuously updates a `lastSeenPos` coordinate. When LOS is lost, this memory drives the SEARCHING behavior.
 
 ### 13.6 Visual Feedback & Debugging

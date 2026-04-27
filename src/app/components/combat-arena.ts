@@ -60,6 +60,7 @@ interface ArenaEntity {
   // Withdrawal mechanics
   withdrawalTimer: number;   // Seconds spent at edge while fleeing
   rotation: number;          // Current facing direction (radians)
+  patrolPos: Vec2 | null;    // Destination when patrolling
 }
 
 @Component({
@@ -173,7 +174,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       color: `hsl(${180 + i * 40}, 80%, 55%)`,
       sensorRange: s.sensor?.range ?? 120,
       meleeRange: 20,
-      state: 'SEEKING' as AIState,
+      state: 'PATROLLING' as AIState,
       orbitAngle: (Math.PI * 2 / Math.max(1, shurikens.length)) * i,
       isEnemy: false,
       hp: s.hull?.maxHp ?? 100,
@@ -185,6 +186,10 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       hitFlashTimer: 0,
       withdrawalTimer: 0,
       rotation: Math.PI * 1.25, // Facing center from bottom-left
+      patrolPos: {
+        x: WALL_THICKNESS + 100 + Math.random() * (ARENA_W - 200 - WALL_THICKNESS * 2),
+        y: WALL_THICKNESS + 100 + Math.random() * (ARENA_H - 200 - WALL_THICKNESS * 2)
+      }
     }));
 
     // Spawn enemy in upper-right area
@@ -217,6 +222,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       hitFlashTimer: 0,
       withdrawalTimer: 0,
       rotation: Math.PI * 0.75, // Facing towards bottom-left (drone spawn)
+      patrolPos: null
     };
 
     this.arenaTime = 0;
@@ -321,7 +327,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       } else if (distToEnemy < drone.meleeRange && hasLOS && drone.canStrike) {
         // CLOSE COMBAT: Ready to hit
         drone.state = 'FIGHTING';
-      } else if (distToEnemy < drone.meleeRange) {
+      } else if (distToEnemy < drone.meleeRange && (hasLOS || drone.state === 'FIGHTING')) {
         // CLOSE COMBAT: Repositioning for next strike
         drone.state = 'ORBITING';
       } else if (distToEnemy < drone.sensorRange && hasLOS) {
@@ -331,8 +337,8 @@ export class CombatArena implements AfterViewInit, OnDestroy {
         // SEARCH: Target lost, investigating last known location
         drone.state = 'SEARCHING';
       } else {
-        // IDLE: No target knowledge
-        drone.state = 'PURSUING'; // Default to aggressive search
+        // PATROL: No target knowledge
+        drone.state = 'PATROLLING';
       }
 
       // Log state transitions
@@ -414,6 +420,31 @@ export class CombatArena implements AfterViewInit, OnDestroy {
           }
           break;
         }
+        case 'PATROLLING': {
+          // Move to random waypoints until something is found
+          if (!drone.patrolPos) {
+            drone.patrolPos = {
+              x: WALL_THICKNESS + 100 + Math.random() * (ARENA_W - 200 - WALL_THICKNESS * 2),
+              y: WALL_THICKNESS + 100 + Math.random() * (ARENA_H - 200 - WALL_THICKNESS * 2)
+            };
+          }
+          const distToPatrol = this.dist(drone, drone.patrolPos);
+          if (distToPatrol < 40) {
+            drone.patrolPos = null; // Pick new point next frame
+          } else {
+            const dir = this.normalize({ x: drone.patrolPos.x - drone.x, y: drone.patrolPos.y - drone.y });
+            targetVx = dir.x * drone.topSpeed * 0.8;
+            targetVy = dir.y * drone.topSpeed * 0.8;
+          }
+          break;
+        }
+      }
+
+      // ── Obstacle Avoidance (Feeler) ──
+      const avoid = this.getSteeringAvoidance(drone);
+      if (avoid.x !== 0 || avoid.y !== 0) {
+        targetVx = targetVx * 0.4 + avoid.x * 0.6;
+        targetVy = targetVy * 0.4 + avoid.y * 0.6;
       }
 
       // Smooth acceleration
@@ -487,6 +518,12 @@ export class CombatArena implements AfterViewInit, OnDestroy {
         drone.vx = bounceDir.x * drone.topSpeed * 0.7;
         drone.vy = bounceDir.y * drone.topSpeed * 0.7;
       }
+
+      // Update drone rotation based on velocity (if moving)
+      if (drone.speed > 5) {
+        const targetRot = Math.atan2(drone.vy, drone.vx);
+        drone.rotation = this.lerpAngle(drone.rotation, targetRot, dt * 4);
+      }
     }
 
     // Check Loss Condition: No active drones left (all either withdrawn or destroyed)
@@ -549,7 +586,9 @@ export class CombatArena implements AfterViewInit, OnDestroy {
             const dir = this.normalize({ x: bestTarget.x - this.enemy.x, y: bestTarget.y - this.enemy.y });
             targetVx = dir.x * this.enemy.topSpeed;
             targetVy = dir.y * this.enemy.topSpeed;
-            this.enemy.rotation = Math.atan2(dir.y, dir.x);
+            
+            const targetRotation = Math.atan2(dir.y, dir.x);
+            this.enemy.rotation = this.lerpAngle(this.enemy.rotation, targetRotation, dt * 5);
           }
           break;
         }
@@ -562,7 +601,9 @@ export class CombatArena implements AfterViewInit, OnDestroy {
               const dir = this.normalize({ x: lsp.x - this.enemy.x, y: lsp.y - this.enemy.y });
               targetVx = dir.x * this.enemy.topSpeed;
               targetVy = dir.y * this.enemy.topSpeed;
-              this.enemy.rotation = Math.atan2(dir.y, dir.x);
+              
+              const targetRotation = Math.atan2(dir.y, dir.x);
+              this.enemy.rotation = this.lerpAngle(this.enemy.rotation, targetRotation, dt * 5);
             } else {
               this.enemy.searchTimer += dt;
               // Spiral search + Scanning rotation
@@ -593,9 +634,11 @@ export class CombatArena implements AfterViewInit, OnDestroy {
               this.enemy.searchTimer = 0;
             } else {
               const dir = this.normalize({ x: this.enemy.lastSeenPos.x - this.enemy.x, y: this.enemy.lastSeenPos.y - this.enemy.y });
-              targetVx = dir.x * (this.enemy.topSpeed * 0.6); // Move slower while patrolling
-              targetVy = dir.y * (this.enemy.topSpeed * 0.6);
-              this.enemy.rotation = Math.atan2(dir.y, dir.x);
+              targetVx = dir.x * (this.enemy.topSpeed * 0.8); // Move faster while patrolling
+              targetVy = dir.y * (this.enemy.topSpeed * 0.8);
+              
+              const targetRotation = Math.atan2(dir.y, dir.x);
+              this.enemy.rotation = this.lerpAngle(this.enemy.rotation, targetRotation, dt * 3);
             }
           } else {
             this.enemy.state = 'IDLE';
@@ -622,26 +665,10 @@ export class CombatArena implements AfterViewInit, OnDestroy {
 
       if (this.enemy.state !== 'IDLE') {
         // ── Obstacle Avoidance (Feeler) ──
-        const feelerDist = 50;
-        const feelerX = this.enemy.x + Math.cos(this.enemy.rotation) * feelerDist;
-        const feelerY = this.enemy.y + Math.sin(this.enemy.rotation) * feelerDist;
-        
-        let avoidX = 0, avoidY = 0;
-        for (const obs of this.obstacles) {
-          if (feelerX > obs.x - 5 && feelerX < obs.x + obs.w + 5 && 
-              feelerY > obs.y - 5 && feelerY < obs.y + obs.h + 5) {
-            // Steer away from obstacle center
-            const centerX = obs.x + obs.w / 2;
-            const centerY = obs.y + obs.h / 2;
-            const steer = this.normalize({ x: this.enemy.x - centerX, y: this.enemy.y - centerY });
-            avoidX = steer.x * this.enemy.topSpeed;
-            avoidY = steer.y * this.enemy.topSpeed;
-          }
-        }
-
-        if (avoidX !== 0 || avoidY !== 0) {
-          targetVx = targetVx * 0.3 + avoidX * 0.7;
-          targetVy = targetVy * 0.3 + avoidY * 0.7;
+        const avoid = this.getSteeringAvoidance(this.enemy);
+        if (avoid.x !== 0 || avoid.y !== 0) {
+          targetVx = targetVx * 0.3 + avoid.x * 0.7;
+          targetVy = targetVy * 0.3 + avoid.y * 0.7;
         }
 
         const accelFactor = this.enemy.acceleration * dt;
@@ -989,24 +1016,44 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     ctx.ellipse(drone.x, drawY, drone.meleeRange, drone.meleeRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
     ctx.stroke();
 
-    // ── LOS Raycast Line ──
+    // ── LOS Raycast Line (Only if detected) ──
+    const distToEnemy = this.dist(drone, this.enemy);
     const losBlocked = this.isLOSBlocked(drone, this.enemy);
-    ctx.strokeStyle = losBlocked ? 'rgba(239, 68, 68, 0.6)' : 'rgba(34, 197, 94, 0.6)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash(losBlocked ? [6, 4] : []);
-    ctx.beginPath();
-    ctx.moveTo(drone.x, drawY);
-    ctx.lineTo(this.enemy.x, this.enemy.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    const isDetected = distToEnemy < drone.sensorRange && !losBlocked;
 
-    // LOS status marker at midpoint
-    const mx = (drone.x + this.enemy.x) / 2;
-    const my = (drawY + this.enemy.y) / 2;
-    ctx.fillStyle = losBlocked ? '#ef4444' : '#22c55e';
-    ctx.font = 'bold 8px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(losBlocked ? '✕ BLOCKED' : '✓ CLEAR', mx, my - 6);
+    if (isDetected && this.enemy.hp > 0) {
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(drone.x, drawY);
+      ctx.lineTo(this.enemy.x, this.enemy.y);
+      ctx.stroke();
+
+      // LOS status marker at midpoint
+      const mx = (drone.x + this.enemy.x) / 2;
+      const my = (drawY + this.enemy.y) / 2;
+      ctx.fillStyle = '#22c55e';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('✓ CLEAR', mx, my - 6);
+    } else if (drone.lastSeenPos && drone.state !== 'PATROLLING' && this.enemy.hp > 0) {
+      // Show blocked line only if we have a reason to know they are there (lastSeenPos)
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(drone.x, drawY);
+      ctx.lineTo(this.enemy.x, this.enemy.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const mx = (drone.x + this.enemy.x) / 2;
+      const my = (drawY + this.enemy.y) / 2;
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('✕ BLOCKED', mx, my - 6);
+    }
 
     // ── Last-Seen Position marker (when searching) ──
     if (drone.state === 'SEARCHING' && drone.lastSeenPos) {
@@ -1036,7 +1083,9 @@ export class CombatArena implements AfterViewInit, OnDestroy {
 
     ctx.save();
     if (isBlocked) {
-      // Weak/Interrupted signal
+      // Weak/Interrupted signal - only show if we have a reason to track (lastSeenPos)
+      if (!drone.lastSeenPos || drone.state === 'PATROLLING') return;
+      
       ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
       ctx.setLineDash([2, 6]);
       ctx.lineWidth = 1;
@@ -1106,6 +1155,32 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       }
     }
     return false;
+  }
+
+  /** Smoothly interpolates between two angles (in radians) */
+  private lerpAngle(a: number, b: number, t: number): number {
+    const diff = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
+    const finalDiff = diff < -Math.PI ? diff + Math.PI * 2 : diff;
+    return a + finalDiff * t;
+  }
+
+  /** Calculates a steering vector to avoid obstacles based on a feeler point */
+  private getSteeringAvoidance(entity: ArenaEntity): Vec2 {
+    const feelerDist = 50;
+    const feelerX = entity.x + Math.cos(entity.rotation) * feelerDist;
+    const feelerY = entity.y + Math.sin(entity.rotation) * feelerDist;
+    
+    for (const obs of this.obstacles) {
+      if (feelerX > obs.x - 5 && feelerX < obs.x + obs.w + 5 && 
+          feelerY > obs.y - 5 && feelerY < obs.y + obs.h + 5) {
+        // Steer away from obstacle center
+        const centerX = obs.x + obs.w / 2;
+        const centerY = obs.y + obs.h / 2;
+        const steer = this.normalize({ x: entity.x - centerX, y: entity.y - centerY });
+        return { x: steer.x * entity.topSpeed, y: steer.y * entity.topSpeed };
+      }
+    }
+    return { x: 0, y: 0 };
   }
 
   /**
