@@ -336,7 +336,7 @@ Simple Euclidean distance check between entities on the 2D ground plane.
 Drones start a mission with `lastSeenPos = null` and begin in the **PATROLLING** state. They have no information about enemy coordinates until they achieve a "Sensor Lock" (Range <= sensorRange AND LOS is clear).
 
 #### Line of Sight (ifEnemyBehindCover)
-A parametric ray is cast from the drone's position to the target. If the ray segment intersects any obstacle AABB, the target is **obscured** (returns `true`).
+A parametric ray is cast from the drone's position to the target. If the ray segment intersects any obstacle AABB, the target is **obscured** (returns `true`). **Terahertz Sensors** ignore this intersection for detection purposes, allowing a lock through obstacles.
 
 **Slab Method (Parametric Line-AABB Intersection):**
 ```
@@ -394,7 +394,7 @@ goalY = lastSeen.y + sin(orbitAngle) * searchRadius
 
 Drones prioritize hardware preservation when critical damage is sustained.
 
-1. **Trigger:** `currentHP < maxHP * 0.2` (below 20%) and no other routines restricts this behavior.
+1. **Trigger:** `currentHP < maxHP * 0.2` (below 20%) for human resistance drones only. Zenith hostiles never flee.
 2. **Behavior:** `state = FLEEING`. Drone moves to the nearest arena boundary.
 3. **Disengagement Timer:** If `drone.position` is within 2 units of any `WALL_THICKNESS` boundary:
    ```

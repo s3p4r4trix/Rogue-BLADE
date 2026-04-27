@@ -25,7 +25,8 @@ export const HARDWARE_INVENTORY = {
     { id: 'sens-thermal', name: 'Thermal Sensors', description: 'Infrared heat detection.', range: 800, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyInSight'], weight: 2 } as Sensor,
     { id: 'sens-em', name: 'EM-Sensors', description: 'Detects active energy fields.', range: 1200, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyIsShielded'], weight: 3 } as Sensor,
     { id: 'sens-radar', name: 'Radar Array', description: 'Long-range monitoring.', range: 2000, accuracy: 0.8, unlocksTriggerIds: ['ifEnemyInSight'], weight: 5 } as Sensor,
-    { id: 'sens-lidar', name: 'Lidar Array', description: 'Precision optical targeting.', range: 1600, accuracy: 0.98, unlocksTriggerIds: ['ifIncomingProjectile'], weight: 4 } as Sensor
+    { id: 'sens-lidar', name: 'Lidar Array', description: 'Precision optical targeting.', range: 1600, accuracy: 0.98, unlocksTriggerIds: ['ifIncomingProjectile'], weight: 4 } as Sensor,
+    { id: 'sens-terahertz', name: 'Terahertz Array', description: 'Penetrates physical obstacles.', range: 600, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyBehindCover'], weight: 3 } as Sensor
   ],
   blades: [
     { id: 'blade-edge', name: 'Sharpened Edge', description: 'Simple metal rim.', damageType: 'SLASHING', baseDamage: 15, critChance: 0.05, critMultiplier: 1.5, energyDrain: 0, unlocksActionIds: ['actionStandardStrike'], weight: 5 } as Blade,
@@ -94,7 +95,7 @@ function loadUnlockedComponents(): string[] {
     try { return JSON.parse(saved); } catch (e) { }
   }
   return [
-    'eng-drifter', 'cell-scrap', 'react-fusion', 'sens-optical', 'blade-edge', 'form-shuriken', 'hull-scrap', 'proc-abacus'
+    'eng-drifter', 'cell-scrap', 'react-fusion', 'sens-optical', 'blade-edge', 'form-shuriken', 'hull-scrap', 'proc-abacus', 'sens-terahertz'
   ];
 }
 
@@ -132,7 +133,8 @@ export class WorkshopService {
     { id: 'ifEnemyIsOrganic', type: 'trigger', value: 'Enemy is organic', name: 'Enemy: Soft Target', description: 'Target is flesh/light armored.', requiredSensor: 'Biosensors' },
     { id: 'ifSelfHpCritical', type: 'trigger', value: 'Hull integrity < 20%', name: 'Self: Hull Breach', description: 'Critical internal damage detected.' },
     { id: 'ifEnergyHigh', type: 'trigger', value: 'Energy pool > 80%', name: 'Self: Power Overload', description: 'System capacity ready for high-drain actions.' },
-    { id: 'ifIncomingProjectile', type: 'trigger', value: 'Incoming projectile detected', name: 'Self: Incoming Fire', description: 'Hostile fire on collision course.', requiredSensor: 'Lidar Array' }
+    { id: 'ifIncomingProjectile', type: 'trigger', value: 'Incoming projectile detected', name: 'Self: Incoming Fire', description: 'Hostile fire on collision course.', requiredSensor: 'Lidar Array' },
+    { id: 'ifEnemyBehindCover', type: 'trigger', value: 'Enemy behind obstacle', name: 'Enemy: Obscured', description: 'Target is hidden by cover.', requiredSensor: 'Terahertz Array' }
   ]);
 
   readonly availableActions = signal<Action[]>([
@@ -179,7 +181,7 @@ export class WorkshopService {
 
   private migrateHardware() {
     // Ensure "Lowest Tier" defaults exist in unlocked set
-    const baseIds = ['eng-drifter', 'cell-scrap', 'react-fusion', 'sens-optical', 'blade-edge', 'form-shuriken', 'hull-scrap', 'proc-abacus', 'semi-feral'];
+    const baseIds = ['eng-drifter', 'cell-scrap', 'react-fusion', 'sens-optical', 'blade-edge', 'form-shuriken', 'hull-scrap', 'proc-abacus', 'semi-feral', 'sens-terahertz'];
     this.unlockedComponentIds.update(ids => Array.from(new Set([...ids, ...baseIds])));
 
     this.availableShurikens.update(list => list.map(s => {

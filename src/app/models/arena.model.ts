@@ -87,4 +87,5 @@ export interface ArenaEntity {
   withdrawalTimer: number;   // Seconds spent at edge while fleeing
   rotation: number;          // Current facing direction (radians)
   patrolPos: Vec2 | null;    // Destination when patrolling
+  sensorId: string;          // ID of the equipped sensor
 }

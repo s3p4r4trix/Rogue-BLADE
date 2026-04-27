@@ -143,7 +143,8 @@ export class CombatArena implements OnDestroy {
         hitFlashTimer: 0,
         withdrawalTimer: 0,
         rotation: -Math.PI / 2,
-        patrolPos: this.getRandomPatrolPos()
+        patrolPos: this.getRandomPatrolPos(),
+        sensorId: s.sensor?.id || 'sens-optical'
       });
     });
 
@@ -174,7 +175,8 @@ export class CombatArena implements OnDestroy {
       hitFlashTimer: 0,
       withdrawalTimer: 0,
       rotation: Math.PI / 2,
-      patrolPos: this.getRandomPatrolPos()
+      patrolPos: this.getRandomPatrolPos(),
+      sensorId: 'sens-radar'
     };
 
     this.emitLog(`Mission Initiated. Entities deployed.`);
@@ -282,9 +284,10 @@ export class CombatArena implements OnDestroy {
     }
 
     const hasLOS = !this.isLOSBlocked(entity, target);
-    const canSeeTarget = dist <= entity.sensorRange && hasLOS && target.hp > 0 && isWithinFOV;
+    const isTerahertz = entity.sensorId === 'sens-terahertz';
+    const canSeeTarget = dist <= entity.sensorRange && (hasLOS || isTerahertz) && target.hp > 0 && isWithinFOV;
 
-    if (entity.hp < entity.maxHp * 0.2 && entity.state !== 'FLEEING') {
+    if (!entity.isEnemy && entity.hp < entity.maxHp * 0.2 && entity.state !== 'FLEEING') {
       entity.state = 'FLEEING';
       this.emitLog(`${entity.name} sustained critical damage. Initiating Emergency Withdrawal.`);
     }
@@ -957,8 +960,13 @@ export class CombatArena implements OnDestroy {
     ctx.lineTo(this.enemy.x, this.enemy.y - this.enemy.z * PERSPECTIVE_SCALE_Y);
 
     if (blocked) {
-      ctx.strokeStyle = 'rgba(255, 50, 50, 0.4)';
-      ctx.setLineDash([4, 4]);
+      if (drone.sensorId === 'sens-terahertz') {
+        ctx.strokeStyle = 'rgba(200, 50, 255, 0.6)'; // Special color for Terahertz lock through walls
+        ctx.setLineDash([2, 2]);
+      } else {
+        ctx.strokeStyle = 'rgba(255, 50, 50, 0.4)';
+        ctx.setLineDash([4, 4]);
+      }
     } else {
       ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
       ctx.setLineDash([]);
@@ -975,12 +983,39 @@ export class CombatArena implements OnDestroy {
     ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
-    ctx.ellipse(drone.x, drone.y, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
+
+    if (drone.sensorId === 'sens-terahertz') {
+      // Terahertz is not clipped by obstacles
+      ctx.ellipse(drone.x, drone.y, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
+    } else {
+      // Standard sensors are clipped by obstacles (360-degree raycast polygon)
+      const steps = 72; // High-res 360-degree scan
+      const stepAngle = (Math.PI * 2) / steps;
+      ctx.moveTo(drone.x, drone.y); // Start at drone center for a fan-like shape
+
+      for (let i = 0; i <= steps; i++) {
+        const angle = i * stepAngle;
+        const targetX = drone.x + Math.cos(angle) * drone.sensorRange;
+        const targetY = drone.y + Math.sin(angle) * drone.sensorRange;
+
+        let minT = 1.0;
+        for (const obs of this.obstacles) {
+          const t = this.getRayIntersectionDist(drone.x, drone.y, targetX, targetY, obs);
+          if (t < minT) minT = t;
+        }
+
+        const hitX = drone.x + Math.cos(angle) * (drone.sensorRange * minT);
+        const hitY = drone.y + Math.sin(angle) * (drone.sensorRange * minT);
+        // We use ground Y for the polygon vertices to keep it flush
+        ctx.lineTo(hitX, hitY);
+      }
+    }
+
     ctx.stroke();
     ctx.setLineDash([]);
 
     // Add a very faint fill to make it more "solid"
-    ctx.fillStyle = 'rgba(0, 255, 255, 0.03)';
+    ctx.fillStyle = drone.sensorId === 'sens-terahertz' ? 'rgba(200, 50, 255, 0.05)' : 'rgba(0, 255, 255, 0.03)';
     ctx.fill();
 
     ctx.fillStyle = 'rgba(255,255,255,0.7)';

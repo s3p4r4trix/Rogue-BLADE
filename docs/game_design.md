@@ -266,7 +266,7 @@ These are the core spatial behaviors mapped to existing GDD actions:
 *   **Fighting (Active Strike):** High-intensity engagement when in melee range, at strike velocity, and with clear LOS. Prioritizes direct, aggressive movement to impact the target.
 *   **Steering & Obstacle Avoidance:** Units project "feelers" to detect upcoming collisions and apply steering forces to navigate around cover without losing momentum.
 *   **Orbit (Repositioning):** Drone maintains a fixed radius around the target and continuously rotates. Used after a strike to build speed for the next pass or when waiting for cooldowns.
-*   **Flee (Emergency Withdrawal):** Triggered when HP drops below 20% and no other routines restricts this behavior. The drone calculates the vector away from the nearest enemy and moves toward the nearest arena boundary.
+*   **Flee (Emergency Withdrawal):** Triggered when a human resistance drone's HP drops below 20%. Zenith hostiles are expendable and never flee, fighting until destroyed. The drone calculates the vector away from the nearest enemy and moves toward the nearest arena boundary.
     *   **Disengagement:** Upon reaching the arena edge, the drone must remain there for **2 seconds** without being destroyed.
     *   **Exit:** After the 2-second hold, the drone leaves the combat zone (state: `WITHDRAWN`). This preserves the hardware for future missions at a significantly lower repair cost compared to full destruction.
     *   **Mission End:** If all drones are either `WITHDRAWN` or `DESTROYED`, the mission ends in failure (unless the objective was already met).
@@ -282,14 +282,14 @@ Drones must reach a minimum speed threshold (`MIN_STRIKE_SPEED = 40%` of `topSpe
 
 ### 13.5 Sensors & Spatial Detection
 *   **Radius Checks:** Euclidean distance checks for Radar range (120 units) and Melee range (20 units).
-*   **Line of Sight (LOS):** A parametric raycast from the drone to its target. If the ray intersects any obstacle AABB, the target is considered **obscured** (behind cover). This directly maps to the `ifEnemyBehindCover` trigger.
+*   **Line of Sight (LOS):** A parametric raycast from the drone to its target. If the ray intersects any obstacle AABB, the target is considered **obscured** (behind cover). This directly maps to the `ifEnemyBehindCover` trigger. **Terahertz Sensors** bypass this check, maintaining a lock through solid objects.
 *   **Lock-on Requirement:** Drones do not start with knowledge of enemy positions. They must achieve a sensor lock (within range + LOS) to begin offensive behaviors.
 *   **Last-Seen Memory:** When a drone has clear LOS, it continuously updates a `lastSeenPos` coordinate. When LOS is lost, this memory drives the SEARCHING behavior.
 
 ### 13.6 Visual Feedback & Debugging
 Since this is an AI-driven game, the Tactical Map includes comprehensive visual feedback:
 *   **Hit Flash VFX:** When a drone strikes the enemy, the target flashes white with an expanding ring effect (200ms duration).
-*   **Sensor Range Wireframe:** A faint, dashed ellipse around each drone showing its current detection radius.
+*   **Sensor Range Wireframe:** A faint, dashed ellipse around each drone showing its current detection radius. For standard sensors, this ellipse is **clipped by obstacles** via raycasting. Terahertz sensors display a full, unclipped ellipse to visualize their penetration capability.
 *   **LOS Raycast Line:** A line drawn from each drone to its target. Colored **Green** if LOS is clear, **Red** if blocked by cover, with a midpoint status label.
 *   **State Labels:** A small text label above each unit displaying its current AI state (e.g., `PURSUING`, `ORBITING`, `FIGHTING`, `SEARCHING`, `PATROLLING`).
 *   **Last-Seen Marker:** When a drone is in SEARCHING state, a yellow crosshair appears at the last-known enemy position with a dashed line from the drone.
