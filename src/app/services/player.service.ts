@@ -35,6 +35,7 @@ export class PlayerService {
   readonly theme = signal<'zenith' | 'ripperdoc' | 'neuromancer'>(
     (localStorage.getItem('rogueBlade_theme') as 'zenith' | 'ripperdoc' | 'neuromancer') || 'neuromancer'
   );
+  readonly autoScrapTier = signal<number>(parseInt(localStorage.getItem('rogueBlade_autoScrapTier') || '0'));
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {
     // Automatically save resources to localStorage whenever they change
@@ -49,6 +50,10 @@ export class PlayerService {
         document.body.classList.remove('theme-zenith', 'theme-ripperdoc', 'theme-neuromancer');
         document.body.classList.add(`theme-${currentTheme}`);
       }
+    });
+
+    effect(() => {
+      localStorage.setItem('rogueBlade_autoScrapTier', this.autoScrapTier().toString());
     });
 
     if (isPlatformBrowser(this.platformId)) {

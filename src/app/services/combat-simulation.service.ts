@@ -57,14 +57,18 @@ export class CombatSimulationService {
             damageType: (b?.damageType as DamageType) || 'SLASHING',
             critChance: (b?.critChance || 0.05) * (f?.critChanceMult || 1.0),
             critMultiplier: b?.critMultiplier || 1.5,
-            latency: p?.latency || 0.2,
+            reactionTime: p?.reactionTime || 0.2,
+            processorSpeed: p?.processorSpeed || 5,
             coordinationMode: s.coordinationMode,
             masterId: s.masterId,
             isExhausted: false,
             routines: routinesMap[s.id] || [],
             // State
             isStealthed: false,
-            evasionBuff: 0
+            evasionBuff: 0,
+            chaosModeTicks: 0,
+            rebootTicks: 0,
+            rechargeBoostTicks: 0
          };
       });
 
@@ -95,42 +99,96 @@ export class CombatSimulationService {
          shurikenStates.forEach(s => {
             if (s.hp <= 0) return;
 
+            // Tick down states
+            if (s.chaosModeTicks > 0) s.chaosModeTicks--;
+            if (s.rebootTicks > 0) s.rebootTicks--;
+            if (s.rechargeBoostTicks > 0) s.rechargeBoostTicks--;
+
             // Physics & Energy Update (scaled by timeStep)
-            s.energy = Math.min(s.maxEnergy, s.energy + (s.energyRegen - s.passiveDrain) * timeStep);
-            s.isExhausted = s.energy <= 0;
-            if (s.energy < 0) s.energy = 0;
+            const isRebooting = s.rebootTicks > 0;
+            const energyEfficiency = s.rechargeBoostTicks > 0 ? 1.5 : 1.0;
+            
+            if (!isRebooting) {
+               s.energy = Math.min(s.maxEnergy, s.energy + ((s.energyRegen * energyEfficiency) - s.passiveDrain) * timeStep);
+               if (s.energy <= 0) {
+                  s.energy = 0;
+                  s.rebootTicks = 30; // 3 seconds at 0.1s steps
+                  logs.push(`${s.name}: [CRITICAL] Energy Depleted. Initiating Emergency Reboot.`);
+               }
+            } else if (s.rebootTicks === 1) {
+               // Recovery phase
+               s.energy = s.maxEnergy * 0.3;
+               s.rechargeBoostTicks = 30; // 3 seconds of 150% regen
+               logs.push(`${s.name}: [SYSTEM] Reboot Complete. Energy restored to 30%.`);
+            }
+
+            s.isExhausted = s.energy < (s.maxEnergy * 0.05); // Minor threshold for "Low Power"
 
             let effectiveTopSpeed = s.topSpeed;
-            if (s.isExhausted) effectiveTopSpeed *= 0.5;
+            if (isRebooting) effectiveTopSpeed = 0;
+            else if (s.isExhausted) effectiveTopSpeed *= 0.5;
+            
             s.currentSpeed = Math.min(effectiveTopSpeed, s.currentSpeed + (s.acceleration * (1 - (s.baseWeight / 1000))) * timeStep);
 
             // Action Check
-            const weightFactor = s.baseWeight / 500;
-            const accFactor = s.acceleration / 50;
-            const latencyMult = Math.max(0.2, 1.0 + weightFactor - accFactor);
-            const effectiveLatency = s.latency * latencyMult;
-
-            if (time >= (shurikenNextAction.get(s.id) || 0)) {
-               const validRoutine = s.routines.find(r => {
-                  if (!r.trigger || !r.action) return false;
-                  return this.evaluateTrigger(r.trigger.id, s, { enemyHull, enemyShields, mission, tick: currentSecond, logs });
-               });
-
-               const actionToTake = validRoutine?.action?.id || 'actionStandardStrike';
-               const enemyRef = { hull: enemyHull, shields: enemyShields };
+            if (!isRebooting && time >= (shurikenNextAction.get(s.id) || 0)) {
+               // Calculate Reaction Time
+               let rxMult = 1.0 + (s.baseWeight / 250) - (s.acceleration / 25) - (s.processorSpeed / 25);
+               rxMult = Math.max(0.2, rxMult);
                
-               // Prefix log with timestamp for the UI parser
+               let effectiveRX = s.reactionTime * rxMult;
+
+               // Swarm Buffs
+               if (s.coordinationMode === 'SLAVE' && s.chaosModeTicks <= 0) {
+                  const master = shurikenStates.find(m => m.id === s.masterId && m.hp > 0);
+                  if (master) {
+                     effectiveRX *= 0.85; // 15% reduction
+                  } else {
+                     // Master destroyed! Enter Chaos Mode
+                     s.chaosModeTicks = 50; // 5 seconds
+                     logs.push(`${s.name}: [ERROR] Master Link Lost. Entering Chaos Mode.`);
+                  }
+               }
+
+               // Find valid routine with fallback logic
+               let actionToTake = 'actionStandardStrike';
+               const routines = s.routines;
+               
+               if (s.chaosModeTicks > 0) {
+                  // Chaos Mode: Basic attacks only, erratic movement
+                  actionToTake = 'actionStandardStrike';
+               } else {
+                  for (const r of routines) {
+                     if (!r.trigger || !r.action) continue;
+                     if (this.evaluateTrigger(r.trigger.id, s, { enemyHull, enemyShields, mission, tick: currentSecond, logs })) {
+                        // Check energy cost for action
+                        const energyCost = this.workshop.availableActions().find(act => act.id === r.action?.id)?.energyCost || 0;
+                        if (s.energy >= energyCost) {
+                           actionToTake = r.action.id;
+                           break; // Found valid action
+                        } else {
+                           // Fallback to next routine (as per section 5.0)
+                           continue;
+                        }
+                     }
+                  }
+               }
+
+               const enemyRef = { hull: enemyHull, shields: enemyShields };
                const logCountBefore = logs.length;
+               
                this.executeAction(actionToTake, s, { enemyRef, mission, tick: currentSecond, logs });
                
-               // If an action generated logs, update the next action time using effective latency
                if (logs.length > logCountBefore) {
-                  shurikenNextAction.set(s.id, time + effectiveLatency);
+                  shurikenNextAction.set(s.id, time + effectiveRX);
                }
                
                enemyHull = enemyRef.hull;
                enemyShields = enemyRef.shields;
             }
+
+            // Telemetry Log (for UI consumption)
+            logs.push(`[TELEMETRY] ${s.name}: E:${Math.floor(s.energy)}/${s.maxEnergy} R:${s.rebootTicks}`);
          });
 
          // 2. Enemy Counter-Attack (Fair Cooldown scaling with Tier)
@@ -140,8 +198,12 @@ export class CombatSimulationService {
                const s = targets[Math.floor(Math.random() * targets.length)];
                
                let enemyDmg = Math.floor(10 + (currentSecond * 0.5));
-               let effectiveEvasion = s.evasionRate + s.evasionBuff;
-               if (s.isExhausted) effectiveEvasion = 0;
+               
+               // Reboot vulnerability
+               if (s.rebootTicks > 0) enemyDmg *= 1.5;
+
+               let effectiveEvasion = Math.min(0.75, s.evasionRate + s.evasionBuff);
+               if (s.isExhausted || s.rebootTicks > 0) effectiveEvasion = 0;
 
                if (Math.random() <= effectiveEvasion) {
                   logs.push(`${s.name}: [EVADED] Evasive thrusters active.`);
@@ -213,7 +275,7 @@ export class CombatSimulationService {
 
    private executeAction(id: string, s: ShurikenSimulationState, ctx: SimulationContext) {
       // Only execute on latency ticks
-      if (ctx.tick % Math.max(1, Math.floor(s.latency * 10)) !== 0) return;
+      if (ctx.tick % Math.max(1, Math.floor(s.reactionTime * 10)) !== 0) return;
 
       const { enemyRef, mission, logs } = ctx;
       if (!enemyRef || (enemyRef.hull + enemyRef.shields) <= 0) return;
@@ -228,7 +290,7 @@ export class CombatSimulationService {
       }
 
       if (id === 'actionEvasiveManeuver') {
-         s.evasionBuff = 1.0;
+         s.evasionBuff = 0.5; // Will be capped at 0.75 in the check
          logs.push(`${s.name}: [ACTION] Executing Evasive Maneuvers.`);
          return;
       }
@@ -239,7 +301,13 @@ export class CombatSimulationService {
          return;
       }
 
-      if (id === 'actionRetreat') {
+      if (id === 'actionEmergencyReboot') {
+         s.rebootTicks = 30; // 3 seconds
+         logs.push(`${s.name}: [ACTION] Manual Reboot Initiated.`);
+         return;
+      }
+
+      if (id === 'actionEmergencyWithdrawal') {
          logs.push(`${s.name}: [ACTION] Emergency extraction vectors set.`);
          return;
       }
@@ -277,10 +345,17 @@ export class CombatSimulationService {
             const sDmg = Math.min(enemyRef.shields, netDamage);
             enemyRef.shields -= sDmg;
             logs.push(`${s.name}: ${isCrit ? '[CRIT] ' : ''}Shield Hit (-${Math.ceil(sDmg)} S) [REM: ${Math.ceil(enemyRef.shields + enemyRef.hull)}]`);
+            if (enemyRef.shields <= 0) {
+               logs.push(`[SYSTEM] ${mission.targetName}: SHIELD SHATTERED.`);
+            }
          } else {
             const hDmg = Math.min(enemyRef.hull, netDamage);
+            const hullWasFull = enemyRef.hull === mission.hull;
             enemyRef.hull -= hDmg;
             logs.push(`${s.name}: ${isCrit ? '[CRIT] ' : ''}Hull Hit (-${Math.ceil(hDmg)} H) [REM: ${Math.ceil(enemyRef.hull)}]`);
+            if (hullWasFull && enemyRef.hull < mission.hull) {
+               logs.push(`[SYSTEM] ${mission.targetName}: HULL BREACHED.`);
+            }
          }
       }
    }

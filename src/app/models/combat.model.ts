@@ -35,13 +35,18 @@ export interface ShurikenSimulationState {
   damageType: DamageType;
   critChance: number;
   critMultiplier: number;
-  latency: number;
+  reactionTime: number;
+  processorSpeed: number;
   coordinationMode: 'SOLO' | 'MASTER' | 'SLAVE';
   masterId?: string;
   isExhausted: boolean;
   routines: GambitRoutine[];
   isStealthed: boolean;
   evasionBuff: number;
+  // New States
+  chaosModeTicks: number;     // Remaining ticks for Chaos Mode
+  rebootTicks: number;        // Remaining ticks for Emergency Reboot
+  rechargeBoostTicks: number; // Remaining ticks for 150% energy efficiency
 }
 
 export interface ShurikenStatus {
@@ -53,6 +58,7 @@ export interface ShurikenStatus {
   maxShields: number;
   energy: number;
   maxEnergy: number;
+  rebootTicks: number;
 }
 
 export interface SimulationContext {

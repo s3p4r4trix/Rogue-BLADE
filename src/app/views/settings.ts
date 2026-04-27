@@ -115,6 +115,39 @@ import { PlayerService } from '../services/player.service';
             </div>
           </div>
 
+          <!-- Auto-Scrap QoL -->
+          <div class="bg-[#030014]/95 border border-blue-900/50 p-6 shadow-[0_0_15px_rgba(30,58,138,0.2)] md:col-span-2 neuro-panel">
+            <h2 class="text-xl text-blue-500 mb-4 border-b border-blue-900/50 pb-2">AUTO-SCRAP PROTOCOL (QoL)</h2>
+            <p class="text-xs text-blue-700 mb-6 uppercase tracking-widest">Intercept low-tier drops and automatically convert them into raw Scrap materials.</p>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+               <button (click)="setAutoScrap(0)" 
+                       [class.bg-blue-600]="player.autoScrapTier() === 0"
+                       [class.text-black]="player.autoScrapTier() === 0"
+                       class="border border-blue-900 p-3 text-xs font-black uppercase tracking-widest transition-all">
+                 OFF
+               </button>
+               <button (click)="setAutoScrap(1)" 
+                       [class.bg-blue-600]="player.autoScrapTier() === 1"
+                       [class.text-black]="player.autoScrapTier() === 1"
+                       class="border border-blue-900 p-3 text-xs font-black uppercase tracking-widest transition-all">
+                 TIER I (25%)
+               </button>
+               <button (click)="setAutoScrap(2)" 
+                       [class.bg-blue-600]="player.autoScrapTier() === 2"
+                       [class.text-black]="player.autoScrapTier() === 2"
+                       class="border border-blue-900 p-3 text-xs font-black uppercase tracking-widest transition-all">
+                 TIER II (50%)
+               </button>
+               <button (click)="setAutoScrap(3)" 
+                       [class.bg-blue-600]="player.autoScrapTier() === 3"
+                       [class.text-black]="player.autoScrapTier() === 3"
+                       class="border border-blue-900 p-3 text-xs font-black uppercase tracking-widest transition-all">
+                 TIER III (75%)
+               </button>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -130,6 +163,10 @@ export class Settings {
 
   setTheme(theme: 'zenith' | 'ripperdoc' | 'neuromancer') {
     this.player.theme.set(theme);
+  }
+
+  setAutoScrap(tier: number) {
+    this.player.autoScrapTier.set(tier);
   }
 
   formatTime(seconds: number): string {

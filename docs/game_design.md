@@ -27,11 +27,14 @@ Hardware components function similarly to gear in Action RPGs (like Diablo). Thi
 
 * **Drops & Rarities:** After successfully completing a strike or defeating elite enemies, players receive hardware drops categorized by rarity (e.g., Common, Uncommon, Rare, Epic, Legendary).
 * **Randomized Rolls:** Hardware components drop with randomized stat values within a specific range. Players will constantly hunt for "God Rolls" (e.g., finding two "Tier II Durasteel Hulls," but one rolled with +15% HP and +5 Armor, making it strictly better).
-* **Scrapping & Selling:** The inventory is limited. Unwanted or obsolete hardware parts can be sold to black-market NPCs for "Credits" or scrapped down into raw materials (Polymers/Alloys) to fuel the Genesis Chamber research.
+* **Auto-Scrap Filter (QoL):** To prevent loot fatigue on mobile devices, players can configure auto-scrap rules in the workshop (e.g., "Automatically scrap all Common Tier I Hulls"). This converts trash loot directly into raw materials without cluttering the inventory.
+* **Scrapping & Selling:** The inventory is limited. Unwanted or obsolete hardware parts can be sold to black-market NPCs for "Credits" or scrapped down into raw materials to fuel the Genesis Chamber research.
 
 ## 5. The Software System (Gambit UI)
-The **Slot-based Gambit System** is the core mechanic for programming AI behavior.
+* **The Slot-based Gambit System** is the core mechanic for programming AI behavior.
 * **Priority:** The vertical order of slots determines the importance of actions.
+* **Action Fallbacks:** If an IF condition is met, but the THEN action cannot be executed (e.g., insufficient energy for a Kinetic Ram), the system automatically skips the action and evaluates the next slot in the priority list.
+* **Default Slot:** To prevent drones from idling due to poor programming, every Shuriken has a hidden, uneditable final slot: "IF Enemy Exists -> THEN Standard Strike".
 * **Synergies:** Players can assign roles. For example, a "Marker" shuriken applies debuffs, while a "Striker" shuriken attacks only marked targets.
 
 ### 5.1 Triggers (IF Components)
@@ -83,26 +86,30 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
     * **energyCost:** 0 (Base cost)
 
 * **`actionKineticRam`** (Designation: **Execute: Kinetic Ram**)
-    * **behavior:** Maximizes acceleration in a straight line toward the target to maximize the momentum multiplier.
-    * **energyCost:** 15
+    * **behavior:** Maximizes acceleration toward the target to maximize the momentum multiplier.
+    * **energyCost:** 20
 
 * **`actionEvasiveManeuver`** (Designation: **Execute: Evasive Action**)
-    * **behavior:** Briefly increases evasionRate to 1.0 (100%) and moves erratically. Cancels current attack.
-    * **energyCost:** 20
+    * **behavior:** Briefly increases evasionRate to Max Cap (75%) and moves erratically. Cancels current attack.
+    * **energyCost:** 15
 
 * **`actionApplyMark`** (Designation: **Execute: Apply Mark**)
     * **behavior:** Attacks with the intent to apply the "Marked" status effect instead of dealing max damage.
     * **energyCost:** 5
 
 * **`actionDefendAlly`** (Designation: **Execute: Defend Ally**)
-    * **behavior:** Repaths to orbit the nearest allied Shuriken (or the player's core) to intercept incoming attacks.
+    * **behavior:** Repaths to orbit the nearest allied Shuriken (or the player's core) to intercept incoming attacks (this will parry attacks with the equipped blade and result in small amounts of damage to the defender).
     * **energyCost:** 0
 
 * **`actionActivateCloak`** (Designation: **Execute: Ghost Protocol**)
-    * **behavior:** Consumes energy per second to push stealthValue to maximum, making the Shuriken untargetable by normal enemies.
+    * **behavior:** Consumes energy per second to push stealthValue to maximum, making the Shuriken very hard to detect by normal enemies.
     * **energyCost:** 10 per second
 
-* **`actionRetreat`** (Designation: **Execute: Emergency Withdrawal**)
+* **`actionEmergencyReboot`** (Designation: **Execute: Emergency Reboot**)
+    * **behavior:** Drone stand still for 3 seconds. During this time, the drone is **prone** to damage and enemy tracking but has 30% of maximum energy after this period.
+    * **energyCost:** 0
+
+* **`actionEmergencyWithdrawal`** (Designation: **Execute: Emergency Withdrawal**)
     * **behavior:** Moves to the furthest possible edge of the combat zone away from the highest density of enemies to regenerate shields/HP.
     * **energyCost:** 0
 
@@ -110,7 +117,7 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
 
 ### 6.1 Anti-Grav Engines
 * **Speed:** Maximum flight velocity.
-* **Stealth (Acoustic):** Reduces engine noise and thermal signature. High levels enable silent movement to evade alien sensors.
+* **Stealth (Acoustic/EM/IR):** Reduces engine noise and thermal radiation. High levels enable silent movement to evade alien sensors.
 * **Energy Consumption:** Power draw during operation.
 * **Flux Capacitor:** Enables rapid direction changes and high-speed parrying.
 
@@ -128,8 +135,8 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
 **Tier III: Reverse-Engineered Zenith Tech (Exotic & God-Tier)**
 * **Null-Field Steel:** Extracted from alien drones. Absorbs/dissipates energy (Plasma/Lasers).
 * **Neutronium-Cast:** Extremely dense material from dead stars. Near-indestructible but requires elite engines to fly.
-* **Adamant-Quantum-Grid:** Atoms bound by quantum entanglement. Physically impossible to break or cut.
-* **Singularity Matrix (Aetherium):** Exists partially out of phase. Attacks simply pass through or are diverted to a micro-dimension.
+* **Adamant-Quantum-Grid:** Atoms bound by quantum entanglement. Physically extremely hard to break or cut.
+* **Aetherium:** Exists partially out of phase. Attacks simply pass through or are diverted to a micro-dimension.
 
 ### 6.3 Energy Cells
 * **Capacity:** Total energy stored.
@@ -141,7 +148,7 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
 *   **Master Status:** Equipping a Semi-AI makes the Shuriken a **Swarm Master**.
 *   **Slave Management:** Masters can be linked to other "Dumb" Shurikens (Slaves).
 *   **IFF & Reactions:** Slaves utilize the Master's advanced IFF accuracy and receive coordination buffs.
-*   **Swarm Communication:** Coordination (e.g., "If Shuriken A attacks, Shuriken B flanks"). Requires a Master.
+*   **Swarm Communication:** Coordination requires a Master.
 
 ### 6.5 Sensors (Unlocking Triggers)
 * **Optical Sensors:** Detect enemies in very close proximity (up to 20 meters).
@@ -161,18 +168,19 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
 
 ### 6.7 Form Designs (Chassis Shape)
 Determines the overall physical shape and combat specialization of the Shuriken.
-* **Standard Disc:** The basic, well-rounded design. Balanced aerodynamics; specializes in cutting damage.
-* **Dagger:** A sleek, aerodynamic form optimized for high-speed linear strikes. Specializes in piercing damage and armor penetration.
-* **Sphere:** A dense, solid construct that sacrifices edge for sheer mass. Specializes in blunt force trauma and crushing damage.
-* **Tron-Disc (Energy Edge):** A specialized disc featuring a high-energy/plasma perimeter. Deals intense burning damage and is highly effective against energy shields.
+* **Shuriken:** The basic, well-rounded design. Balanced aerodynamics; specializes in cutting damage. (Starting Chassis)
+* **Disc:** A well-rounded design. Balanced aerodynamics; specializes in kinetic damage. (Available for purchase)
+* **Dagger:** A sleek, aerodynamic form optimized for high-speed linear strikes. Specializes in piercing damage and armor penetration. (Available for purchase)
+* **Sphere:** A dense, solid construct that sacrifices edge for sheer mass. Specializes in blunt force trauma and crushing damage. (Available for purchase)
+* **Ion-Edge:** A specialized disc featuring a high-energy/plasma perimeter. Deals intense burning damage and is highly effective against energy shields. (Available for purchase)
 
 ## 7. Enemy Design: The Zenith Collective & Sensor Counters
 The Zenith Collective and their assimilated troops demand specific programming:
-* **Zenith EMP-Wardens:** Disable shurikens temporarily (requires Reboot/EM-Hardening routines).
+* **Zenith EMP-Wardens:** Disable shurikens temporarily (requires Emergency Reboot/EM-Hardening).
 * **Phalanx Drones (Shield Bearers):** Alien defenders that require specific shield-breaker routines (Plasma/Heavy Blunt).
 * **Corrupted Netrunners:** Human traitors who invert or scramble your priority lists.
 * **Illusion Constructs:** Drop chaff and fog to blind Radar and Lidar.
-* **Snipers:** Require defensive "Bodyguard" programming.
+* **Snipers:** Glass canons with high-damage, long-range attacks.
 **Specific Counters to Sensors:**
 * **Necro-Cyborgs / Drones:** Invisible to **Biosensors**.
 * **Stealth-Mechs:** Zero-emission tech; invisible to **EM-Sensors**.
@@ -189,27 +197,38 @@ To ensure a smooth player onboarding experience, the first successful Liberation
 This allows players to validate their basic "If-Then" routines and see significant impact (30+ damage per hit) before facing Zenith defensive tech like Shields and Heavy Armor.
 
 ## 8. The Workshop (Meta-Progression)
-* **Repair Deck & NPC Mechanic:** A rescued "Ripperdoc" for drones. Upgrading them increases Nanite speed or reduces Polymer costs.
-* **Server Room & NPC Programmer:** Netrunners who hack the Zenith network. Upgrading them unlocks more Gambit slots and reduces reaction latency.
-* **Genesis Chamber (Research Lab):** Turn in alien "Scrap" to reverse-engineer Tier III materials, new alloys, and high-efficiency cells.
+* **Repair Deck & NPC Mechanic:** Upgrading them increases Nanite speed or reduces Polymer costs.
+* **Server Room & NPC Programmer:** Upgrading them unlocks more Gambit slots and reduces reaction latency.
+* **Genesis Chamber (Research Lab):** Reverse-engineer new alloys, components and AIs.
 
 ## 9. Setting & Art Direction
 * **Visual Style:** A stark contrast. The underground human resistance base is dirty, wet, and lit by flickering neon ("Used Cyberpunk"). The alien-occupied surface is sterile, brightly glowing, geometrically perfect, and threateningly clean.
-* **Shuriken Design:** High-tech flying drones with visible circuit boards, glowing plasma edges, and micro-thrusters.
-* **UI/UX:** Hacking terminal aesthetic with holographic grids and terminal fonts.
+* **Drone Design:** High-tech flying drones with visible circuit boards and glowing energy edges.
+* **UI/UX:** Hacking terminal aesthetic with holographic grids and fonts.
+* **Readability (Visual Noise Reduction):** To prevent visual clutter on small screens during the **visual auto-battler phase**, standard floating damage numbers are hidden. The game relies on Macro-Visuals (Crits/Shield-breaks) for the battlefield overlay. However, the **Live Feed (Technical Log)** must always display all data for player analysis.
+* **Kinetic & Energy Feedback:** Heavy impacts cause subtle camera shake, while fast, light attacks trigger sharp, bright hit-sparks.
+* **Audio Design:** High-fidelity sound effects with distinct audio cues for each drone type and weapon impact.
 
 ## 10. Monetization (Fair & Cosmetic)
-* **Shuriken Skins:** Holographic Zenith-Skins, rusty Punk-Skins, Ancient Chakrams.
+* **Drone Skins:** Holographic Zenith-Skins, rusty Punk-Skins, Ancient Chakrams.
 * **Particle Trails:** Engine exhaust (e.g., Red Rebellion Plasma vs. Cold Alien Blue, Digital Glitch).
 * **Hub Customization:** Cosmetic upgrades for the player's basement workshop.
 
-## 11. Future Expansion: Nanite Experience Pool (RPG Mechanics)
+## 11. Future Expansion Plans
+
+### 11.1 Drone Experience Pool (RPG Mechanics)
 (Design Note: Scheduled for implementation after the core combat and ARPG loot loops are fully validated).
 
-To foster player attachment to specific Shurikens within their swarm, each drone will feature an internal **Nanite Pool** that functions as an Experience (XP) system.
-* **Gaining XP:** After defeating an enemy or successfully completing a strike, the Shuriken earns experience, feeding the Nanites.
-* **Leveling Up:** When the XP pool reaches a threshold, the Shuriken levels up.
-* **Stat Boosting:** Upon leveling, the player can permanently boost one of the Shuriken's overall base stats. Selectable boosts include: baseDamage, critChance, critMultiplier, energyRegen, maxEnergy, armorValue, evasionRate, stealthValue, baseWeight, topSpeed, and acceleration.
+To foster player attachment to specific drones within their swarm, each drone will feature an internal **Nanite Pool** that functions as an Experience (XP) system.
+* **Gaining XP:** After defeating an enemy or successfully completing a strike, the drone earns experience, feeding the Nanites.
+* **Leveling Up:** When the XP pool reaches a threshold, the drone levels up.
+* **Stat Boosting:** Upon leveling, the player can permanently boost one of the drone's overall base stats. Selectable boosts include: baseDamage, critChance, critMultiplier, energyRegen, maxEnergy, armorValue, evasionRate, stealthValue, baseWeight, topSpeed, and acceleration.
+
+### 11.2 Modular Chassis System (Advanced Drone Building)
+Instead of fixed slots (1 Engine, 1 Sensor, etc.), advanced chassis forms will feature a limited "Space" system.
+* **Niche Specialization:** Players can sacrifice standard components to build highly specialized drones. For example, slotting two Grav-Engines and zero Sensors to create an ultra-fast, "dumb" kinetic battering ram, or utilizing multiple Processors and Sensors for a slow, highly intelligent command drone.
+* **The Balancing Act:** The player must balance physical space, energy consumption, and weight limitations to ensure the drone can still fly.
+* **UI/UX Consideration:** Shelved for post-launch because introducing this too early would heavily complicate inventory management and overwhelm new players on a mobile screen.
 
 ## 12. Development Status (Rogue OS Refinement)
 *   **[x] Tactical Naming:** Conditions and Actions use player-friendly tactical terminology.

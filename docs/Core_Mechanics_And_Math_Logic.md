@@ -23,7 +23,7 @@ When a Shuriken is fully assembled, its components calculate these final attribu
 * **`energyRegen`** (Integer): Energy recovered per second.
 * **`energyDrain`** (Integer): Passive energy consumed per second while flying/attacking.
 * **`routineCapacity`** (Integer): Total IF/THEN routines available.
-* **`latency`** (Float): Milliseconds of delay between a Trigger (IF) happening and the Action (THEN) executing. Lower is better.
+* **`reactionTime`** (Float): Formerly "latency". Milliseconds of delay between a Trigger (IF) happening and the Action (THEN) executing. Lower is better.
 
 ### Offensive
 
@@ -63,14 +63,14 @@ Forms apply a global multiplier to the final stats.
 
 ### E. Processors & AI
 
-* **Abacus Chip:** slots: 2, latency: 0.5s
-* **Cortex CPU:** slots: 3, latency: 0.2s
-* **Omni-Node Core:** slots: 5, latency: 0.05s
+* **Abacus Chip:** slots: 2, reactionTime: 0.5s, processorSpeed: 5
+* **Cortex CPU:** slots: 3, reactionTime: 0.2s, processorSpeed: 15
+* **Omni-Node Core:** slots: 5, reactionTime: 0.05s, processorSpeed: 40
 
 ### F. Semi-AI (The Brain - OPTIONAL)
 A Shuriken with an equipped Semi-AI is designated as a **MASTER**. A Shuriken without a Semi-AI is designated as **SOLO** unless slaved to a Master.
 *   **Swarm Coordination:** Masters manage **SLAVE** units. Slaves receive the Master's `iffAccuracy` and a 15% Latency reduction.
-*   **Operational Risk:** If a Master is destroyed, all its Slaves suffer a 50% Latency penalty for the remainder of the strike.
+*   **Operational Risk (Grace Period):** If a Master is destroyed, Slaves do NOT suffer an immediate permanent penalty. Instead, they enter a 5-second "Chaos Mode" (erratic movement, basic attacks only) before reverting to their internal base reaction time without the Master's buffs.
 
 ## 3. Deployment Constraints
 *   **Mandatory Hardware:** All slots (Engine, Hull, Sensor, Blade, Processor, Energy Cell, Form Design) MUST be filled for deployment.
@@ -90,16 +90,15 @@ Blunt/Kinetic weapons deal more damage the heavier and faster the Shuriken is.
 momentumMultiplier = 1.0 + ((currentSpeed / 100) * (baseWeight / 100))
 finalKineticDamage = baseDamage * momentumMultiplier
 
-### 3.3 Energy Exhaustion
+### 3.3 Energy Exhaustion (Emergency Reboot)
+To prevent the "Death Spiral" of doing zero damage and moving slowly until death: If currentEnergy drops to 0, the drone initiates an Emergency Reboot.
 
-If currentEnergy drops to 0:
-
-* **Top Speed** is reduced by 50%.
-* **Evasion** drops to 0.
-* **Energy-based weapons (Plasma)** deal 0 damage.
+* The drone shuts down completely for 3 seconds (Top Speed = 0, Evasion = 0).
+* During Reboot, the drone takes +50% incoming damage.
+* After 3 seconds, energy instantly restores to 30% of maximum.
+* Energy systems recharge at 150% efficiency for 3 seconds immediately after reboot.
 
 ## 4. Damage Types vs. Armor Types (Effectiveness Matrix)
-
 When a Shuriken attacks an enemy, the damageType is checked against the enemy's armorType. The resulting damage is multiplied by the effectiveness factor.
 
 | Damage Type | vs UNARMORED (Flesh/Light) | vs HEAVY ARMOR (Mechs) | vs ENERGY SHIELD (Zenith) |
@@ -119,13 +118,12 @@ When a Shuriken attacks an enemy, the damageType is checked against the enemy's 
 
 (Note: Net damage always deals at least 1 point of damage unless completely evaded, to prevent zero-damage infinite loops).
 
-### 4.2 Combat Frequency & Cooldowns
- 
+### 4.2 Combat Frequency & Cooldowns 
  Combat is not purely turn-based but uses a high-frequency simulation (0.1s increments).
  
-* **Shuriken Attack Speed (Kinetic Latency Scaling):** A Shuriken's reaction time is affected by its physical inertia (Weight) and its responsiveness (Acceleration).
-    * **Formula:** `effectiveLatency = baseLatency * (1.0 + (baseWeight / 500) - (acceleration / 50))`
-    * **Minimum Floor:** `effectiveLatency` cannot drop below `0.2x` of `baseLatency`.
+* **Shuriken Attack Speed (Reaction Time Scaling):** A Shuriken's `baseReactionTime` is affected by its physical inertia (Weight), acceleration (Acceleration) and its processing power (Processor Speed).
+    * **Formula:** `effectiveReactionTime = baseReactionTime * (1.0 + (baseWeight / 250) - (acceleration / 25) - (processorSpeed / 25))`
+    * **Minimum Floor:** `effectiveReactionTime` cannot drop below `0.2x` of `baseReactionTime`.
     * **Result:** Heavy, low-acceleration drones attack slowly but hit with more momentum. Light, high-acceleration drones strike with high frequency but less kinetic impact.
 
 * **Hostile Attack Speed (Tiered Cooldowns):** Hostile aggression scales with mission difficulty.
@@ -134,12 +132,12 @@ When a Shuriken attacks an enemy, the damageType is checked against the enemy's 
     * **Tier III:** 0.4s - 0.8s cooldown.
  * **Targeting:** Hostiles randomly target any allied Shuriken that is not currently **Stealthed**.
 
-## 5. The Gambit System (Logic Routines)
-
-The AI is programmed using a Priority Slot System. The simulation checks Slots from 1 to N. The first valid IF condition triggers its corresponding THEN action.
+### 5.0 Priority & Fallback Logic
+The AI checks Slots from 1 to N. 
+* **Action Fallbacks:** If an IF condition is met, but the THEN action cannot be executed (e.g., insufficient energy), the simulation skips the current routine and evaluates the next one in the list.
+* **Default Slot:** Every Shuriken has a hidden, uneditable final slot: `IF Enemy Exists -> THEN Standard Strike`. This ensures drones never idle if they have energy and a target.
 
 ### 5.1 Triggers (IF Components)
-
 Every trigger must evaluate to a boolean (true / false). Many triggers are locked unless the specific sensor is equipped in the hardware phase. In the Rogue OS UI, these are presented with tactical designations.
 
 * **`ifEnemyInMeleeRange`** (Tactical: **Enemy: Close Proximity**)
@@ -187,12 +185,12 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
     * **energyCost:** 0 (Base cost)
 
 * **`actionKineticRam`** (Tactical: **Execute: Kinetic Ram**)
-    * **behavior:** Maximizes acceleration in a straight line toward the target to maximize the momentum multiplier.
-    * **energyCost:** 15
+    * **behavior:** Maximizes acceleration toward the target to maximize the momentum multiplier.
+    * **energyCost:** 20
 
 * **`actionEvasiveManeuver`** (Tactical: **Execute: Evasive Action**)
-    * **behavior:** Briefly increases evasionRate to 1.0 (100%) and moves erratically. Cancels current attack.
-    * **energyCost:** 20
+    * **behavior:** Briefly increases evasionRate to Max Cap (0.75) and moves erratically. Cancels current attack.
+    * **energyCost:** 15
 
 * **`actionApplyMark`** (Tactical: **Execute: Apply Mark**)
     * **behavior:** Attacks with the intent to apply the "Marked" status effect instead of dealing max damage.
@@ -203,9 +201,13 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
     * **energyCost:** 0
 
 * **`actionActivateCloak`** (Tactical: **Execute: Ghost Protocol**)
-    * **behavior:** Consumes energy per second to push stealthValue to maximum, making the Shuriken untargetable by normal enemies.
+    * **behavior:** Consumes energy per second to push stealthValue to maximum, making the Shuriken very hard to detect by normal enemies.
     * **energyCost:** 10 per second
 
-* **`actionRetreat`** (Tactical: **Execute: Emergency Withdrawal**)
+* **`actionEmergencyReboot`** (Tactical: **Execute: Emergency Reboot**)
+    * **behavior:** Drone stand still for 3 seconds. During this time, the drone is **prone** to damage and enemy tracking but has 30% of maximum energy after this period.
+    * **energyCost:** 0
+
+* **`actionEmergencyWithdrawal`** (Tactical: **Execute: Emergency Withdrawal**)
     * **behavior:** Moves to the furthest possible edge of the combat zone away from the highest density of enemies to regenerate shields/HP.
-    * **energyCost:** 0
+    * **energyCost:** 0

@@ -86,7 +86,8 @@ export interface FormDesign extends HardwareComponent {
  */
 export interface Processor extends HardwareComponent {
   routineCapacity: number;
-  latency: number; // in seconds
+  reactionTime: number; // in seconds (formerly latency)
+  processorSpeed: number; // for math logic scaling
 }
 
 /**

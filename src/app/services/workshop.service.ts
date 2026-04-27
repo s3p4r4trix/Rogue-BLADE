@@ -41,9 +41,9 @@ export const HARDWARE_INVENTORY = {
     { id: 'hull-neutronium', name: 'Neutronium-Cast (T-III)', description: 'Near-indestructible dead star matter.', tier: 3, maxHp: 1500, armorValue: 150, shieldCapacity: 500, weight: 300 } as HullMaterial
   ],
   processors: [
-    { id: 'proc-abacus', name: 'Abacus Chip', description: 'Legacy clock-cycle board.', routineCapacity: 2, latency: 0.5 } as Processor,
-    { id: 'proc-cortex', name: 'Cortex CPU', description: 'Standard neural processor.', routineCapacity: 3, latency: 0.2 } as Processor,
-    { id: 'proc-omni', name: 'Omni-Node Core', description: 'Quantum logic core.', routineCapacity: 5, latency: 0.05 } as Processor
+    { id: 'proc-abacus', name: 'Abacus Chip', description: 'Legacy clock-cycle board.', routineCapacity: 2, reactionTime: 0.5, processorSpeed: 5 } as Processor,
+    { id: 'proc-cortex', name: 'Cortex CPU', description: 'Standard neural processor.', routineCapacity: 3, reactionTime: 0.2, processorSpeed: 15 } as Processor,
+    { id: 'proc-omni', name: 'Omni-Node Core', description: 'Quantum logic core.', routineCapacity: 5, reactionTime: 0.05, processorSpeed: 40 } as Processor
   ],
   semiAIs: [
     { id: 'semi-feral', name: 'Scrap-Code "Feral"', description: 'Aggressive instinct paths.', iffAccuracy: 70, behaviorBuff: 'aggressive' } as SemiAI,
@@ -128,10 +128,11 @@ export class WorkshopService {
 
   readonly availableActions = signal<Action[]>([
     { id: 'actionStandardStrike', type: 'action', value: 'Standard Strike', name: 'Execute: Standard Strike', energyCost: 0, description: 'Basic attack maneuver.', baseLatency: 200 },
-    { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: 'Execute: Kinetic Ram', energyCost: 15, description: 'High-speed physical collision.', baseLatency: 500 },
-    { id: 'actionEvasiveManeuver', type: 'action', value: 'Evasive Maneuver', name: 'Execute: Evasive Action', energyCost: 20, description: 'Briefly maximize evasion.', baseLatency: 100 },
+    { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: 'Execute: Kinetic Ram', energyCost: 20, description: 'High-speed physical collision.', baseLatency: 500 },
+    { id: 'actionEvasiveManeuver', type: 'action', value: 'Evasive Maneuver', name: 'Execute: Evasive Action', energyCost: 15, description: 'Briefly maximize evasion.', baseLatency: 100 },
     { id: 'actionActivateCloak', type: 'action', value: 'Activate Cloak', name: 'Execute: Ghost Protocol', energyCost: 10, description: 'Consume energy to disappear.', baseLatency: 300 },
-    { id: 'actionRetreat', type: 'action', value: 'Emergency Retreat', name: 'Execute: Emergency Withdrawal', energyCost: 0, description: 'Withdraw to safety zones.', baseLatency: 0 }
+    { id: 'actionEmergencyReboot', type: 'action', value: 'Emergency Reboot', name: 'Execute: Emergency Reboot', energyCost: 0, description: 'Stand still to regain energy.', baseLatency: 3000 },
+    { id: 'actionEmergencyWithdrawal', type: 'action', value: 'Emergency Withdrawal', name: 'Execute: Emergency Withdrawal', energyCost: 0, description: 'Withdraw to safety zones.', baseLatency: 0 }
   ]);
 
   readonly availableShurikens = signal<Shuriken[]>(loadShurikens());
@@ -183,6 +184,7 @@ export class WorkshopService {
       if (!repaired.sensor || !repaired.sensor.range || repaired.sensor.id === 'sens-prox' || repaired.sensor.id === 'sens-vital') repaired.sensor = HARDWARE_INVENTORY.sensors[0];
       if (!repaired.blade || !repaired.blade.baseDamage) repaired.blade = HARDWARE_INVENTORY.blades[0];
       if (!repaired.processor || !repaired.processor.routineCapacity) repaired.processor = HARDWARE_INVENTORY.processors[0];
+      if (repaired.processor && !repaired.processor.processorSpeed) repaired.processor.processorSpeed = 5;
       if (!repaired.engine || !repaired.engine.topSpeed) repaired.engine = HARDWARE_INVENTORY.engines[0];
       if (!repaired.energyCell || !repaired.energyCell.maxEnergy) repaired.energyCell = HARDWARE_INVENTORY.energyCells[0];
       if (!repaired.semiAI || !repaired.semiAI.iffAccuracy) {

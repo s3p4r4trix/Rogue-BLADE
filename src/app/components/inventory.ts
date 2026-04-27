@@ -50,7 +50,7 @@ import { Trigger, Action } from '../models/gambit.model';
               @if (item.type === 'action') {
                 <div class="grid grid-cols-2 gap-2">
                    <div class="bg-orange-500/5 border border-orange-500/20 p-3 rounded">
-                      <h4 class="text-[8px] text-orange-400 uppercase font-bold mb-1">LATENCY</h4>
+                      <h4 class="text-[8px] text-orange-400 uppercase font-bold mb-1">REACTION TIME</h4>
                       <div class="text-xl font-mono font-black text-orange-400">{{ $any(item).baseLatency || 0 }}<span class="text-[10px] ml-0.5">MS</span></div>
                    </div>
                    <div class="bg-orange-500/5 border border-orange-500/20 p-3 rounded">

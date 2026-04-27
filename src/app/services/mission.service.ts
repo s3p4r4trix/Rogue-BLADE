@@ -54,8 +54,16 @@ export class MissionService {
 
   private generateContracts(): MissionContract[] {
     const contracts: MissionContract[] = [];
+    const usedTargets = new Set<string>();
+    
     for (let i = 0; i < 3; i++) {
-      contracts.push(this.generateSingleContract(i));
+      let contract: MissionContract;
+      do {
+        contract = this.generateSingleContract(i);
+      } while (usedTargets.has(contract.targetName));
+      
+      usedTargets.add(contract.targetName);
+      contracts.push(contract);
     }
     return contracts;
   }
@@ -80,7 +88,7 @@ export class MissionService {
     const target = TARGETS[Math.floor(Math.random() * TARGETS.length)];
     const desc = DESCRIPTIONS[Math.floor(Math.random() * DESCRIPTIONS.length)];
     
-    // Force Unarmored/No-Shield for the first few successful runs
+    // Force Unarmored/No-Shield for the very first few runs
     let resProfile;
     if (true) { // ToDo: Remove this check - only for testing
       resProfile = RESISTANCES.find(r => r.type === 'UNARMORED') || RESISTANCES[2];
@@ -123,10 +131,10 @@ export class MissionService {
     cBonus = Math.floor(baseLoot * 1.5); // Slightly reduced bonus ratio for cleaner numbers
 
     const hull = Math.floor(baseLoot * 1.5);
-    // Force 0 shields for early game
-    const shields = (successfulRuns < 3) ? 0 : (resProfile.type === 'ENERGY_SHIELD' ? Math.floor(baseLoot * 1.2) : Math.floor(baseLoot * 0.2));
-    const armorValue = (successfulRuns < 3) ? 0 : (resProfile.type === 'HEAVY_ARMOR' ? Math.floor(baseLoot * 0.15) : 0);
-    const enemyEvasionRate = resProfile.type === 'UNARMORED' ? 0.10 : 0.05; // Slightly lower initial evasion
+    // Force 0 shields/armor for early game (onboarding)
+    const shields = (successfulRuns < 10) ? 0 : (resProfile.type === 'ENERGY_SHIELD' ? Math.floor(baseLoot * 1.2) : Math.floor(baseLoot * 0.2));
+    const armorValue = (successfulRuns < 10) ? 0 : (resProfile.type === 'HEAVY_ARMOR' ? Math.floor(baseLoot * 0.15) : 0);
+    const enemyEvasionRate = resProfile.type === 'UNARMORED' ? 0.10 : 0.05;
 
     return {
       id: `mission-${Date.now()}-${index}`,
