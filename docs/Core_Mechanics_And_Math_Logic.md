@@ -245,11 +245,25 @@ All movement uses smooth acceleration toward a target velocity. The acceleration
     vy += (targetVy - vy) * min(1, accelFactor * 0.1)
     ```
 
-#### Seek (actionStandardStrike)
-Moves in a straight, interpolated line directly toward the target entity.
+#### Pursuit (actionStandardStrike)
+Moves in a straight, interpolated line directly toward a visible target entity. (Formerly termed 'Seek').
 ```
 direction = normalize(target.position - drone.position)
 targetVelocity = direction * topSpeed
+```
+
+#### Fighting (Combat Engagement)
+Triggered when in `meleeRange`, at strike velocity, and with clear LOS.
+```
+// Prioritize direct, aggressive pursuit for maximum impact
+direction = normalize(target.position - drone.position)
+targetVelocity = direction * topSpeed
+```
+
+#### Patrol (Idle Navigation)
+Moves at 60% top speed between random waypoints within the arena.
+```
+targetVelocity = normalize(waypoint - entity.position) * (topSpeed * 0.6)
 ```
 
 #### Orbit (actionDefendAlly)
@@ -272,17 +286,39 @@ targetVelocity = awayDirection * topSpeed
 
 ### 6.4 Collision Detection
 
-#### Circle vs. AABB (Drone vs. Obstacle)
-Drones are modeled as circles. Obstacles are Axis-Aligned Bounding Boxes (AABB).
-```
-closestPoint.x = clamp(circle.x, box.x, box.x + box.w)
-closestPoint.y = clamp(circle.y, box.y, box.y + box.h)
-distance = dist(circle.center, closestPoint)
-if (distance < circle.radius):
-    overlap = radius - distance
-    pushDirection = normalize(circle.center - closestPoint)
-    circle.center += pushDirection * overlap
-```
+#### Circle vs. AABB (Entity vs. Obstacle)
+Entities are modeled as circles. Obstacles are Axis-Aligned Bounding Boxes (AABB).
+
+* **Multi-pass Resolution:** Collision checks run for 2 iterations per frame to handle corner cases and multi-object intersections.
+* **Velocity Damping:** Upon impact, the velocity component perpendicular to the surface is dampened: `vx/vy *= -0.2` to prevent clipping and add "bounce".
+* **Resolution Math:**
+  ```
+  closestPoint.x = clamp(circle.x, box.x, box.x + box.w)
+  closestPoint.y = clamp(circle.y, box.y, box.y + box.h)
+  distSq = (circle.x - closestPoint.x)^2 + (circle.y - closestPoint.y)^2
+  
+  if (distSq < radius^2):
+      if (distSq > 1e-6): // Standard edge/corner collision
+          distance = sqrt(distSq)
+          overlap = radius - distance
+          pushDir = (circle.pos - closestPoint) / distance
+          circle.pos += pushDir * overlap
+      else: // Center is inside box - push to nearest edge
+          dl = cx - box.x; dr = (box.x + box.w) - cx; dt = cy - box.y; db = (box.y + box.h) - cy
+          minDist = min(dl, dr, dt, db)
+          // Resulting position is offset by 'radius' from the closest edge boundary
+  ```
+
+#### Circle vs. Circle (Entity vs. Entity)
+Drones and enemies resolve physical overlap to prevent stacking.
+* **Separation:** Entities push each other apart by `overlap / 2`.
+* **Mutual Impulse:** contact triggers a small velocity boost away from the point of impact.
+
+#### Obstacle Avoidance (Feeler System)
+AI entities project path safety to steer around cover.
+* **Logic:** Projects a "feeler" point `50 units` ahead of current `rotation`.
+* **Avoidance:** If the feeler hits an AABB, a steering force is applied away from the `obstacle.center`.
+* **Blending:** `targetVelocity = (pursuitVector * 0.3) + (avoidanceVector * 0.7)`.
 
 ### 6.5 Sensors & Detection
 
@@ -306,7 +342,13 @@ For each axis (X, Y):
 
 if tmin <= tmax AND tmin >= 0 AND tmax <= 1: ray is blocked
 ```
-The `t` range `[0, 1]` represents the line segment from origin to target. Only intersections within this range count.
+The `t` range `[0, 1]` represents the line segment from origin to target.
+
+#### Enemy Vision (Dynamic FOV Polygon)
+Enemies have a 120-degree field of view (FOV).
+* **Angle:** ±1.05 radians (~60 degrees) from current `rotation`.
+* **Dynamic Clipping:** The FOV is rendered as a visibility polygon. Rays are cast at 0.05 radian increments across the 120-degree arc. Each ray's `tmin` against all obstacles determines the final vertex for the clipped polygon.
+* **Logic Match:** If a drone is within the 120-degree cone AND its distance to the enemy is `<=` ray-cast `dist(enemy, tx, ty) * tmin`, it is considered "Visible".
 
 ### 6.6 Strike Velocity Gating
 
@@ -338,7 +380,7 @@ orbitAngle += (topSpeed / searchRadius) * deltaTime
 goalX = lastSeen.x + cos(orbitAngle) * searchRadius
 goalY = lastSeen.y + sin(orbitAngle) * searchRadius
 ```
-4. **Memory Expiry:** After `SEARCH_LINGER_TIME = 3 seconds`, `lastSeenPos` is cleared and the drone falls back to direct SEEKING.
+4. **Memory Expiry:** After `SEARCH_LINGER_TIME = 3 seconds`, `lastSeenPos` is cleared and the drone falls back to direct PURSUING or PATROLLING.
 
 ### 6.9 Emergency Withdrawal (FLEEING to WITHDRAWN)
 

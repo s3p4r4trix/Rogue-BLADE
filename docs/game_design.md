@@ -254,13 +254,16 @@ The Liberation Strike's **Phase 2 (Passive)** is accompanied by a **Tactical Map
 
 ### 13.4 AI Movement Behaviors
 These are the core spatial behaviors mapped to existing GDD actions:
-*   **Seek (Standard Strike):** Drone moves in a straight line toward its target with smooth acceleration.
-*   **Orbit (Defend Ally):** Drone maintains a fixed radius around the target and continuously rotates, useful for intercepting or maintaining distance. Also used after a strike to build speed for the next pass.
+*   **Pursuit (Standard Strike):** Drone moves in a straight line toward its visible target with smooth acceleration. (Previously termed 'Seek').
+*   **Fighting (Active Strike):** High-intensity engagement when in melee range, at strike velocity, and with clear LOS. Prioritizes direct, aggressive movement to impact the target.
+*   **Orbit (Repositioning):** Drone maintains a fixed radius around the target and continuously rotates. Used after a strike to build speed for the next pass or when waiting for cooldowns.
 *   **Flee (Emergency Withdrawal):** Triggered when HP drops below 20% and no other routines restricts this behavior. The drone calculates the vector away from the nearest enemy and moves toward the nearest arena boundary.
     *   **Disengagement:** Upon reaching the arena edge, the drone must remain there for **2 seconds** without being destroyed.
     *   **Exit:** After the 2-second hold, the drone leaves the combat zone (state: `WITHDRAWN`). This preserves the hardware for future missions at a significantly lower repair cost compared to full destruction.
     *   **Mission End:** If all drones are either `WITHDRAWN` or `DESTROYED`, the mission ends in failure (unless the objective was already met).
-*   **Search (LOS Lost):** When an enemy disappears behind cover, the drone navigates to its **last-seen position** and performs an expanding spiral search. After a set time (`SEARCH_LINGER_TIME = 3s`), the last-seen memory is cleared and the drone falls back to direct seeking.
+*   **Search (LOS Lost):** When an enemy disappears behind cover, the drone navigates to its **last-seen position** and performs an expanding spiral search while scanning its FOV. After a set time (`SEARCH_LINGER_TIME = 3s`), the last-seen memory is cleared and the drone falls back to patrolling.
+*   **Patrol (Idle Movement):** When no target is known or seen, the unit moves slowly between random waypoints, actively scanning its surroundings with its sensors.
+*   **Idle (Observation):** Stationary state where the unit rotates its sensors/FOV to scan for incoming threats.
 
 ### 13.4.1 Minimum Strike Velocity
 Drones must reach a minimum speed threshold (`MIN_STRIKE_SPEED = 40%` of `topSpeed`) before they can execute a strike. This prevents drones from circling endlessly at low speed without meaningful engagement. After a successful strike, the drone bounces away, naturally resetting its orbit for another high-speed pass.
@@ -278,9 +281,11 @@ Since this is an AI-driven game, the Tactical Map includes comprehensive visual 
 *   **Hit Flash VFX:** When a drone strikes the enemy, the target flashes white with an expanding ring effect (200ms duration).
 *   **Sensor Range Wireframe:** A faint, dashed ellipse around each drone showing its current detection radius.
 *   **LOS Raycast Line:** A line drawn from each drone to its target. Colored **Green** if LOS is clear, **Red** if blocked by cover, with a midpoint status label.
-*   **State Labels:** A small text label above each drone displaying its current AI state (e.g., `SEEKING`, `ORBITING`, `FLEEING`, `SEARCHING`).
+*   **State Labels:** A small text label above each unit displaying its current AI state (e.g., `PURSUING`, `ORBITING`, `FIGHTING`, `SEARCHING`, `PATROLLING`).
 *   **Last-Seen Marker:** When a drone is in SEARCHING state, a yellow crosshair appears at the last-known enemy position with a dashed line from the drone.
 *   **Melee Range Indicator:** A smaller yellow wireframe showing the close-combat engagement zone.
+*   **Enemy Vision Cone:** A faint red polygon representing the hostile entity's 120-degree field of view, dynamically clipped by cover objects.
+*   **Sensor Link:** A tactical line connecting drones to their targets when within sensor range, indicating signal strength (solid/cyan for clear, dashed/red for obscured).
 
 ### 13.7 Live Feed Synchronization
 The Tactical Map and Live Feed are synchronized via an event bridge:

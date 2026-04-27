@@ -26,7 +26,7 @@ interface AABB { x: number; y: number; w: number; h: number; }
 interface Vec2 { x: number; y: number; }
 
 /** AI behavior state machine labels */
-type AIState = 'SEEKING' | 'ORBITING' | 'FLEEING' | 'IDLE' | 'REBOOTING' | 'SEARCHING' | 'WITHDRAWN' | 'PATROLLING';
+type AIState = 'PURSUING' | 'ORBITING' | 'FLEEING' | 'IDLE' | 'REBOOTING' | 'SEARCHING' | 'WITHDRAWN' | 'PATROLLING' | 'FIGHTING';
 
 /** Runtime entity used for both drones and the enemy */
 interface ArenaEntity {
@@ -202,7 +202,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       color: '#ef4444',
       sensorRange: 200,
       meleeRange: 40,
-      state: 'PATROLLING' as AIState,
+      state: 'PURSUING' as AIState,
       orbitAngle: 0,
       isEnemy: true,
       hp: mission?.hull ?? 300,
@@ -319,21 +319,20 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       if (drone.hp < drone.maxHp * 0.2) {
         drone.state = 'FLEEING';
       } else if (distToEnemy < drone.meleeRange && hasLOS && drone.canStrike) {
-        // Close enough + fast enough + clear LOS = attempt strike
-        drone.state = 'SEEKING';
+        // CLOSE COMBAT: Ready to hit
+        drone.state = 'FIGHTING';
       } else if (distToEnemy < drone.meleeRange) {
-        // Close but too slow or no LOS → orbit for another pass
+        // CLOSE COMBAT: Repositioning for next strike
         drone.state = 'ORBITING';
       } else if (distToEnemy < drone.sensorRange && hasLOS) {
-        drone.state = 'SEEKING';
-      } else if (distToEnemy < drone.sensorRange && !hasLOS) {
-        // In range but blocked → search using last-seen position
-        drone.state = 'SEARCHING';
+        // PURSUIT: Target visible and in range
+        drone.state = 'PURSUING';
       } else if (drone.lastSeenPos) {
-        // Out of range but have memory → search
+        // SEARCH: Target lost, investigating last known location
         drone.state = 'SEARCHING';
       } else {
-        drone.state = 'SEEKING'; // Default: move toward enemy
+        // IDLE: No target knowledge
+        drone.state = 'PURSUING'; // Default to aggressive search
       }
 
       // Log state transitions
@@ -346,7 +345,8 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       let targetVy = 0;
 
       switch (drone.state) {
-        case 'SEEKING': {
+        case 'PURSUING':
+        case 'FIGHTING': {
           const dir = this.normalize({ x: this.enemy.x - drone.x, y: this.enemy.y - drone.y });
           targetVx = dir.x * drone.topSpeed;
           targetVy = dir.y * drone.topSpeed;
@@ -429,11 +429,18 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       newX = Math.max(WALL_THICKNESS + drone.radius, Math.min(ARENA_W - WALL_THICKNESS - drone.radius, newX));
       newY = Math.max(WALL_THICKNESS + drone.radius, Math.min(ARENA_H - WALL_THICKNESS - drone.radius, newY));
 
-      // Obstacle collision
-      for (const obs of this.obstacles) {
-        const resolved = this.resolveCircleAABB(newX, newY, drone.radius, obs);
-        newX = resolved.x;
-        newY = resolved.y;
+      // Obstacle collision (Multi-pass for stability)
+      for (let i = 0; i < 2; i++) {
+        for (const obs of this.obstacles) {
+          const res = this.resolveCircleAABB(newX, newY, drone.radius, obs);
+          if (res.x !== newX || res.y !== newY) {
+            // Dampen velocity component that hit the wall
+            if (Math.abs(res.x - newX) > 0.01) drone.vx *= -0.2;
+            if (Math.abs(res.y - newY) > 0.01) drone.vy *= -0.2;
+            newX = res.x;
+            newY = res.y;
+          }
+        }
       }
 
       // Drone-to-Enemy Collision
@@ -521,7 +528,8 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       }
 
       if (bestTarget) {
-        this.enemy.state = 'SEEKING';
+        const d = this.dist(this.enemy, bestTarget);
+        this.enemy.state = (d < 50) ? 'FIGHTING' : 'PURSUING';
         this.enemy.lastSeenPos = { x: bestTarget.x, y: bestTarget.y };
         this.enemy.searchTimer = 0;
       } else if (this.enemy.lastSeenPos) {
@@ -535,7 +543,8 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       let targetVy = 0;
 
       switch (this.enemy.state) {
-        case 'SEEKING': {
+        case 'PURSUING':
+        case 'FIGHTING': {
           if (bestTarget) {
             const dir = this.normalize({ x: bestTarget.x - this.enemy.x, y: bestTarget.y - this.enemy.y });
             targetVx = dir.x * this.enemy.topSpeed;
@@ -645,10 +654,17 @@ export class CombatArena implements AfterViewInit, OnDestroy {
         newX = Math.max(WALL_THICKNESS + this.enemy.radius, Math.min(ARENA_W - WALL_THICKNESS - this.enemy.radius, newX));
         newY = Math.max(WALL_THICKNESS + this.enemy.radius, Math.min(ARENA_H - WALL_THICKNESS - this.enemy.radius, newY));
 
-        for (const obs of this.obstacles) {
-          const resolved = this.resolveCircleAABB(newX, newY, this.enemy.radius, obs);
-          newX = resolved.x;
-          newY = resolved.y;
+        // Obstacle collision (Multi-pass)
+        for (let i = 0; i < 2; i++) {
+          for (const obs of this.obstacles) {
+            const res = this.resolveCircleAABB(newX, newY, this.enemy.radius, obs);
+            if (res.x !== newX || res.y !== newY) {
+              if (Math.abs(res.x - newX) > 0.01) this.enemy.vx *= -0.2;
+              if (Math.abs(res.y - newY) > 0.01) this.enemy.vy *= -0.2;
+              newX = res.x;
+              newY = res.y;
+            }
+          }
         }
 
         this.enemy.x = newX;
@@ -838,9 +854,9 @@ export class CombatArena implements AfterViewInit, OnDestroy {
 
     // ── State label ──
     const stateColors: Record<AIState, string> = {
-      SEEKING: '#22d3ee', ORBITING: '#a78bfa', FLEEING: '#f97316',
+      PURSUING: '#22d3ee', ORBITING: '#a78bfa', FLEEING: '#f97316',
       IDLE: '#6b7280', REBOOTING: '#ef4444', SEARCHING: '#facc15', 
-      WITHDRAWN: '#4ade80', PATROLLING: '#94a3b8'
+      WITHDRAWN: '#4ade80', PATROLLING: '#94a3b8', FIGHTING: '#ef4444'
     };
     ctx.fillStyle = stateColors[drone.state] || '#fff';
     ctx.font = 'bold 8px monospace';
@@ -929,9 +945,9 @@ export class CombatArena implements AfterViewInit, OnDestroy {
 
     // State Label
     const stateColors: Record<AIState, string> = {
-      SEEKING: '#ef4444', ORBITING: '#f87171', FLEEING: '#f97316',
+      PURSUING: '#ef4444', ORBITING: '#f87171', FLEEING: '#f97316',
       IDLE: '#6b7280', REBOOTING: '#ef4444', SEARCHING: '#facc15', 
-      WITHDRAWN: '#4ade80', PATROLLING: '#94a3b8'
+      WITHDRAWN: '#4ade80', PATROLLING: '#94a3b8', FIGHTING: '#ffffff'
     };
     ctx.fillStyle = stateColors[enemy.state] || '#fff';
     ctx.font = '8px monospace';
@@ -1163,7 +1179,6 @@ export class CombatArena implements AfterViewInit, OnDestroy {
    * Pushes the circle out of the rectangle if overlapping.
    */
   private resolveCircleAABB(cx: number, cy: number, r: number, box: AABB): Vec2 {
-    // Closest point on AABB to circle center
     const closestX = Math.max(box.x, Math.min(cx, box.x + box.w));
     const closestY = Math.max(box.y, Math.min(cy, box.y + box.h));
 
@@ -1171,19 +1186,24 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     const distY = cy - closestY;
     const distSq = distX * distX + distY * distY;
 
-    if (distSq < r * r && distSq > 0) {
-      const dist = Math.sqrt(distSq);
-      const overlap = r - dist;
-      const nx = distX / dist;
-      const ny = distY / dist;
-      return { x: cx + nx * overlap, y: cy + ny * overlap };
+    if (distSq < r * r) {
+      if (distSq > 1e-6) {
+        const dist = Math.sqrt(distSq);
+        const overlap = r - dist;
+        return { x: cx + (distX / dist) * overlap, y: cy + (distY / dist) * overlap };
+      } else {
+        // Center is inside or exactly on the edge - push to nearest edge
+        const dl = cx - box.x;
+        const dr = (box.x + box.w) - cx;
+        const dt = cy - box.y;
+        const db = (box.y + box.h) - cy;
+        const minDist = Math.min(dl, dr, dt, db);
+        if (minDist === dl) return { x: box.x - r, y: cy };
+        if (minDist === dr) return { x: box.x + box.w + r, y: cy };
+        if (minDist === dt) return { x: cx, y: box.y - r };
+        return { x: cx, y: box.y + box.h + r };
+      }
     }
-
-    // Edge case: center is inside the box
-    if (distSq === 0) {
-      return { x: cx, y: cy - r }; // Push upward
-    }
-
     return { x: cx, y: cy };
   }
 }
