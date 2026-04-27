@@ -324,10 +324,10 @@ export class CombatArena implements AfterViewInit, OnDestroy {
 
       if (drone.hp < drone.maxHp * 0.2) {
         drone.state = 'FLEEING';
-      } else if (distToEnemy < drone.meleeRange && hasLOS && drone.canStrike) {
+      } else if (distToEnemy < drone.meleeRange + this.enemy.radius && hasLOS && drone.canStrike) {
         // CLOSE COMBAT: Ready to hit
         drone.state = 'FIGHTING';
-      } else if (distToEnemy < drone.meleeRange && (hasLOS || drone.state === 'FIGHTING')) {
+      } else if (distToEnemy < drone.meleeRange + this.enemy.radius && (hasLOS || drone.state === 'FIGHTING')) {
         // CLOSE COMBAT: Repositioning for next strike
         drone.state = 'ORBITING';
       } else if (distToEnemy < drone.sensorRange && hasLOS) {
@@ -343,6 +343,15 @@ export class CombatArena implements AfterViewInit, OnDestroy {
 
       // Log state transitions
       if (prevState !== drone.state) {
+        // Specific tactical logs for sensor status
+        if ((prevState === 'PATROLLING' || prevState === 'SEARCHING') && 
+            (drone.state === 'PURSUING' || drone.state === 'FIGHTING' || drone.state === 'ORBITING')) {
+          this.emitLog(`[SENSOR] ${drone.name}: Target Lock Achieved.`);
+        } else if ((prevState === 'PURSUING' || prevState === 'FIGHTING' || prevState === 'ORBITING') && 
+                   drone.state === 'SEARCHING') {
+          this.emitLog(`[SENSOR] ${drone.name}: Signal Lost. Investigating last known pos.`);
+        }
+        
         this.emitLog(`${drone.name}: [STATE] ${prevState} → ${drone.state}`);
       }
 
@@ -564,6 +573,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
         }
       }
 
+      const prevEnemyState = this.enemy.state;
       if (bestTarget) {
         const d = this.dist(this.enemy, bestTarget);
         this.enemy.state = (d < 50) ? 'FIGHTING' : 'PURSUING';
@@ -573,6 +583,13 @@ export class CombatArena implements AfterViewInit, OnDestroy {
         this.enemy.state = 'SEARCHING';
       } else if (this.enemy.state !== 'PATROLLING') {
         this.enemy.state = 'IDLE';
+      }
+
+      if (prevEnemyState !== this.enemy.state) {
+        if (this.enemy.state === 'PURSUING' || this.enemy.state === 'FIGHTING') {
+          this.emitLog(`[WARNING] ${this.enemy.name}: Target Detected. Engaging.`);
+        }
+        this.emitLog(`${this.enemy.name}: [STATE] ${prevEnemyState} → ${this.enemy.state}`);
       }
 
       // 2. State-based Movement
@@ -994,20 +1011,38 @@ export class CombatArena implements AfterViewInit, OnDestroy {
   private drawDebugOverlay(ctx: CanvasRenderingContext2D, drone: ArenaEntity) {
     const drawY = drone.y - drone.z * PERSPECTIVE_SCALE_Y;
 
-    // ── Sensor Range pulsing circle ──
-    const pulse = 0.08 + Math.sin(performance.now() * 0.003) * 0.04;
-    ctx.fillStyle = `rgba(34, 211, 238, ${pulse})`;
-    ctx.beginPath();
-    ctx.ellipse(drone.x, drawY, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.strokeStyle = 'rgba(34, 211, 238, 0.2)';
+    // ── Sensor Range: Tactical Scanning Ring ──
+    ctx.save();
+    // Pulsing outer ring
+    const outerPulse = 0.1 + Math.sin(performance.now() * 0.002) * 0.05;
+    ctx.strokeStyle = `rgba(34, 211, 238, ${outerPulse})`;
     ctx.lineWidth = 1;
-    ctx.setLineDash([4, 6]);
+    ctx.setLineDash([4, 8]);
     ctx.beginPath();
     ctx.ellipse(drone.x, drawY, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
     ctx.stroke();
+
+    // Scanning sweep effect
+    const sweepAngle = (performance.now() * 0.002) % (Math.PI * 2);
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.3)';
+    ctx.lineWidth = 2;
     ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(drone.x, drawY);
+    ctx.lineTo(
+      drone.x + Math.cos(sweepAngle) * drone.sensorRange,
+      drawY + Math.sin(sweepAngle) * drone.sensorRange * PERSPECTIVE_SCALE_Y
+    );
+    ctx.stroke();
+
+    // Subtle area fill
+    ctx.fillStyle = `rgba(34, 211, 238, 0.03)`;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.ellipse(drone.x, drawY, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
 
     // ── Melee Range circle ──
     ctx.strokeStyle = 'rgba(250, 204, 21, 0.2)';
