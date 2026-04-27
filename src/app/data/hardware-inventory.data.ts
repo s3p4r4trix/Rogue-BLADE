@@ -89,10 +89,15 @@ export function loadShurikens(): Shuriken[] {
     { ...DEFAULT_SHURIKEN, id: 'shuriken-01', name: 'Rogue_Unit_01', creationDate: Date.now() }
   ];
   const saved = localStorage.getItem('rogueBlade_shurikens');
-  if (saved) {
+  if (saved && saved !== 'undefined' && saved !== 'null') {
     try {
-      return JSON.parse(saved);
-    } catch (error) { }
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    } catch (error) { 
+      console.warn('[HardwareInventory] Failed to parse shurikens from LocalStorage, resetting to defaults.');
+    }
   }
   return defaults;
 }
@@ -139,8 +144,12 @@ export function loadUnlockedComponents(): string[] {
  */
 export function loadSavedRoutinesMap(): Record<string, GambitRoutine[]> {
   const saved = localStorage.getItem('rogueBlade_routinesMap');
-  if (saved) {
-    try { return JSON.parse(saved); } catch (error) { }
+  if (saved && saved !== 'undefined' && saved !== 'null') {
+    try { 
+      return JSON.parse(saved); 
+    } catch (error) { 
+       console.warn('[HardwareInventory] Failed to parse routinesMap from LocalStorage.');
+    }
   }
 
   // Default routines for new players
@@ -153,11 +162,16 @@ export function loadSavedRoutinesMap(): Record<string, GambitRoutine[]> {
     {
       priority: 2,
       trigger: { id: 'ifEnemyInSight', type: 'trigger', value: 'Enemy in sight', name: 'Enemy: Detected', description: 'Target detected by radar/lidar.', requiredSensor: 'Radar/Lidar' },
-      action: { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: 'Execute: Kinetic Ram', energyCost: 15, description: 'High-speed physical collision.', baseLatency: 500 }
+      action: { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: 'Execute: Kinetic Ram', energyCost: 20, description: 'High-speed physical collision.', baseLatency: 500 }
     }
   ];
 
-  return {
-    'shuriken-01': [...defaultRoutines]
-  };
+  // Logic: Ensure we map the default routines to WHATEVER shurikens are currently loaded.
+  const shurikens = loadShurikens();
+  const map: Record<string, GambitRoutine[]> = {};
+  shurikens.forEach(s => {
+    map[s.id] = [...defaultRoutines];
+  });
+
+  return map;
 }

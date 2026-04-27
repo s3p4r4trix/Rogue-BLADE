@@ -118,7 +118,7 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                              [value]="shuriken.formDesign?.id" 
                              (change)="onNativeSwap(shuriken.id, 'formDesign', $event, inventory.formDesigns)">
                         @for (opt of getFormDesignOptions(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
+                          <option [value]="opt.value" [selected]="opt.value === shuriken.formDesign?.id">{{ opt.label }}</option>
                         }
                      </select>
                      <p class="text-[10px] text-blue-800 mt-2 italic">Global geometric profile determines base multipliers for all physical and kinetic attributes.</p>
@@ -130,7 +130,7 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                              [value]="shuriken.engine?.id" 
                              (change)="onNativeSwap(shuriken.id, 'engine', $event, inventory.engines)">
                         @for (opt of getEngineOptions(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
+                          <option [value]="opt.value" [selected]="opt.value === shuriken.engine?.id">{{ opt.label }}</option>
                         }
                      </select>
                    </div>
@@ -142,7 +142,7 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                              [value]="shuriken.hull?.id" 
                              (change)="onNativeSwap(shuriken.id, 'hull', $event, inventory.hulls)">
                         @for (opt of getHullOptions(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
+                          <option [value]="opt.value" [selected]="opt.value === shuriken.hull?.id">{{ opt.label }}</option>
                         }
                      </select>
                    </div>
@@ -154,7 +154,7 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                              [value]="shuriken.energyCell?.id" 
                              (change)="onNativeSwap(shuriken.id, 'energyCell', $event, inventory.energyCells)">
                         @for (opt of getEnergyCellOptions(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
+                          <option [value]="opt.value" [selected]="opt.value === shuriken.energyCell?.id">{{ opt.label }}</option>
                         }
                      </select>
                    </div>
@@ -166,7 +166,7 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                              [value]="shuriken.reactor?.id" 
                              (change)="onNativeSwap(shuriken.id, 'reactor', $event, inventory.reactors)">
                         @for (opt of getReactorOptions(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
+                          <option [value]="opt.value" [selected]="opt.value === shuriken.reactor?.id">{{ opt.label }}</option>
                         }
                      </select>
                    </div>
@@ -178,7 +178,7 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                              [value]="shuriken.processor?.id" 
                              (change)="onNativeSwap(shuriken.id, 'processor', $event, inventory.processors)">
                         @for (opt of getProcessorOptions(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
+                          <option [value]="opt.value" [selected]="opt.value === shuriken.processor?.id">{{ opt.label }}</option>
                         }
                      </select>
                    </div>
@@ -190,7 +190,7 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                              [value]="shuriken.shield?.id" 
                              (change)="onNativeSwap(shuriken.id, 'shield', $event, inventory.shields)">
                         @for (opt of getShieldOptions(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
+                          <option [value]="opt.value" [selected]="opt.value === shuriken.shield?.id">{{ opt.label }}</option>
                         }
                      </select>
                    </div>
@@ -202,7 +202,7 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                              [value]="shuriken.semiAI?.id || ''" 
                              (change)="onNativeSwap(shuriken.id, 'semiAI', $event, inventory.semiAIs)">
                         @for (opt of getSemiAIOptions(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
+                          <option [value]="opt.value" [selected]="opt.value === (shuriken.semiAI?.id || '')">{{ opt.label }}</option>
                         }
                      </select>
                    </div>
@@ -214,7 +214,7 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                              [value]="shuriken.blade?.id" 
                              (change)="onNativeSwap(shuriken.id, 'blade', $event, inventory.blades)">
                         @for (opt of getBladeOptions(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
+                          <option [value]="opt.value" [selected]="opt.value === shuriken.blade?.id">{{ opt.label }}</option>
                         }
                      </select>
                    </div>
@@ -226,7 +226,7 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                              [value]="shuriken.sensor?.id" 
                              (change)="onNativeSwap(shuriken.id, 'sensor', $event, inventory.sensors)">
                         @for (opt of getSensorOptions(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
+                          <option [value]="opt.value" [selected]="opt.value === shuriken.sensor?.id">{{ opt.label }}</option>
                         }
                      </select>
                    </div>
@@ -580,7 +580,7 @@ export class HardwareWorkshop {
 
   getUnlocked<T extends { id: string }>(items: T[], currentId?: string): T[] {
     return items.filter(item => 
-      this.workshopStore.unlockedComponentIds().includes(item.id) || item.id === currentId
+      this.workshopStore.unlockedComponentIds().includes(item.id) || (currentId && item.id === currentId)
     );
   }
 
@@ -612,36 +612,56 @@ export class HardwareWorkshop {
 
   // --- Map Options for Native Selects ---
   getEngineOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.engines, this.activeShuriken().engine?.id).map((c: any) => ({ value: c.id, label: c.name }));
+    const s = this.activeShuriken();
+    if (!s) return [];
+    return this.getUnlocked(this.inventory.engines, s.engine?.id).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getHullOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.hulls, this.activeShuriken().hull?.id).map((c: any) => ({ value: c.id, label: `${c.name}` }));
+    const s = this.activeShuriken();
+    if (!s) return [];
+    return this.getUnlocked(this.inventory.hulls, s.hull?.id).map((c: any) => ({ value: c.id, label: `${c.name}` }));
   }
   getEnergyCellOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.energyCells, this.activeShuriken().energyCell?.id).map((c: any) => ({ value: c.id, label: c.name }));
+    const s = this.activeShuriken();
+    if (!s) return [];
+    return this.getUnlocked(this.inventory.energyCells, s.energyCell?.id).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getReactorOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.reactors, this.activeShuriken().reactor?.id).map((c: any) => ({ value: c.id, label: c.name }));
+    const s = this.activeShuriken();
+    if (!s) return [];
+    return this.getUnlocked(this.inventory.reactors, s.reactor?.id).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getProcessorOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.processors, this.activeShuriken().processor?.id).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.routineCapacity} | RX: ${c.reactionTime}s)` }));
+    const s = this.activeShuriken();
+    if (!s) return [];
+    return this.getUnlocked(this.inventory.processors, s.processor?.id).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.routineCapacity} | RX: ${c.reactionTime}s)` }));
   }
   getSemiAIOptions(): CyberOption[] {
-    const options = this.getUnlocked(this.inventory.semiAIs, this.activeShuriken().semiAI?.id).map((c: any) => ({ value: c.id, label: c.name }));
+    const s = this.activeShuriken();
+    if (!s) return [];
+    const options = this.getUnlocked(this.inventory.semiAIs, s.semiAI?.id).map((c: any) => ({ value: c.id, label: c.name }));
     return [{ value: '', label: 'NONE [SOLO_MODE]' }, ...options];
   }
   getShieldOptions(): CyberOption[] {
-    const options = this.getUnlocked(this.inventory.shields, this.activeShuriken().shield?.id).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.shieldCapacity})` }));
+    const s = this.activeShuriken();
+    if (!s) return [];
+    const options = this.getUnlocked(this.inventory.shields, s.shield?.id).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.shieldCapacity})` }));
     return [{ value: '', label: 'NONE [OFFLINE]' }, ...options];
   }
   getBladeOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.blades, this.activeShuriken().blade?.id).map((c: any) => ({ value: c.id, label: c.name }));
+    const s = this.activeShuriken();
+    if (!s) return [];
+    return this.getUnlocked(this.inventory.blades, s.blade?.id).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getSensorOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.sensors, this.activeShuriken().sensor?.id).map((c: any) => ({ value: c.id, label: c.name }));
+    const s = this.activeShuriken();
+    if (!s) return [];
+    return this.getUnlocked(this.inventory.sensors, s.sensor?.id).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getFormDesignOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.formDesigns, this.activeShuriken().formDesign?.id).map((c: any) => ({ value: c.id, label: `${c.name}` }));
+    const s = this.activeShuriken();
+    if (!s) return [];
+    return this.getUnlocked(this.inventory.formDesigns, s.formDesign?.id).map((c: any) => ({ value: c.id, label: `${c.name}` }));
   }
 
   hasAvailableMasters(): boolean {

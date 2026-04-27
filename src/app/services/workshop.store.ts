@@ -26,6 +26,12 @@ export interface WorkshopState {
   selectedInfoItem: Trigger | Action | null;
 }
 
+// Logic: Pre-load data to avoid multiple calls to load functions during initialization.
+const loadedShurikens = loadShurikens();
+const loadedUnlocked = loadUnlockedComponents();
+const loadedRoutines = loadSavedRoutinesMap();
+const savedActiveId = localStorage.getItem('rogueBlade_activeShuriken');
+
 const initialState: WorkshopState = {
   availableTriggers: [
     { id: 'ifEnemyInMeleeRange', type: 'trigger', value: 'Enemy in melee range', name: 'Enemy: Close Proximity', description: 'Target is within strike radius.' },
@@ -45,10 +51,10 @@ const initialState: WorkshopState = {
     { id: 'actionEmergencyReboot', type: 'action', value: 'Emergency Reboot', name: 'Execute: Emergency Reboot', energyCost: 0, description: 'Stand still to regain energy.', baseLatency: 3000 },
     { id: 'actionEmergencyWithdrawal', type: 'action', value: 'Emergency Withdrawal', name: 'Execute: Emergency Withdrawal', energyCost: 0, description: 'Withdraw to safety zones.', baseLatency: 0 }
   ],
-  availableShurikens: loadShurikens(),
-  unlockedComponentIds: loadUnlockedComponents(),
-  activeShurikenId: localStorage.getItem('rogueBlade_activeShuriken') || loadShurikens()[0].id,
-  routinesMap: loadSavedRoutinesMap(),
+  availableShurikens: loadedShurikens,
+  unlockedComponentIds: loadedUnlocked,
+  activeShurikenId: savedActiveId || loadedShurikens[0]?.id || 'shuriken-01',
+  routinesMap: loadedRoutines,
   systemLogs: ['> System ready.', '> Waiting for input...'],
   selectedInfoItem: null,
 };
@@ -118,22 +124,25 @@ export const WorkshopStore = signalStore(
         
         const migratedShurikens = store.availableShurikens().map(shuriken => {
           const drone = { ...shuriken };
-          console.log(`[WorkshopStore] Migrating Drone: ${drone.name} (${drone.id})`);
+          console.log(`[WorkshopStore] Hydrating Drone: ${drone.name} (${drone.id})`);
           
-          // Logic: Refresh component stats from master inventory. 
+          /**
+           * Internal Helper: Maps a component ID or object back to the master inventory.
+           * Logic: Ensures we use the canonical object references from HARDWARE_INVENTORY.
+           */
           const refresh = (slot: string, category: any[]) => {
             const component = (drone as any)[slot];
             if (!component) return category[0];
             
-            const currentId = component.id;
+            // Logic: Support both hydrated objects and raw ID strings.
+            const currentId = typeof component === 'string' ? component : component.id;
             const updated = category.find(c => c.id === currentId);
             
             if (updated) {
               return updated;
             } else {
-              console.warn(`[WorkshopStore] Migration Warning: Component '${currentId}' not found in inventory for slot '${slot}'. Keeping existing or falling back.`);
-              // If we have the object but just can't find it in inventory, keep the object to avoid reset
-              return component || category[0];
+              console.warn(`[WorkshopStore] Migration Warning: Component '${currentId}' not found for slot '${slot}'. Falling back.`);
+              return component && typeof component !== 'string' ? component : category[0];
             }
           };
 
@@ -146,11 +155,9 @@ export const WorkshopStore = signalStore(
           drone.processor = refresh('processor', HARDWARE_INVENTORY.processors);
           drone.reactor = refresh('reactor', HARDWARE_INVENTORY.reactors);
           
-          // Optional slots preserve null if empty
-          drone.shield = drone.shield ? (HARDWARE_INVENTORY.shields.find(s => s.id === drone.shield?.id) || null) : null;
-          drone.semiAI = drone.semiAI ? (HARDWARE_INVENTORY.semiAIs.find(a => a.id === drone.semiAI?.id) || null) : null;
+          drone.shield = drone.shield ? (HARDWARE_INVENTORY.shields.find(s => s.id === (typeof drone.shield === 'string' ? drone.shield : drone.shield?.id)) || null) : null;
+          drone.semiAI = drone.semiAI ? (HARDWARE_INVENTORY.semiAIs.find(a => a.id === (typeof drone.semiAI === 'string' ? drone.semiAI : drone.semiAI?.id)) || null) : null;
 
-          // Logic: Handle coordination mode inheritance.
           if (!drone.coordinationMode) drone.coordinationMode = 'SOLO';
           if (drone.semiAI && drone.coordinationMode === 'SOLO') drone.coordinationMode = 'MASTER';
           if (!drone.semiAI && drone.coordinationMode === 'MASTER') drone.coordinationMode = 'SOLO';
@@ -162,7 +169,7 @@ export const WorkshopStore = signalStore(
           availableShurikens: migratedShurikens,
           unlockedComponentIds: updatedUnlocked 
         });
-        console.log('[WorkshopStore] Hardware migration complete.', migratedShurikens);
+        console.log('[WorkshopStore] Hardware hydration complete.');
       },
 
       /** Switches the active drone context in the workshop. */
