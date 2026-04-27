@@ -447,15 +447,18 @@ Zenith hostiles utilize ranged attacks to suppress drones.
     *   **Damage**: Flat damage value (default: 15).
 3.  **Dodge Mechanics**: Drones do not automatically dodge projectiles via AI; they must rely on their `evasionRate` (simulated) or physical movement/speed to stay out of the projectile's path.
 
-### 6.11 Action Logging (Live Feed)
+### 6.11 Action Logging & Telemetry (CombatStore)
 
-The Tactical Map emits standardized log strings for every significant action to synchronize with the **Live Feed**:
-*   **State Transitions**: `[STATE] EntityName: NEW_STATE`
-*   **Firing**: `EntityName fired energy projectile at TargetName`
-*   **Strikes**: `AttackerName executed kinetic strike for DMG DMG!`
-*   **Hits**: `Projectile hit TargetName for DMG DMG!`
-*   **Withdrawal**: `EntityName successfully withdrew from combat.`
-*   **Destruction**: `[CRITICAL] EntityName destroyed.`
+Battle state is managed via a centralized **CombatStore** (Signals). The `CombatArena` updates this store every 0.2s for smooth UI feedback. Additionally, standardized log strings are pushed to the store for display in the **Live Feed**.
+
+*   **Signals**: `enemyHull`, `enemyMaxHull`, `squadStatuses` (HP/Energy/Reboot), `timeRemaining`, `currentLoot`.
+*   **Log Event Examples**:
+    *   **State Transitions**: `[STATE] EntityName: NEW_STATE`
+    *   **Firing**: `HOSTILE: EntityName fired energy projectile at TargetName`
+    *   **Strikes**: `AttackerName executed kinetic strike -> TargetName (Hull Hit: -DMG H) [REM: HP HP]`
+    *   **Hits**: `HOSTILE: Impact -> TargetName (Hull: -DMG) [REM: HP HP]`
+    *   **Withdrawal**: `EntityName successfully withdrew from combat.`
+    *   **Destruction**: `[CRITICAL] EntityName destroyed.`
 
 ### 6.12 Reactive Awareness (Damage Registry)
 

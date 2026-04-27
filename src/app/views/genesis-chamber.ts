@@ -64,55 +64,55 @@ import { ResearchProject } from '../models/research.model';
           </h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            @for (p of projects(); track p.id) {
+            @for (project of projects(); track project.id) {
               <div class="p-4 border transition-all duration-300 relative group overflow-hidden flex flex-col"
                    [ngClass]="{
-                     'border-purple-500 bg-purple-950/10': p.isStarted || p.isCompleted,
-                     'border-purple-900/30 bg-black opacity-70 hover:opacity-100 hover:border-purple-700': !p.isStarted && !p.isCompleted && canAfford(p),
-                     'border-red-900/20 bg-black opacity-30 grayscale cursor-not-allowed': !p.isStarted && !p.isCompleted && !canAfford(p)
+                     'border-purple-500 bg-purple-950/10': project.isStarted || project.isCompleted,
+                     'border-purple-900/30 bg-black opacity-70 hover:opacity-100 hover:border-purple-700': !project.isStarted && !project.isCompleted && canAfford(project),
+                     'border-red-900/20 bg-black opacity-30 grayscale cursor-not-allowed': !project.isStarted && !project.isCompleted && !canAfford(project)
                    }">
                 
                 <div class="flex justify-between items-start mb-3">
                    <div class="text-[8px] font-black px-2 py-0.5 border uppercase tracking-widest"
-                        [ngClass]="p.isCompleted ? 'bg-green-900/20 border-green-800 text-green-500' : 'bg-purple-900/20 border-purple-800 text-purple-400'">
-                     {{ p.isCompleted ? 'COMPLETE' : p.category }}
+                        [ngClass]="project.isCompleted ? 'bg-green-900/20 border-green-800 text-green-500' : 'bg-purple-900/20 border-purple-800 text-purple-400'">
+                     {{ project.isCompleted ? 'COMPLETE' : project.category }}
                    </div>
-                   @if (p.isCompleted) {
+                   @if (project.isCompleted) {
                      <span class="text-green-500 text-sm">✓</span>
                    }
                 </div>
 
-                <h3 class="text-lg font-bold text-white mb-1 uppercase tracking-tighter">{{ p.name }}</h3>
-                <p class="text-[10px] text-purple-700 mb-4 leading-tight">{{ p.description }}</p>
+                <h3 class="text-lg font-bold text-white mb-1 uppercase tracking-tighter">{{ project.name }}</h3>
+                <p class="text-[10px] text-purple-700 mb-4 leading-tight">{{ project.description }}</p>
 
                 <div class="mt-auto pt-4 border-t border-purple-900/20">
-                   @if (!p.isCompleted && !p.isStarted) {
+                   @if (!project.isCompleted && !project.isStarted) {
                      <div class="grid grid-cols-3 gap-2 mb-4">
-                       <div class="text-center" [ngClass]="player.resources().polymer >= p.costPolymer ? 'text-purple-400' : 'text-red-900'">
+                       <div class="text-center" [ngClass]="player.resources().polymer >= project.costPolymer ? 'text-purple-400' : 'text-red-900'">
                          <div class="text-[7px] uppercase">Poly</div>
-                         <div class="text-xs font-bold">{{ p.costPolymer }}</div>
+                         <div class="text-xs font-bold">{{ project.costPolymer }}</div>
                        </div>
-                       <div class="text-center" [ngClass]="player.resources().scrap >= p.costScrap ? 'text-purple-400' : 'text-red-900'">
+                       <div class="text-center" [ngClass]="player.resources().scrap >= project.costScrap ? 'text-purple-400' : 'text-red-900'">
                          <div class="text-[7px] uppercase">Scrap</div>
-                         <div class="text-xs font-bold">{{ p.costScrap }}</div>
+                         <div class="text-xs font-bold">{{ project.costScrap }}</div>
                        </div>
-                       <div class="text-center" [ngClass]="player.resources().credits >= p.costCredits ? 'text-purple-400' : 'text-red-900'">
+                       <div class="text-center" [ngClass]="player.resources().credits >= project.costCredits ? 'text-purple-400' : 'text-red-900'">
                          <div class="text-[7px] uppercase">Creds</div>
-                         <div class="text-xs font-bold">{{ p.costCredits }}</div>
+                         <div class="text-xs font-bold">{{ project.costCredits }}</div>
                        </div>
                      </div>
-                     <button (click)="startResearch(p.id)"
-                             [disabled]="!canAfford(p) || activeProjectId()"
+                     <button (click)="startResearch(project.id)"
+                             [disabled]="!canAfford(project) || activeProjectId()"
                              class="w-full py-2 bg-purple-900/30 border border-purple-600 text-purple-400 uppercase text-[10px] font-bold tracking-[0.2em] transition-all hover:bg-purple-600 hover:text-black disabled:opacity-30 disabled:cursor-not-allowed">
                        [ INITIALIZE ]
                      </button>
-                   } @else if (p.isStarted) {
+                   } @else if (project.isStarted) {
                       <div class="text-center py-2 animate-pulse text-purple-400 text-[10px] font-black uppercase tracking-widest">
                          In Progress...
                       </div>
                    } @else {
                       <div class="text-center py-2 text-green-500 text-[10px] font-black uppercase tracking-widest border border-green-900/30 bg-green-950/10">
-                         Data Unlocked: {{ p.unlockedComponentId }}
+                         Data Unlocked: {{ project.unlockedComponentId }}
                       </div>
                    }
                 </div>
@@ -127,19 +127,39 @@ import { ResearchProject } from '../models/research.model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GenesisChamber {
+  /** Reference to the research system managing project states. */
   research = inject(ResearchService);
+  
+  /** Reference to the player service for resource validation. */
   player = inject(PlayerService);
 
+  /** Signal containing all available research projects. */
   projects = this.research.projects;
+  
+  /** Signal containing the ID of the currently active research project. */
   activeProjectId = this.research.activeProjectId;
-  activeProject = computed(() => this.projects().find(p => p.id === this.activeProjectId()));
+  
+  /** Computed signal that returns the project object for the currently active research. */
+  activeProject = computed(() => this.projects().find(project => project.id === this.activeProjectId()));
 
-  canAfford(p: ResearchProject): boolean {
-    const res = this.player.resources();
-    return res.polymer >= p.costPolymer && res.scrap >= p.costScrap && res.credits >= p.costCredits;
+  /**
+   * Checks if the player has enough resources to begin a specific research project.
+   * @param project The project to evaluate.
+   * @returns True if the player can afford all required costs.
+   */
+  canAfford(project: ResearchProject): boolean {
+    const playerResources = this.player.resources();
+    return playerResources.polymer >= project.costPolymer && 
+           playerResources.scrap >= project.costScrap && 
+           playerResources.credits >= project.costCredits;
   }
 
-  startResearch(id: string) {
-    this.research.startResearch(id);
+  /**
+   * Initiates the research process for a given project ID.
+   * Logic: Triggers the background timer and resource deduction in the ResearchService.
+   * @param projectId The ID of the project to start.
+   */
+  startResearch(projectId: string) {
+    this.research.startResearch(projectId);
   }
 }

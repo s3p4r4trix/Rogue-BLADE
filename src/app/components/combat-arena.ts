@@ -1,11 +1,13 @@
 import {
   Component, ChangeDetectionStrategy, input, effect,
   ElementRef, viewChild, OnDestroy, output,
-  untracked, afterNextRender
+  untracked, afterNextRender, inject
 } from '@angular/core';
 import { Shuriken } from '../models/hardware.model';
 import { MissionContract } from '../models/mission.model';
 import { Vec2, AABB, ArenaEntity, Projectile } from '../models/arena.model';
+import { CombatStore } from '../services/combat.store';
+import { ShurikenStatus } from '../models/combat.model';
 
 // ─── Arena Constants ───────────────────────────────────────────────
 const ARENA_W = 800;
@@ -48,11 +50,13 @@ export class CombatArena implements OnDestroy {
   arenaLog = output<string>();
   missionComplete = output<{ success: boolean }>();
 
-  private canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('arenaCanvas');
-  private ctx!: CanvasRenderingContext2D;
+  private store = inject(CombatStore);
 
-  private animFrameId = 0;
-  private lastTime = 0;
+  private canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('arenaCanvas');
+  private canvasContext!: CanvasRenderingContext2D;
+
+  private animationFrameId = 0;
+  private lastTimestamp = 0;
 
   // ─── Arena State ───────────────────────────────────────────────
   private obstacles: AABB[] = [];
@@ -64,19 +68,23 @@ export class CombatArena implements OnDestroy {
 
   private renderList: ArenaEntity[] = [];
 
+  /**
+   * Initializes the CombatArena component.
+   * Sets up the render loop and entity initialization logic based on input signals.
+   */
   constructor() {
     afterNextRender(() => {
-      const el = this.canvas().nativeElement;
-      el.width = ARENA_W;
-      el.height = ARENA_H;
-      this.ctx = el.getContext('2d')!;
+      const element = this.canvas().nativeElement;
+      element.width = ARENA_W;
+      element.height = ARENA_H;
+      this.canvasContext = element.getContext('2d')!;
 
       this.initObstacles();
 
-      const m = this.mission();
-      const s = this.shurikens();
-      if (m && s.length > 0) {
-        this.initEntities(s, m);
+      const missionData = this.mission();
+      const shurikenData = this.shurikens();
+      if (missionData && shurikenData.length > 0) {
+        this.initEntities(shurikenData, missionData);
       } else {
         const mockDrone = {
           id: 'mock-1', name: 'Alpha-Blade',
@@ -87,94 +95,108 @@ export class CombatArena implements OnDestroy {
         this.initEntities([mockDrone], null);
       }
 
-      this.lastTime = performance.now();
-      this.tick(this.lastTime);
+      this.lastTimestamp = performance.now();
+      this.tick(this.lastTimestamp);
     });
 
     effect(() => {
-      const m = this.mission();
-      const s = this.shurikens();
+      const missionData = this.mission();
+      const shurikenData = this.shurikens();
 
       untracked(() => {
-        if (this.ctx && m && s.length > 0) {
-          this.initEntities(s, m);
+        if (this.canvasContext && missionData && shurikenData.length > 0) {
+          this.initEntities(shurikenData, missionData);
         }
       });
     });
   }
 
+  /**
+   * Cleans up the component when destroyed.
+   * Ensures the animation frame is cancelled to prevent memory leaks.
+   */
   ngOnDestroy() {
-    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+    if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
   }
 
   // ═══════════════════════════════════════════════════════════════
   // INITIALIZATION
   // ═══════════════════════════════════════════════════════════════
 
+  /**
+   * Defines the static environment for the combat simulation.
+   * Generates solid obstacles (AABBs) that block movement and line-of-sight.
+   */
   private initObstacles() {
     this.obstacles = [
-      { x: 300, y: 300, w: 200, h: 60 },
-      { x: 150, y: 500, w: 80, h: 120 },
-      { x: 550, y: 150, w: 80, h: 120 },
-      { x: 400, y: 600, w: 120, h: 60 }
+      { x: 300, y: 300, width: 200, height: 60 },
+      { x: 150, y: 500, width: 80, height: 120 },
+      { x: 550, y: 150, width: 80, height: 120 },
+      { x: 400, y: 600, width: 120, height: 60 }
     ];
   }
 
-  private initEntities(shurikens: Shuriken[], mission: MissionContract | null) {
+  /**
+   * Populates the arena with combatants based on mission parameters and squad composition.
+   * Resets the game state and initializes the SignalStore for the new engagement.
+   * @param shurikenList Array of Shuriken configurations from the workshop.
+   * @param currentMission The active mission contract.
+   */
+  private initEntities(shurikenList: Shuriken[], currentMission: MissionContract | null) {
     this.isGameOver = false;
     this.arenaTime = 0;
     this.drones = [];
     this.projectiles = [];
 
-    shurikens.forEach((s, idx) => {
-      const f = s.formDesign;
-      const h = s.hull;
-      const e = s.engine;
-      const b = s.blade;
-      const p = s.processor;
-      const cell = s.energyCell;
-      const reactor = s.reactor;
-      const sensor = s.sensor;
+    shurikenList.forEach((shuriken, index) => {
+      const formDesign = shuriken.formDesign;
+      const hull = shuriken.hull;
+      const engine = shuriken.engine;
+      const blade = shuriken.blade;
+      const processor = shuriken.processor;
+      const energyCell = shuriken.energyCell;
+      const reactor = shuriken.reactor;
+      const tacticalSensor = shuriken.sensor;
 
-      const baseWeight = ((h?.weight || 20) * (f?.weightMult || 1.0)) +
-        (e?.weight || 0) + (cell?.weight || 0) + (sensor?.weight || 0) +
-        (b?.weight || 0) + (p?.weight || 0) + (s.semiAI?.weight || 0) +
-        (s.shield?.weight || 0) + (reactor?.weight || 0);
+      const baseWeight = ((hull?.weight || 20) * (formDesign?.weightMult || 1.0)) +
+        (engine?.weight || 0) + (energyCell?.weight || 0) + (tacticalSensor?.weight || 0) +
+        (blade?.weight || 0) + (processor?.weight || 0) + (shuriken.semiAI?.weight || 0) +
+        (shuriken.shield?.weight || 0) + (reactor?.weight || 0);
 
       this.drones.push({
-        id: s.id,
-        name: s.name,
-        x: 100 + (idx * 50), y: 700, z: 20,
-        vx: 0, vy: 0,
+        id: shuriken.id,
+        name: shuriken.name,
+        x: 100 + (index * 50), y: 700, z: 20,
+        velocityX: 0, velocityY: 0,
         speed: 0,
-        topSpeed: (e?.topSpeed || 150) * (f?.speedMult || 1.0),
-        acceleration: e?.acceleration || 50,
+        topSpeed: (engine?.topSpeed || 150) * (formDesign?.speedMult || 1.0),
+        acceleration: engine?.acceleration || 50,
         radius: 12,
         color: '#00f0ff',
-        sensorRange: sensor?.range || 200,
+        sensorRange: tacticalSensor?.range || 200,
         state: 'PATROLLING',
         orbitAngle: 0,
         isEnemy: false,
-        hp: h?.maxHp || 100,
-        maxHp: h?.maxHp || 100,
+        hp: hull?.maxHp || 100,
+        maxHp: hull?.maxHp || 100,
 
         // Energy
-        energy: cell?.maxEnergy || 100,
-        maxEnergy: cell?.maxEnergy || 100,
+        energy: energyCell?.maxEnergy || 100,
+        maxEnergy: energyCell?.maxEnergy || 100,
         energyRegen: reactor?.energyRegen || 2,
-        energyDrain: (e?.energyDrain || 5) + (b?.energyDrain || 0),
+        energyDrain: (engine?.energyDrain || 5) + (blade?.energyDrain || 0),
         rebootTimer: 0,
         rechargeBoostTimer: 0,
 
         // Offensive
-        baseDamage: (b?.baseDamage || 10) * (f?.damageMult || 1.0),
-        damageType: (b?.damageType as any) || 'SLASHING',
-        critChance: (b?.critChance || 0.05) * (f?.critChanceMult || 1.0),
-        critMultiplier: b?.critMultiplier || 1.5,
+        baseDamage: (blade?.baseDamage || 10) * (formDesign?.damageMult || 1.0),
+        damageType: (blade?.damageType as any) || 'SLASHING',
+        critChance: (blade?.critChance || 0.05) * (formDesign?.critChanceMult || 1.0),
+        critMultiplier: blade?.critMultiplier || 1.5,
 
         // Defensive
-        armorValue: (h?.armorValue || 0) * (f?.armorMult || 1.0),
-        evasionRate: e?.evasionRate || 0.0,
+        armorValue: (hull?.armorValue || 0) * (formDesign?.armorMult || 1.0),
+        evasionRate: engine?.evasionRate || 0.0,
 
         // Weight
         baseWeight: baseWeight,
@@ -188,19 +210,19 @@ export class CombatArena implements OnDestroy {
         withdrawalTimer: 0,
         rotation: -Math.PI / 2,
         patrolPos: this.getRandomPatrolPos(),
-        sensorId: sensor?.id || 'sens-optical'
+        sensorId: tacticalSensor?.id || 'sens-optical'
       });
     });
 
-    const targetHull = mission?.hull || 500;
-    const targetShields = mission?.shields || 0;
-    const targetName = mission?.targetName || 'Zenith Warden';
+    const targetHull = currentMission?.hull || 500;
+    const targetShields = currentMission?.shields || 0;
+    const targetName = currentMission?.targetName || 'Zenith Warden';
 
     this.enemy = {
       id: 'enemy_1',
       name: targetName,
       x: 400, y: 100, z: 0,
-      vx: 0, vy: 0,
+      velocityX: 0, velocityY: 0,
       speed: 0,
       topSpeed: 80,
       acceleration: 30,
@@ -228,8 +250,8 @@ export class CombatArena implements OnDestroy {
       critMultiplier: 1.5,
 
       // Defensive
-      armorValue: mission?.armorValue || 0,
-      evasionRate: mission?.enemyEvasionRate || 0,
+      armorValue: currentMission?.armorValue || 0,
+      evasionRate: currentMission?.enemyEvasionRate || 0,
 
       // Weight
       baseWeight: 500,
@@ -246,6 +268,22 @@ export class CombatArena implements OnDestroy {
       sensorId: 'sens-radar'
     };
 
+    // Initialize Store
+    const initialStatuses: ShurikenStatus[] = this.drones.map(drone => ({
+      id: drone.id,
+      name: drone.name,
+      hp: drone.hp,
+      maxHp: drone.maxHp,
+      shields: 0,
+      maxShields: 0,
+      energy: drone.energy,
+      maxEnergy: drone.maxEnergy,
+      rebootTicks: 0
+    }));
+
+    this.store.reset();
+    this.store.setInitialState(targetHull, initialStatuses, currentMission?.durationSeconds || 60);
+
     this.emitLog(`Mission Initiated. Entities deployed.`);
   }
 
@@ -260,32 +298,51 @@ export class CombatArena implements OnDestroy {
   // GAME LOOP
   // ═══════════════════════════════════════════════════════════════
 
-  private tick = (now: number) => {
-    const dt = Math.max(0, Math.min((now - this.lastTime) / 1000, 0.05));
-    this.lastTime = now;
-    this.arenaTime += dt;
+  /**
+   * The core animation frame callback.
+   * Calculates the delta time and triggers the update/render cycle.
+   * @param currentTimestamp The high-resolution timestamp provided by requestAnimationFrame.
+   */
+  private tick = (currentTimestamp: number) => {
+    const deltaTime = Math.max(0, Math.min((currentTimestamp - this.lastTimestamp) / 1000, 0.05));
+    this.lastTimestamp = currentTimestamp;
+    this.arenaTime += deltaTime;
 
-    this.update(dt);
+    this.update(deltaTime);
     this.render();
 
-    this.animFrameId = requestAnimationFrame(this.tick);
+    this.animationFrameId = requestAnimationFrame(this.tick);
   };
 
-  private emitLog(msg: string) {
-    this.arenaLog.emit(`[${this.arenaTime.toFixed(1)}s] ${msg}`);
+  /**
+   * Emits a tactical log message to both the component output and the SignalStore.
+   * Prefixes the message with the current arena timestamp.
+   * @param message The descriptive log text.
+   */
+  private emitLog(message: string) {
+    const formattedLog = `[${this.arenaTime.toFixed(1)}s] ${message}`;
+    this.arenaLog.emit(formattedLog);
+    this.store.addLog(formattedLog);
   }
 
   // ═══════════════════════════════════════════════════════════════
   // UPDATE (Physics + AI)
   // ═══════════════════════════════════════════════════════════════
 
-  private update(dt: number) {
+  /**
+   * Updates the physics and AI state for all entities in the arena.
+   * Resolves collisions, energy consumption, and mission objectives.
+   * @param deltaTime Time elapsed since the last frame in seconds.
+   */
+  private update(deltaTime: number) {
     if (this.isGameOver) return;
 
     this.drones.forEach(drone => {
       // 1. Energy & Reboot Logic
+      // Logic: Drones consume energy while operational. If energy hits zero, 
+      // they initiate a 3-second reboot sequence where they are vulnerable.
       if (drone.rebootTimer > 0) {
-        drone.rebootTimer -= dt;
+        drone.rebootTimer -= deltaTime;
         if (drone.rebootTimer <= 0) {
           drone.energy = drone.maxEnergy * 0.3;
           drone.rechargeBoostTimer = 3.0;
@@ -293,130 +350,168 @@ export class CombatArena implements OnDestroy {
         }
       } else {
         const energyEfficiency = drone.rechargeBoostTimer > 0 ? 1.5 : 1.0;
-        drone.energy = Math.min(drone.maxEnergy, drone.energy + ((drone.energyRegen * energyEfficiency) - drone.energyDrain) * dt);
+        drone.energy = Math.min(drone.maxEnergy, drone.energy + ((drone.energyRegen * energyEfficiency) - drone.energyDrain) * deltaTime);
         if (drone.energy <= 0) {
           drone.energy = 0;
           drone.rebootTimer = 3.0;
           this.emitLog(`${drone.name}: [CRITICAL] Energy Depleted. Initiating Emergency Reboot.`);
         }
       }
-      if (drone.rechargeBoostTimer > 0) drone.rechargeBoostTimer -= dt;
+      if (drone.rechargeBoostTimer > 0) drone.rechargeBoostTimer -= deltaTime;
 
       const isRebooting = drone.rebootTimer > 0;
 
       // 2. AI & Physics
-      this.updateEntityAI(drone, this.enemy, dt);
-      const targetV = isRebooting ? { x: 0, y: 0 } : this.getBehaviorVelocity(drone, this.enemy, dt);
-      this.updateEntityPhysics(drone, targetV, dt, 0.6);
+      // Logic: Update the state machine and calculate movement vectors.
+      this.updateEntityAI(drone, this.enemy, deltaTime);
+      const targetVelocity = isRebooting ? { x: 0, y: 0 } : this.getBehaviorVelocity(drone, this.enemy, deltaTime);
+      this.updateEntityPhysics(drone, targetVelocity, deltaTime, 0.6);
 
-      if (drone.strikeCooldown > 0) drone.strikeCooldown -= dt;
-      if (drone.hitFlashTimer > 0) drone.hitFlashTimer -= dt;
+      if (drone.strikeCooldown > 0) drone.strikeCooldown -= deltaTime;
+      if (drone.hitFlashTimer > 0) drone.hitFlashTimer -= deltaTime;
 
       const isExhausted = drone.energy < (drone.maxEnergy * 0.05);
-      const strikeSpeedMult = isExhausted ? 0.6 : MIN_STRIKE_SPEED;
-      drone.canStrike = drone.speed >= (drone.topSpeed * strikeSpeedMult) && !isRebooting;
+      const strikeSpeedMultiplier = isExhausted ? 0.6 : MIN_STRIKE_SPEED;
+      drone.canStrike = drone.speed >= (drone.topSpeed * strikeSpeedMultiplier) && !isRebooting;
     });
 
     // 3. Entity-to-Entity Collision Resolution
+    // Logic: Simple circle-to-circle overlap resolution to prevent stacking.
     const allEntities = [...this.drones, this.enemy];
-    for (let i = 0; i < allEntities.length; i++) {
-      for (let j = i + 1; j < allEntities.length; j++) {
-        const a = allEntities[i];
-        const b = allEntities[j];
-        if (a.hp <= 0 || b.hp <= 0 || a.state === 'WITHDRAWN' || b.state === 'WITHDRAWN') continue;
+    for (let indexI = 0; indexI < allEntities.length; indexI++) {
+      for (let indexJ = indexI + 1; indexJ < allEntities.length; indexJ++) {
+        const entityA = allEntities[indexI];
+        const entityB = allEntities[indexJ];
+        if (entityA.hp <= 0 || entityB.hp <= 0 || entityA.state === 'WITHDRAWN' || entityB.state === 'WITHDRAWN') continue;
 
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const minDist = a.radius + b.radius;
-        if (dist < minDist && dist > 0) {
-          const overlap = minDist - dist;
-          const nx = dx / dist;
-          const ny = dy / dist;
-          // Push both away
-          a.x -= nx * overlap * 0.5;
-          a.y -= ny * overlap * 0.5;
-          b.x += nx * overlap * 0.5;
-          b.y += ny * overlap * 0.5;
+        const diffX = entityB.x - entityA.x;
+        const diffY = entityB.y - entityA.y;
+        const distance = Math.sqrt(diffX * diffX + diffY * diffY);
+        const minDistance = entityA.radius + entityB.radius;
+        if (distance < minDistance && distance > 0) {
+          const overlap = minDistance - distance;
+          const normalX = diffX / distance;
+          const normalY = diffY / distance;
+          // Push both away by half the overlap to resolve the collision
+          entityA.x -= normalX * overlap * 0.5;
+          entityA.y -= normalY * overlap * 0.5;
+          entityB.x += normalX * overlap * 0.5;
+          entityB.y += normalY * overlap * 0.5;
         }
       }
     }
 
     if (this.enemy.hp > 0) {
-      const enemy = this.enemy;
+      const hostileEntity = this.enemy;
 
       // Enemy Energy Logic (Simplified)
-      if (enemy.rebootTimer > 0) {
-        enemy.rebootTimer -= dt;
+      if (hostileEntity.rebootTimer > 0) {
+        hostileEntity.rebootTimer -= deltaTime;
       } else {
-        enemy.energy = Math.min(enemy.maxEnergy, enemy.energy + enemy.energyRegen * dt);
+        hostileEntity.energy = Math.min(hostileEntity.maxEnergy, hostileEntity.energy + hostileEntity.energyRegen * deltaTime);
       }
 
-      const isRebooting = enemy.rebootTimer > 0;
+      const isRebooting = hostileEntity.rebootTimer > 0;
 
       let closestDrone = null;
-      let minDist = Infinity;
-      this.drones.forEach(d => {
-        const dist = this.dist(enemy, d);
-        if (dist < minDist && d.state !== 'WITHDRAWN' && d.hp > 0) { minDist = dist; closestDrone = d; }
+      let minDistance = Infinity;
+      this.drones.forEach(drone => {
+        const distance = this.calculateDistance(hostileEntity, drone);
+        if (distance < minDistance && drone.state !== 'WITHDRAWN' && drone.hp > 0) {
+          minDistance = distance;
+          closestDrone = drone;
+        }
       });
 
       if (closestDrone && !isRebooting) {
-        this.updateEntityAI(enemy, closestDrone, dt);
-        const enemyV = this.getBehaviorVelocity(enemy, closestDrone, dt);
-        this.updateEntityPhysics(enemy, enemyV, dt, 0.4);
+        this.updateEntityAI(hostileEntity, closestDrone, deltaTime);
+        const enemyVelocity = this.getBehaviorVelocity(hostileEntity, closestDrone, deltaTime);
+        this.updateEntityPhysics(hostileEntity, enemyVelocity, deltaTime, 0.4);
       } else {
-        const patrolV = isRebooting ? { x: 0, y: 0 } : this.getBehaviorVelocity(enemy, enemy, dt);
-        this.updateEntityPhysics(enemy, patrolV, dt, 0.4);
+        const patrolVelocity = isRebooting ? { x: 0, y: 0 } : this.getBehaviorVelocity(hostileEntity, hostileEntity, deltaTime);
+        this.updateEntityPhysics(hostileEntity, patrolVelocity, deltaTime, 0.4);
       }
-      if (enemy.strikeCooldown > 0) enemy.strikeCooldown -= dt;
-      if (enemy.hitFlashTimer > 0) enemy.hitFlashTimer -= dt;
-      enemy.canStrike = !isRebooting;
+      if (hostileEntity.strikeCooldown > 0) hostileEntity.strikeCooldown -= deltaTime;
+      if (hostileEntity.hitFlashTimer > 0) hostileEntity.hitFlashTimer -= deltaTime;
+      hostileEntity.canStrike = !isRebooting;
     }
 
-    this.updateProjectiles(dt);
+    this.updateProjectiles(deltaTime);
 
-    // Periodic Telemetry for Squad UI (every 0.5s)
-    if (Math.floor(this.arenaTime * 2) > Math.floor((this.arenaTime - dt) * 2)) {
-      this.drones.forEach(d => {
-        this.arenaLog.emit(`[TELEMETRY] ${d.name}: H:${Math.ceil(d.hp)}/${d.maxHp} S:0/0 E:100/100 R:0`);
-      });
+    // Sync Store (Every 0.2s for smooth UI)
+    // Logic: Throttled update to the global SignalStore to maintain UI performance.
+    if (Math.floor(this.arenaTime * 5) > Math.floor((this.arenaTime - deltaTime) * 5)) {
+      this.store.updateEnemyHull(this.enemy.hp);
+      this.store.updateTime(this.arenaTime, Math.max(0, (this.mission()?.durationSeconds || 60) - this.arenaTime));
+      
+      const statuses: ShurikenStatus[] = this.drones.map(drone => ({
+        id: drone.id,
+        name: drone.name,
+        hp: drone.hp,
+        maxHp: drone.maxHp,
+        shields: 0,
+        maxShields: 0,
+        energy: drone.energy,
+        maxEnergy: drone.maxEnergy,
+        rebootTicks: Math.ceil(drone.rebootTimer * 10)
+      }));
+      this.store.updateSquadStatus(statuses);
     }
 
-    const livingDrones = this.drones.filter(d => d.hp > 0 && d.state !== 'WITHDRAWN');
+    const livingDrones = this.drones.filter(drone => drone.hp > 0 && drone.state !== 'WITHDRAWN');
 
     if (livingDrones.length === 0) {
       this.isGameOver = true;
       this.missionComplete.emit({ success: false });
     } else if (this.enemy.hp <= 0) {
       this.isGameOver = true;
+      this.emitLog('MISSION OBJECTIVE NEUTRALIZED');
       this.missionComplete.emit({ success: true });
     }
   }
 
-  private updateEntityAI(entity: ArenaEntity, target: ArenaEntity, dt: number) {
+  /**
+   * Updates the behavioral state machine for an entity.
+   * Logic: Checks sensors, Line of Sight (LOS), and Field of View (FOV) to determine next action.
+   * @param entity The entity whose state is being evaluated.
+   * @param target The primary hostile or allied target to interact with.
+   * @param deltaTime Time elapsed since the last frame.
+   */
+  private updateEntityAI(entity: ArenaEntity, target: ArenaEntity, deltaTime: number) {
     if (entity.hp <= 0) {
       entity.state = 'WITHDRAWN';
       return;
     }
 
-    const dist = this.dist(entity, target);
+    if (entity.state === 'WITHDRAWN') return;
 
-    // Enemies have a limited 120-degree FOV cone, drones have 360-degree radar
+    const distanceToTarget = this.calculateDistance(entity, target);
+
+    // FOV Logic: Enemies have a limited 120-degree FOV cone, drones have 360-degree radar.
     let isWithinFOV = true;
     if (entity.isEnemy) {
       const angleToTarget = Math.atan2(target.y - entity.y, target.x - entity.x);
-      const angleDiff = Math.abs(this.normalizeAngle(entity.rotation - angleToTarget));
-      isWithinFOV = angleDiff <= Math.PI / 3; // 60 degrees left/right
+      const angleDifference = Math.abs(this.normalizeAngle(entity.rotation - angleToTarget));
+      isWithinFOV = angleDifference <= Math.PI / 3; // 60 degrees left/right arc
     }
 
-    const hasLOS = !this.isLOSBlocked(entity, target);
-    const isTerahertz = entity.sensorId === 'sens-terahertz';
-    const canSeeTarget = dist <= entity.sensorRange && (hasLOS || isTerahertz) && target.hp > 0 && isWithinFOV;
+    const hasLineOfSight = !this.isLOSBlocked(entity, target);
+    const isTerahertzSensor = entity.sensorId === 'sens-terahertz';
+    // Detection Condition: Target is within range, and either has LOS or entity has Terahertz penetration.
+    const canSeeTarget = distanceToTarget <= entity.sensorRange && (hasLineOfSight || isTerahertzSensor) && target.hp > 0 && isWithinFOV;
 
+    // Critical Damage Check: Drones flee to preserve hardware if HP is low.
     if (!entity.isEnemy && entity.hp < entity.maxHp * 0.2 && entity.state !== 'FLEEING') {
       entity.state = 'FLEEING';
       this.emitLog(`${entity.name} sustained critical damage. Initiating Emergency Withdrawal.`);
+    }
+
+    if (entity.state === 'FLEEING') {
+      if (canSeeTarget) {
+        entity.lastSeenPos = { x: target.x, y: target.y };
+        entity.searchTimer = 0;
+      }
+      return;
     }
 
     if (entity.rebootTimer > 0) {
@@ -425,6 +520,7 @@ export class CombatArena implements OnDestroy {
     }
 
     if (canSeeTarget) {
+      // Memory Update: Update last known position of target for search logic.
       entity.lastSeenPos = { x: target.x, y: target.y };
       entity.searchTimer = 0;
 
@@ -433,23 +529,24 @@ export class CombatArena implements OnDestroy {
           entity.state = 'SHOOTING';
           this.fireProjectile(entity, target);
         } else {
-          entity.state = 'IDLE'; // Stop and wait for cooldown
+          entity.state = 'IDLE'; // Stop and wait for weapon recharge
         }
       } else {
-        // Strike threshold requires strict physical collision (overlapping radii)
-        if (dist <= (entity.radius + target.radius) && entity.canStrike && entity.strikeCooldown <= 0) {
+        // Strike threshold requires physical contact (overlapping radii) and sufficient velocity.
+        if (distanceToTarget <= (entity.radius + target.radius) && entity.canStrike && entity.strikeCooldown <= 0) {
           entity.state = 'FIGHTING';
           this.executeStrike(entity, target);
         } else if (entity.strikeCooldown > 0) {
-          entity.state = 'ORBITING';
+          entity.state = 'ORBITING'; // Repositioning for next pass
         } else {
           entity.state = 'PURSUING';
         }
       }
     } else {
+      // Lost Target Logic: Search last known position before reverting to patrol.
       if (entity.lastSeenPos) {
         entity.state = 'SEARCHING';
-        entity.searchTimer += dt;
+        entity.searchTimer += deltaTime;
         if (entity.searchTimer >= SEARCH_LINGER_TIME) {
           entity.lastSeenPos = null;
           entity.state = 'PATROLLING';
@@ -460,154 +557,183 @@ export class CombatArena implements OnDestroy {
     }
   }
 
+  /**
+   * Executes a physical strike calculation between two entities.
+   * Logic: Calculates damage based on weapon type, momentum, and enemy armor effectiveness.
+   * @param attacker The entity performing the strike.
+   * @param defender The entity receiving the impact.
+   */
   private executeStrike(attacker: ArenaEntity, defender: ArenaEntity) {
-    let isCrit = Math.random() <= attacker.critChance;
-    let grossDamage = attacker.baseDamage * (isCrit ? attacker.critMultiplier : 1.0);
+    const isCriticalHit = Math.random() <= attacker.critChance;
+    let grossDamage = attacker.baseDamage * (isCriticalHit ? attacker.critMultiplier : 1.0);
 
-    // Momentum Scaling
+    // Momentum Scaling: Kinetic weapons deal more damage the faster the drone is moving.
     if (attacker.damageType === 'KINETIC') {
       const momentumMultiplier = 1.0 + ((attacker.speed * attacker.baseWeight) / 10000);
       grossDamage *= momentumMultiplier;
     }
 
-    // Matrix Multiplier
-    const mission = this.mission();
-    const armorType = defender.isEnemy ? (mission?.armorType || 'HEAVY_ARMOR') : 'UNARMORED';
-    const matrix = EFFECTIVENESS_MATRIX[attacker.damageType] || EFFECTIVENESS_MATRIX['SLASHING'];
-    const multiplier = matrix[armorType] || 1.0;
-    grossDamage *= multiplier;
+    // Effectiveness Matrix: Damage is multiplied based on weapon type vs target armor.
+    const currentMission = this.mission();
+    const armorType = defender.isEnemy ? (currentMission?.armorType || 'HEAVY_ARMOR') : 'UNARMORED';
+    const effectivenessArray = EFFECTIVENESS_MATRIX[attacker.damageType] || EFFECTIVENESS_MATRIX['SLASHING'];
+    const typeMultiplier = effectivenessArray[armorType] || 1.0;
+    grossDamage *= typeMultiplier;
 
-    // Evasion Check
+    // Evasion Check: Chance to completely dodge the incoming strike.
     let effectiveEvasion = defender.evasionRate;
     if (defender.rebootTimer > 0 || defender.energy < defender.maxEnergy * 0.05) effectiveEvasion = 0;
 
     if (Math.random() <= effectiveEvasion) {
       this.emitLog(`${attacker.name} missed -> ${defender.name} (EVADED)`);
     } else {
-      // Armor Mitigation (Matches Service Balancing)
-      const mitigation = defender.isEnemy ? defender.armorValue : (defender.armorValue / 5);
-      let netDamage = Math.max(1, grossDamage - mitigation);
+      // Armor Mitigation: Flat damage reduction based on defender's armor value.
+      const mitigationValue = defender.isEnemy ? defender.armorValue : (defender.armorValue / 5);
+      let netDamage = Math.max(1, grossDamage - mitigationValue);
 
-      // Reboot vulnerability
+      // Reboot vulnerability: Entities taking reboot are 50% more vulnerable.
       if (defender.rebootTimer > 0) netDamage *= 1.5;
 
       defender.hp = Math.max(0, defender.hp - netDamage);
       defender.hitFlashTimer = 0.2;
 
-      const dmgLabel = isCrit ? 'CRITICAL HIT' : 'Hit';
-      this.emitLog(`${attacker.name} ${dmgLabel} -> ${defender.name} (-${Math.ceil(netDamage)} H) [REM: ${Math.max(0, Math.ceil(defender.hp))} HP]`);
+      const damageLabel = isCriticalHit ? 'CRITICAL HIT' : 'Hit';
+      const logPrefix = attacker.isEnemy ? 'HOSTILE: ' : '';
+      this.emitLog(`${logPrefix}${attacker.name} ${damageLabel} -> ${defender.name}: Hull Hit (-${Math.ceil(netDamage)} H) [REM: ${Math.max(0, Math.ceil(defender.hp))} HP]`);
     }
 
-    // Reactive Awareness
+    // Reactive Awareness: Target immediately locks on to the attacker's position upon being hit.
     defender.lastSeenPos = { x: attacker.x, y: attacker.y };
     defender.searchTimer = 0;
 
     attacker.strikeCooldown = attacker.isEnemy ? ENEMY_STRIKE_COOLDOWN : STRIKE_COOLDOWN;
 
-    const bounceVec = this.normalize({ x: attacker.x - defender.x, y: attacker.y - defender.y });
-    attacker.vx = bounceVec.x * attacker.topSpeed;
-    attacker.vy = bounceVec.y * attacker.topSpeed;
+    // Physical Bounce: Redirect velocity away from target to create fly-by patterns.
+    const bounceVector = this.normalizeVector({ x: attacker.x - defender.x, y: attacker.y - defender.y });
+    attacker.velocityX = bounceVector.x * attacker.topSpeed;
+    attacker.velocityY = bounceVector.y * attacker.topSpeed;
   }
 
-  private getBehaviorVelocity(entity: ArenaEntity, target: ArenaEntity, dt: number): Vec2 {
-    let targetVx = 0;
-    let targetVy = 0;
+  /**
+   * Calculates the desired velocity for an entity based on its current AI state.
+   * Logic: Implements different steering behaviors (Pursuit, Orbit, Search, Flee, Patrol).
+   * @param entity The entity whose movement is being calculated.
+   * @param target The primary target for the behavior.
+   * @param deltaTime Time elapsed since the last frame.
+   * @returns A Vec2 representing the target velocity.
+   */
+  private getBehaviorVelocity(entity: ArenaEntity, target: ArenaEntity, deltaTime: number): Vec2 {
+    let targetVelocityX = 0;
+    let targetVelocityY = 0;
 
     switch (entity.state) {
       case 'PURSUING':
-        const dir = this.normalize({ x: target.x - entity.x, y: target.y - entity.y });
-        targetVx = dir.x * entity.topSpeed;
-        targetVy = dir.y * entity.topSpeed;
+      case 'FIGHTING':
+        // Logic: Straight-line pursuit toward the target's current position.
+        const pursuitDirection = this.normalizeVector({ x: target.x - entity.x, y: target.y - entity.y });
+        targetVelocityX = pursuitDirection.x * entity.topSpeed;
+        targetVelocityY = pursuitDirection.y * entity.topSpeed;
         break;
 
       case 'ORBITING':
-        const toTarget = { x: entity.x - target.x, y: entity.y - target.y };
-        const dist = Math.max(1, Math.sqrt(toTarget.x ** 2 + toTarget.y ** 2));
+        // Logic: Maintains a set radius around the target by combining tangent movement and radial pull.
+        const vectorToTarget = { x: entity.x - target.x, y: entity.y - target.y };
+        const distance = Math.max(1, Math.sqrt(vectorToTarget.x ** 2 + vectorToTarget.y ** 2));
         const orbitRadius = entity.sensorRange * 0.6;
+        const radialPull = (orbitRadius - distance) * 2;
 
-        const radialPull = (orbitRadius - dist) * 2;
+        const tangentX = -vectorToTarget.y / distance;
+        const tangentY = vectorToTarget.x / distance;
 
-        const tangentX = -toTarget.y / dist;
-        const tangentY = toTarget.x / dist;
-
-        targetVx = (tangentX * entity.topSpeed) + ((toTarget.x / dist) * radialPull);
-        targetVy = (tangentY * entity.topSpeed) + ((toTarget.y / dist) * radialPull);
+        targetVelocityX = (tangentX * entity.topSpeed) + ((vectorToTarget.x / distance) * radialPull);
+        targetVelocityY = (tangentY * entity.topSpeed) + ((vectorToTarget.y / distance) * radialPull);
         break;
 
       case 'SEARCHING':
+        // Logic: Navigates to last seen position. If close, performs an expanding spiral search.
         if (entity.lastSeenPos) {
-          const sDist = this.dist(entity, entity.lastSeenPos);
-          if (sDist > 30) {
-            const sDir = this.normalize({ x: entity.lastSeenPos.x - entity.x, y: entity.lastSeenPos.y - entity.y });
-            targetVx = sDir.x * entity.topSpeed;
-            targetVy = sDir.y * entity.topSpeed;
+          const searchDistance = this.calculateDistance(entity, entity.lastSeenPos);
+          if (searchDistance > 30) {
+            const searchDirection = this.normalizeVector({ x: entity.lastSeenPos.x - entity.x, y: entity.lastSeenPos.y - entity.y });
+            targetVelocityX = searchDirection.x * entity.topSpeed;
+            targetVelocityY = searchDirection.y * entity.topSpeed;
           } else {
-            entity.orbitAngle += dt * 2;
-            const radius = 30 + (entity.searchTimer * 20);
-            const tx = entity.lastSeenPos.x + Math.cos(entity.orbitAngle) * radius;
-            const ty = entity.lastSeenPos.y + Math.sin(entity.orbitAngle) * radius;
-            const sDir = this.normalize({ x: tx - entity.x, y: ty - entity.y });
-            targetVx = sDir.x * (entity.topSpeed * 0.8);
-            targetVy = sDir.y * (entity.topSpeed * 0.8);
+            entity.orbitAngle += deltaTime * 2;
+            const spiralRadius = 30 + (entity.searchTimer * 20);
+            const goalX = entity.lastSeenPos.x + Math.cos(entity.orbitAngle) * spiralRadius;
+            const goalY = entity.lastSeenPos.y + Math.sin(entity.orbitAngle) * spiralRadius;
+            const spiralDirection = this.normalizeVector({ x: goalX - entity.x, y: goalY - entity.y });
+            targetVelocityX = spiralDirection.x * entity.topSpeed;
+            targetVelocityY = spiralDirection.y * entity.topSpeed;
           }
-        }
-        break;
-
-      case 'PATROLLING':
-        if (!entity.patrolPos) entity.patrolPos = this.getRandomPatrolPos();
-        const pDist = this.dist(entity, entity.patrolPos);
-        if (pDist < 20) {
-          entity.patrolPos = this.getRandomPatrolPos();
-        } else {
-          const pDir = this.normalize({ x: entity.patrolPos.x - entity.x, y: entity.patrolPos.y - entity.y });
-          targetVx = pDir.x * entity.topSpeed;
-          targetVy = pDir.y * entity.topSpeed;
         }
         break;
 
       case 'FLEEING':
-        const fleeDir = this.normalize({ x: entity.x - target.x, y: entity.y - target.y });
-        targetVx = fleeDir.x * entity.topSpeed;
-        targetVy = fleeDir.y * entity.topSpeed;
+        // Logic: Moves directly away from the enemy toward the nearest arena boundary.
+        const fleeDirection = this.normalizeVector({ x: entity.x - target.x, y: entity.y - target.y });
+        targetVelocityX = fleeDirection.x * entity.topSpeed;
+        targetVelocityY = fleeDirection.y * entity.topSpeed;
 
-        if (entity.x < WALL_THICKNESS * 2 || entity.x > ARENA_W - WALL_THICKNESS * 2 ||
-          entity.y < WALL_THICKNESS * 2 || entity.y > ARENA_H - WALL_THICKNESS * 2) {
-          entity.withdrawalTimer += dt;
+        // Disengagement Logic: Sustained contact with a wall for 2s triggers withdrawal.
+        const isTouchingWall = entity.x <= WALL_THICKNESS + 2 || entity.x >= ARENA_W - WALL_THICKNESS - 2 ||
+                             entity.y <= WALL_THICKNESS + 2 || entity.y >= ARENA_H - WALL_THICKNESS - 2;
+        if (isTouchingWall) {
+          entity.withdrawalTimer += deltaTime;
           if (entity.withdrawalTimer >= 2.0) {
             entity.state = 'WITHDRAWN';
             this.emitLog(`${entity.name} successfully withdrew from combat.`);
           }
+        } else {
+          entity.withdrawalTimer = 0;
         }
+        break;
+
+      case 'PATROLLING':
+        // Logic: Moves toward random waypoints to scan for hostiles.
+        if (!entity.patrolPos || this.calculateDistance(entity, entity.patrolPos) < 20) {
+          entity.patrolPos = this.getRandomPatrolPos();
+        }
+        const patrolDirection = this.normalizeVector({ x: entity.patrolPos.x - entity.x, y: entity.patrolPos.y - entity.y });
+        targetVelocityX = patrolDirection.x * (entity.topSpeed * 0.8);
+        targetVelocityY = patrolDirection.y * (entity.topSpeed * 0.8);
         break;
 
       case 'FIGHTING':
       case 'SHOOTING':
       case 'IDLE':
-        // Stationary behavior
-        targetVx = 0;
-        targetVy = 0;
+      case 'REBOOTING':
+        // Logic: Stationary state where the entity performs non-movement actions or is recovering.
+        targetVelocityX = 0;
+        targetVelocityY = 0;
         break;
     }
 
-    return { x: targetVx, y: targetVy };
+    return { x: targetVelocityX, y: targetVelocityY };
   }
 
+  /**
+   * Spawns a projectile from an attacker toward a target.
+   * Logic: Calculates direction and applies projectile constants.
+   * @param attacker The entity firing the projectile.
+   * @param target The entity being fired upon.
+   */
   private fireProjectile(attacker: ArenaEntity, target: ArenaEntity) {
-    const id = `proj_${this.arenaTime}_${Math.random().toString(36).substr(2, 4)}`;
-    const dir = this.normalize({ x: target.x - attacker.x, y: target.y - attacker.y });
+    const projectileId = `projectile_${this.arenaTime}_${Math.random().toString(36).substr(2, 4)}`;
+    const fireDirection = this.normalizeVector({ x: target.x - attacker.x, y: target.y - attacker.y });
 
-    // Rotate attacker towards target
-    attacker.rotation = Math.atan2(dir.y, dir.x);
+    // Rotate attacker towards target for visual consistency.
+    attacker.rotation = Math.atan2(fireDirection.y, fireDirection.x);
 
     this.projectiles.push({
-      id,
-      x: attacker.x + dir.x * attacker.radius,
-      y: attacker.y + dir.y * attacker.radius,
-      vx: dir.x * PROJECTILE_SPEED,
-      vy: dir.y * PROJECTILE_SPEED,
+      id: projectileId,
+      x: attacker.x + fireDirection.x * attacker.radius,
+      y: attacker.y + fireDirection.y * attacker.radius,
+      velocityX: fireDirection.x * PROJECTILE_SPEED,
+      velocityY: fireDirection.y * PROJECTILE_SPEED,
       radius: PROJECTILE_RADIUS,
       damage: attacker.baseDamage || ENEMY_DAMAGE,
-      damageType: attacker.damageType as any || 'ENERGY',
+      damageType: (attacker.damageType as any) || 'ENERGY',
       ownerId: attacker.id,
       isEnemy: attacker.isEnemy,
       color: attacker.color,
@@ -615,128 +741,130 @@ export class CombatArena implements OnDestroy {
     });
 
     attacker.strikeCooldown = FIRE_RATE;
-    this.emitLog(`${attacker.name} fired energy projectile at ${target.name}`);
+    const logPrefix = attacker.isEnemy ? 'HOSTILE: ' : '';
+    this.emitLog(`${logPrefix}${attacker.name} fired energy projectile at ${target.name}`);
   }
 
-  private updateProjectiles(dt: number) {
-    for (let i = this.projectiles.length - 1; i >= 0; i--) {
-      const p = this.projectiles[i];
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.lifeTime -= dt;
+  /**
+   * Updates the position and collision state of all active projectiles.
+   * Logic: Handles wall, obstacle, and entity impacts.
+   * @param deltaTime Time elapsed since the last frame.
+   */
+  private updateProjectiles(deltaTime: number) {
+    for (let index = this.projectiles.length - 1; index >= 0; index--) {
+      const projectile = this.projectiles[index];
+      projectile.x += projectile.velocityX * deltaTime;
+      projectile.y += projectile.velocityY * deltaTime;
+      projectile.lifeTime -= deltaTime;
 
-      if (p.lifeTime <= 0) {
-        this.projectiles.splice(i, 1);
+      // Logic: Cleanup expired projectiles.
+      if (projectile.lifeTime <= 0) {
+        this.projectiles.splice(index, 1);
         continue;
       }
 
-      // Wall collision
-      if (p.x < WALL_THICKNESS || p.x > ARENA_W - WALL_THICKNESS ||
-        p.y < WALL_THICKNESS || p.y > ARENA_H - WALL_THICKNESS) {
-        this.projectiles.splice(i, 1);
+      // Logic: Boundary check for arena walls.
+      if (projectile.x < WALL_THICKNESS || projectile.x > ARENA_W - WALL_THICKNESS ||
+          projectile.y < WALL_THICKNESS || projectile.y > ARENA_H - WALL_THICKNESS) {
+        this.projectiles.splice(index, 1);
         continue;
       }
 
-      // Obstacle collision
+      // Logic: AABB intersection check for arena obstacles.
       let hitObstacle = false;
-      for (const obs of this.obstacles) {
-        if (p.x >= obs.x && p.x <= obs.x + obs.w && p.y >= obs.y && p.y <= obs.y + obs.h) {
+      for (const obstacle of this.obstacles) {
+        if (projectile.x >= obstacle.x && projectile.x <= obstacle.x + obstacle.width && 
+            projectile.y >= obstacle.y && projectile.y <= obstacle.y + obstacle.height) {
           hitObstacle = true;
           break;
         }
       }
+
       if (hitObstacle) {
-        this.projectiles.splice(i, 1);
+        this.projectiles.splice(index, 1);
         continue;
       }
 
-      // Entity collision
-      if (p.isEnemy) {
-        // Check drones
-        let hitDrone = false;
-        for (const drone of this.drones) {
-          if (drone.hp > 0 && drone.state !== 'WITHDRAWN') {
-            const dist = Math.sqrt((p.x - drone.x) ** 2 + (p.y - drone.y) ** 2);
-            if (dist < drone.radius + p.radius) {
-              // Apply Armor Mitigation (Drone logic: /5)
-              const netDmg = Math.max(1, p.damage - (drone.armorValue / 5));
-              drone.hp -= netDmg;
-              drone.hitFlashTimer = 0.2;
-              this.emitLog(`Impact -> ${drone.name} (Hull: -${Math.ceil(netDmg)}) [REM: ${Math.max(0, Math.ceil(drone.hp))} HP]`);
+      // Logic: Collision check against all valid combatants in the arena.
+      const allEntities = [...this.drones, this.enemy];
+      for (const entity of allEntities) {
+        // Skip if entity is dead, withdrawn, or the owner of the projectile.
+        if (entity.hp <= 0 || entity.state === 'WITHDRAWN' || entity.id === projectile.ownerId) continue;
 
-              // Reactive Awareness: Drone becomes aware of the enemy's position
-              drone.lastSeenPos = { x: this.enemy.x, y: this.enemy.y };
-              drone.searchTimer = 0;
+        const distanceX = entity.x - projectile.x;
+        const distanceY = entity.y - projectile.y;
+        const collisionDistance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
 
-              hitDrone = true;
-              break;
-            }
-          }
-        }
-        if (hitDrone) {
-          this.projectiles.splice(i, 1);
-          continue;
-        }
-      } else {
-        // Check enemy
-        const dist = Math.sqrt((p.x - this.enemy.x) ** 2 + (p.y - this.enemy.y) ** 2);
-        if (dist < this.enemy.radius + p.radius) {
-          // Apply Armor Mitigation: Enemy has flat armor value mitigation
-          const netDmg = Math.max(1, p.damage - this.enemy.armorValue);
-          this.enemy.hp -= netDmg;
-          this.enemy.hitFlashTimer = 0.2;
-          this.emitLog(`${this.enemy.name}: Hull Hit (-${Math.ceil(netDmg)} H) [REM: ${Math.max(0, Math.ceil(this.enemy.hp))}]`);
+        if (collisionDistance < entity.radius + projectile.radius) {
+          // Apply Armor Mitigation (Hostiles have flat mitigation, drones have /5 scaling).
+          const mitigationValue = entity.isEnemy ? entity.armorValue : (entity.armorValue / 5);
+          const netDamage = Math.max(1, projectile.damage - mitigationValue);
+          
+          entity.hp -= netDamage;
+          entity.hitFlashTimer = 0.2;
+          
+          const logPrefix = projectile.isEnemy ? 'HOSTILE: ' : '';
+          this.emitLog(`${logPrefix}Impact -> ${entity.name} (Hull: -${Math.ceil(netDamage)}) [REM: ${Math.max(0, Math.ceil(entity.hp))} HP]`);
 
-          // Reactive Awareness: Enemy becomes aware of the attacker's position
-          const attacker = this.drones.find(d => d.id === p.ownerId);
+          // Reactive Awareness: Target immediately locks on to the attacker's position.
+          const attacker = allEntities.find(e => e.id === projectile.ownerId);
           if (attacker) {
-            this.enemy.lastSeenPos = { x: attacker.x, y: attacker.y };
-            this.enemy.searchTimer = 0;
+            entity.lastSeenPos = { x: attacker.x, y: attacker.y };
+            entity.searchTimer = 0;
           }
 
-          this.projectiles.splice(i, 1);
-          continue;
+          this.projectiles.splice(index, 1);
+          break;
         }
       }
     }
   }
 
-  private updateEntityPhysics(entity: ArenaEntity, targetV: Vec2, dt: number, avoidanceWeight: number) {
-    const avoidance = this.getSteeringAvoidance(entity);
+  /**
+   * Updates an entity's position and velocity based on physics calculations.
+   * Logic: Combines steering, avoidance, weight-based acceleration, and an unstuck mechanism.
+   * @param entity The entity being moved.
+   * @param targetVelocity The desired velocity calculated by the AI behaviors.
+   * @param deltaTime Time elapsed since the last frame.
+   * @param avoidanceWeight Strength of the steering avoidance influence (0 to 1).
+   */
+  private updateEntityPhysics(entity: ArenaEntity, targetVelocity: Vec2, deltaTime: number, avoidanceWeight: number) {
+    const avoidanceVector = this.getSteeringAvoidance(entity);
 
-    let finalTargetVx = targetV.x;
-    let finalTargetVy = targetV.y;
-
+    let finalTargetVelocityX = targetVelocity.x;
+    let finalTargetVelocityY = targetVelocity.y;
     let finalAvoidanceWeight = avoidanceWeight;
 
-    // Combat Intent: Reduce avoidance when pursuing a target that is very close
-    // This allows drones to close the gap for a strike even near walls.
+    // Combat Intent: Reduce avoidance when pursuing a target that is very close.
+    // Logic: This allows drones to close the gap for a strike even near walls or obstacles.
     if (entity.state === 'PURSUING' && entity.lastSeenPos) {
-      const distToTarget = this.dist(entity, entity.lastSeenPos);
-      if (distToTarget < 50) {
-        finalAvoidanceWeight *= 0.3; // Allow much closer approach
+      const distanceToTarget = this.calculateDistance(entity, entity.lastSeenPos);
+      if (distanceToTarget < 50) {
+        finalAvoidanceWeight *= 0.3; // Allow much closer approach for combat engagement.
       }
     }
 
-    if (avoidance.x !== 0 || avoidance.y !== 0) {
-      finalTargetVx = (targetV.x * (1 - finalAvoidanceWeight)) + (avoidance.x * finalAvoidanceWeight);
-      finalTargetVy = (targetV.y * (1 - finalAvoidanceWeight)) + (avoidance.y * finalAvoidanceWeight);
+    // Logic: Blend the target behavior velocity with the environmental avoidance vector.
+    if (avoidanceVector.x !== 0 || avoidanceVector.y !== 0) {
+      finalTargetVelocityX = (targetVelocity.x * (1 - finalAvoidanceWeight)) + (avoidanceVector.x * finalAvoidanceWeight);
+      finalTargetVelocityY = (targetVelocity.y * (1 - finalAvoidanceWeight)) + (avoidanceVector.y * finalAvoidanceWeight);
     }
 
-    // Weight-based acceleration scaling (from Section 3.1 of core_mechanics)
+    // Weight-based acceleration scaling: Heavier entities accelerate slower but maintain more inertia.
+    // Logic: Scales the raw acceleration by the entity's weight relative to the 1000kg reference point.
     const weightFactor = Math.max(0.1, 1 - (entity.baseWeight / 1000));
-    const accelStep = entity.acceleration * weightFactor * dt * 10;
+    const accelerationStep = entity.acceleration * weightFactor * deltaTime * 10;
 
-    // 1. Unstuck Mechanism
-    const targetSpeedSq = targetV.x ** 2 + targetV.y ** 2;
-    if (targetSpeedSq > 100 && entity.speed < 10) {
-      entity.stuckTimer += dt;
+    // 1. Unstuck Mechanism: Detects if an entity is trying to move but is blocked (e.g., by a wall corner).
+    const targetSpeedSquared = targetVelocity.x ** 2 + targetVelocity.y ** 2;
+    if (targetSpeedSquared > 100 && entity.speed < 10) {
+      entity.stuckTimer += deltaTime;
       if (entity.stuckTimer > 1.2) {
-        // Kick in a perpendicular direction, but much gentler
-        const perpX = -targetV.y * 0.2;
-        const perpY = targetV.x * 0.2;
-        entity.vx += perpX;
-        entity.vy += perpY;
+        // Logic: Apply a gentle perpendicular nudge to help the entity slide around the obstruction.
+        const perpendicularX = -targetVelocity.y * 0.2;
+        const perpendicularY = targetVelocity.x * 0.2;
+        entity.velocityX += perpendicularX;
+        entity.velocityY += perpendicularY;
         entity.stuckTimer = 0;
         this.emitLog(`${entity.name}: [NAVIGATION] Applying gentle unstuck nudge.`);
       }
@@ -744,29 +872,29 @@ export class CombatArena implements OnDestroy {
       entity.stuckTimer = 0;
     }
 
-    // 2. Physics Acceleration
-    if (entity.vx < finalTargetVx) entity.vx = Math.min(finalTargetVx, entity.vx + accelStep);
-    if (entity.vx > finalTargetVx) entity.vx = Math.max(finalTargetVx, entity.vx - accelStep);
-    if (entity.vy < finalTargetVy) entity.vy = Math.min(finalTargetVy, entity.vy + accelStep);
-    if (entity.vy > finalTargetVy) entity.vy = Math.max(finalTargetVy, entity.vy - accelStep);
+    // 2. Physics Acceleration: Linearly interpolate current velocity toward the target velocity.
+    if (entity.velocityX < finalTargetVelocityX) entity.velocityX = Math.min(finalTargetVelocityX, entity.velocityX + accelerationStep);
+    if (entity.velocityX > finalTargetVelocityX) entity.velocityX = Math.max(finalTargetVelocityX, entity.velocityX - accelerationStep);
+    if (entity.velocityY < finalTargetVelocityY) entity.velocityY = Math.min(finalTargetVelocityY, entity.velocityY + accelerationStep);
+    if (entity.velocityY > finalTargetVelocityY) entity.velocityY = Math.max(finalTargetVelocityY, entity.velocityY - accelerationStep);
 
-    entity.speed = Math.sqrt(entity.vx ** 2 + entity.vy ** 2);
+    entity.speed = Math.sqrt(entity.velocityX ** 2 + entity.velocityY ** 2);
 
     if (entity.speed > 5) {
       // Smooth rotation interpolation
-      const targetRotation = Math.atan2(entity.vy, entity.vx);
+      const targetRotation = Math.atan2(entity.velocityY, entity.velocityX);
       const rotDiff = this.normalizeAngle(targetRotation - entity.rotation);
-      entity.rotation += rotDiff * (dt * 10);
+      entity.rotation += rotDiff * (deltaTime * 10);
     }
 
-    let nextX = entity.x + entity.vx * dt;
-    let nextY = entity.y + entity.vy * dt;
+    let nextX = entity.x + entity.velocityX * deltaTime;
+    let nextY = entity.y + entity.velocityY * deltaTime;
 
     // Hard Boundary Bounce
-    if (nextX < WALL_THICKNESS + entity.radius) { nextX = WALL_THICKNESS + entity.radius; entity.vx *= -0.2; }
-    if (nextX > ARENA_W - WALL_THICKNESS - entity.radius) { nextX = ARENA_W - WALL_THICKNESS - entity.radius; entity.vx *= -0.2; }
-    if (nextY < WALL_THICKNESS + entity.radius) { nextY = WALL_THICKNESS + entity.radius; entity.vy *= -0.2; }
-    if (nextY > ARENA_H - WALL_THICKNESS - entity.radius) { nextY = ARENA_H - WALL_THICKNESS - entity.radius; entity.vy *= -0.2; }
+    if (nextX < WALL_THICKNESS + entity.radius) { nextX = WALL_THICKNESS + entity.radius; entity.velocityX *= -0.2; }
+    if (nextX > ARENA_W - WALL_THICKNESS - entity.radius) { nextX = ARENA_W - WALL_THICKNESS - entity.radius; entity.velocityX *= -0.2; }
+    if (nextY < WALL_THICKNESS + entity.radius) { nextY = WALL_THICKNESS + entity.radius; entity.velocityY *= -0.2; }
+    if (nextY > ARENA_H - WALL_THICKNESS - entity.radius) { nextY = ARENA_H - WALL_THICKNESS - entity.radius; entity.velocityY *= -0.2; }
 
     const resolved = this.resolveCollisions(entity, nextX, nextY);
     entity.x = resolved.x;
@@ -777,25 +905,49 @@ export class CombatArena implements OnDestroy {
   // MATH & SPATIAL QUERIES
   // ═══════════════════════════════════════════════════════════════
 
-  private dist(a: Vec2, b: Vec2): number {
-    return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+  /**
+   * Calculates the Euclidean distance between two points in 2D space.
+   * @param pointA The first point.
+   * @param pointB The second point.
+   * @returns The straight-line distance.
+   */
+  private calculateDistance(pointA: Vec2, pointB: Vec2): number {
+    return Math.sqrt((pointA.x - pointB.x) ** 2 + (pointA.y - pointB.y) ** 2);
   }
 
-  private normalize(v: Vec2): Vec2 {
-    const len = Math.sqrt(v.x * v.x + v.y * v.y);
-    if (len === 0) return { x: 0, y: 0 };
-    return { x: v.x / len, y: v.y / len };
+  /**
+   * Scales a vector to have a length of 1 while maintaining its direction.
+   * @param vector The vector to normalize.
+   * @returns A normalized Vec2 or {0, 0} if the input is zero-length.
+   */
+  private normalizeVector(vector: Vec2): Vec2 {
+    const length = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
+    if (length === 0) return { x: 0, y: 0 };
+    return { x: vector.x / length, y: vector.y / length };
   }
 
+  /**
+   * Constrains an angle in radians to the [-PI, PI] range.
+   * Logic: Ensures rotation calculations don't accumulate large values or wrap incorrectly.
+   * @param angle The angle to normalize.
+   * @returns The normalized angle.
+   */
   private normalizeAngle(angle: number): number {
     while (angle > Math.PI) angle -= Math.PI * 2;
     while (angle < -Math.PI) angle += Math.PI * 2;
     return angle;
   }
 
+  /**
+   * Calculates a steering vector to avoid static obstacles.
+   * Logic: Casts 5 "feelers" (short rays) in a fan pattern. If a feeler hits an obstacle, 
+   * a force is generated away from the obstacle's center.
+   * @param entity The entity requesting avoidance steering.
+   * @returns A velocity vector representing the avoidance force.
+   */
   private getSteeringAvoidance(entity: ArenaEntity): Vec2 {
-    const feelerDist = 25;
-    // Weighted feelers: [AngleOffset, Weight]
+    const feelerDistance = 25;
+    // Weighted feelers: [AngleOffset, Weight]. Front-facing feelers are weighted heavier.
     const sensors = [
       { angle: 0, weight: 0.8 },              // Front
       { angle: -Math.PI / 4, weight: 0.4 },    // Diagonal Left
@@ -804,151 +956,194 @@ export class CombatArena implements OnDestroy {
       { angle: Math.PI / 2, weight: 0.2 }      // Side Right
     ];
 
-    let bestSteer: Vec2 = { x: 0, y: 0 };
+    let bestSteerVector: Vec2 = { x: 0, y: 0 };
     let totalWeight = 0;
 
-    for (const s of sensors) {
-      const angle = entity.rotation + s.angle;
-      const fx = entity.x + Math.cos(angle) * feelerDist;
-      const fy = entity.y + Math.sin(angle) * feelerDist;
+    for (const sensor of sensors) {
+      const angle = entity.rotation + sensor.angle;
+      const feelerX = entity.x + Math.cos(angle) * feelerDistance;
+      const feelerY = entity.y + Math.sin(angle) * feelerDistance;
 
-      for (const obs of this.obstacles) {
-        if (fx >= obs.x && fx <= obs.x + obs.w && fy >= obs.y && fy <= obs.y + obs.h) {
-          const cx = obs.x + obs.w / 2;
-          const cy = obs.y + obs.h / 2;
-          const steer = this.normalize({ x: entity.x - cx, y: entity.y - cy });
-          bestSteer.x += steer.x * s.weight;
-          bestSteer.y += steer.y * s.weight;
-          totalWeight += s.weight;
-          break;
+      for (const obstacle of this.obstacles) {
+        if (feelerX >= obstacle.x && feelerX <= obstacle.x + obstacle.width && 
+            feelerY >= obstacle.y && feelerY <= obstacle.y + obstacle.height) {
+          const centerX = obstacle.x + obstacle.width / 2;
+          const centerY = obstacle.y + obstacle.height / 2;
+          const steer = this.normalizeVector({ x: entity.x - centerX, y: entity.y - centerY });
+          bestSteerVector.x += steer.x * sensor.weight;
+          bestSteerVector.y += steer.y * sensor.weight;
+          totalWeight += sensor.weight;
+          break; // Hit one obstacle, no need to check others for this feeler.
         }
       }
     }
 
     if (totalWeight > 0) {
-      const finalSteer = this.normalize({ x: bestSteer.x, y: bestSteer.y });
-      // Lower strength for smoother transitions
-      const strength = 0.8;
-      return { x: finalSteer.x * entity.topSpeed * strength, y: finalSteer.y * entity.topSpeed * strength };
+      const finalSteer = this.normalizeVector({ x: bestSteerVector.x, y: bestSteerVector.y });
+      // Logic: Scaling strength for smoother transitions into avoidance.
+      const steeringStrength = 0.8;
+      return { x: finalSteer.x * entity.topSpeed * steeringStrength, y: finalSteer.y * entity.topSpeed * steeringStrength };
     }
     return { x: 0, y: 0 };
   }
 
+  /**
+   * Resolves hard collisions between an entity and static obstacles.
+   * @param entity The entity being resolved.
+   * @param x Desired X coordinate.
+   * @param y Desired Y coordinate.
+   * @returns A Vec2 representing the final valid position.
+   */
   private resolveCollisions(entity: ArenaEntity, x: number, y: number): Vec2 {
     let currentX = x;
     let currentY = y;
 
-    // 2 iterations for stability
-    for (let i = 0; i < 2; i++) {
-      for (const obs of this.obstacles) {
-        const res = this.resolveCircleAABB(currentX, currentY, entity.radius, obs);
-        // By NOT dampening vx/vy here, entities will slide beautifully along the walls
-        currentX = res.x;
-        currentY = res.y;
+    // Logic: 2 iterations for multi-obstacle stability (prevents corner jitter).
+    for (let iteration = 0; iteration < 2; iteration++) {
+      for (const obstacle of this.obstacles) {
+        const resolution = this.resolveCircleAABB(currentX, currentY, entity.radius, obstacle);
+        // Logic: Entities slide along walls because we only adjust position, not velocity here.
+        currentX = resolution.x;
+        currentY = resolution.y;
       }
     }
     return { x: currentX, y: currentY };
   }
 
-  private resolveCircleAABB(cx: number, cy: number, r: number, box: AABB): Vec2 {
-    let closestX = Math.max(box.x, Math.min(cx, box.x + box.w));
-    let closestY = Math.max(box.y, Math.min(cy, box.y + box.h));
+  /**
+   * Projects a circle out of an AABB (Axis-Aligned Bounding Box).
+   * @param centerX Circle center X.
+   * @param centerY Circle center Y.
+   * @param radius Circle radius.
+   * @param box The obstacle box.
+   * @returns A Vec2 representing the nearest non-overlapping position.
+   */
+  private resolveCircleAABB(centerX: number, centerY: number, radius: number, box: AABB): Vec2 {
+    let closestX = Math.max(box.x, Math.min(centerX, box.x + box.width));
+    let closestY = Math.max(box.y, Math.min(centerY, box.y + box.height));
 
-    let dx = cx - closestX;
-    let dy = cy - closestY;
+    let diffX = centerX - closestX;
+    let diffY = centerY - closestY;
 
-    // Fallback: If center is completely inside the box (dx=0, dy=0), force it to the nearest edge
-    if (dx === 0 && dy === 0) {
-      const distLeft = cx - box.x;
-      const distRight = (box.x + box.w) - cx;
-      const distTop = cy - box.y;
-      const distBottom = (box.y + box.h) - cy;
-      const minDist = Math.min(distLeft, distRight, distTop, distBottom);
-      if (minDist === distLeft) { dx = -1; dy = 0; closestX = box.x; }
-      else if (minDist === distRight) { dx = 1; dy = 0; closestX = box.x + box.w; }
-      else if (minDist === distTop) { dx = 0; dy = -1; closestY = box.y; }
-      else { dx = 0; dy = 1; closestY = box.y + box.h; }
+    // Logic: Fallback for entities completely embedded inside an obstacle.
+    // Forces the entity to the nearest edge.
+    if (diffX === 0 && diffY === 0) {
+      const distLeft = centerX - box.x;
+      const distRight = (box.x + box.width) - centerX;
+      const distTop = centerY - box.y;
+      const distBottom = (box.y + box.height) - centerY;
+      const minDistance = Math.min(distLeft, distRight, distTop, distBottom);
+      if (minDistance === distLeft) { diffX = -1; diffY = 0; closestX = box.x; }
+      else if (minDistance === distRight) { diffX = 1; diffY = 0; closestX = box.x + box.width; }
+      else if (minDistance === distTop) { diffX = 0; diffY = -1; closestY = box.y; }
+      else { diffX = 0; diffY = 1; closestY = box.y + box.height; }
     }
 
-    const distSq = dx * dx + dy * dy;
+    const distanceSquared = diffX * diffX + diffY * diffY;
 
-    if (distSq < r * r) {
-      const dist = Math.sqrt(distSq) || 0.001; // Avoid division by zero
-      const overlap = r - dist;
-      const nx = dx / dist;
-      const ny = dy / dist;
-      return { x: cx + nx * overlap, y: cy + ny * overlap };
+    if (distanceSquared < radius * radius) {
+      const distance = Math.sqrt(distanceSquared) || 0.001; // Avoid division by zero
+      const overlap = radius - distance;
+      const normalX = diffX / distance;
+      const normalY = diffY / distance;
+      return { x: centerX + normalX * overlap, y: centerY + normalY * overlap };
     }
-    return { x: cx, y: cy };
+    return { x: centerX, y: centerY };
   }
 
+  /**
+   * Checks if the line of sight between two points is obstructed by any arena obstacles.
+   * @param origin Starting point of the observation.
+   * @param target Destination point being observed.
+   * @returns True if a collision is detected, false otherwise.
+   */
   private isLOSBlocked(origin: Vec2, target: Vec2): boolean {
-    for (const obs of this.obstacles) {
-      if (this.rayIntersectsAABB(origin.x, origin.y, target.x, target.y, obs)) {
+    for (const obstacle of this.obstacles) {
+      if (this.checkRayAABBIntersection(origin.x, origin.y, target.x, target.y, obstacle)) {
         return true;
       }
     }
     return false;
   }
 
-  private rayIntersectsAABB(x1: number, y1: number, x2: number, y2: number, box: AABB): boolean {
-    const minX = box.x;
-    const maxX = box.x + box.w;
-    const minY = box.y;
-    const maxY = box.y + box.h;
+  /**
+   * Determines if a line segment intersects with an Axis-Aligned Bounding Box.
+   * Logic: Performs a broad-phase boundary check, then tests against all four edges of the box.
+   * @param startX X coordinate of segment start.
+   * @param startY Y coordinate of segment start.
+   * @param endX X coordinate of segment end.
+   * @param endY Y coordinate of segment end.
+   * @param boundingBox The AABB to check against.
+   * @returns True if the ray intersects the box.
+   */
+  private checkRayAABBIntersection(startX: number, startY: number, endX: number, endY: number, boundingBox: AABB): boolean {
+    const minX = boundingBox.x;
+    const maxX = boundingBox.x + boundingBox.width;
+    const minY = boundingBox.y;
+    const maxY = boundingBox.y + boundingBox.height;
 
-    if (Math.max(x1, x2) < minX || Math.min(x1, x2) > maxX ||
-      Math.max(y1, y2) < minY || Math.min(y1, y2) > maxY) {
+    // Logic: Quick rejection test using the ray's bounding box.
+    if (Math.max(startX, endX) < minX || Math.min(startX, endX) > maxX ||
+        Math.max(startY, endY) < minY || Math.min(startY, endY) > maxY) {
       return false;
     }
 
-    const lineIntersects = (a_x: number, a_y: number, b_x: number, b_y: number, c_x: number, c_y: number, d_x: number, d_y: number) => {
-      const denominator = ((b_x - a_x) * (d_y - c_y)) - ((b_y - a_y) * (d_x - c_x));
+    const testLineIntersection = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number) => {
+      const denominator = ((bx - ax) * (dy - cy)) - ((by - ay) * (dx - cx));
       if (denominator === 0) return false;
-      const numerator1 = ((a_y - c_y) * (d_x - c_x)) - ((a_x - c_x) * (d_y - c_y));
-      const numerator2 = ((a_y - c_y) * (b_x - a_x)) - ((a_x - c_x) * (b_y - a_y));
+      const numerator1 = ((ay - cy) * (dx - cx)) - ((ax - cx) * (dy - cy));
+      const numerator2 = ((ay - cy) * (bx - ax)) - ((ax - cx) * (by - ay));
       const r = numerator1 / denominator;
       const s = numerator2 / denominator;
       return (r >= 0 && r <= 1) && (s >= 0 && s <= 1);
     };
 
-    if (lineIntersects(x1, y1, x2, y2, minX, minY, maxX, minY)) return true; // Top
-    if (lineIntersects(x1, y1, x2, y2, minX, maxY, maxX, maxY)) return true; // Bottom
-    if (lineIntersects(x1, y1, x2, y2, minX, minY, minX, maxY)) return true; // Left
-    if (lineIntersects(x1, y1, x2, y2, maxX, minY, maxX, maxY)) return true; // Right
+    if (testLineIntersection(startX, startY, endX, endY, minX, minY, maxX, minY)) return true; // Top
+    if (testLineIntersection(startX, startY, endX, endY, minX, maxY, maxX, maxY)) return true; // Bottom
+    if (testLineIntersection(startX, startY, endX, endY, minX, minY, minX, maxY)) return true; // Left
+    if (testLineIntersection(startX, startY, endX, endY, maxX, minY, maxX, maxY)) return true; // Right
 
     return false;
   }
 
-  // Uses Liang-Barsky method to find the exact intersection distance (0 to 1 fraction) along the ray
-  private getRayIntersectionDist(x1: number, y1: number, x2: number, y2: number, box: AABB): number {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    let tmin = 0;
-    let tmax = 1;
+  /**
+   * Calculates the exact intersection point (as a fraction [0, 1]) along a ray hitting an AABB.
+   * Logic: Uses the Liang-Barsky algorithm for efficient ray-box clipping.
+   * @param startX X coordinate of ray start.
+   * @param startY Y coordinate of ray start.
+   * @param endX X coordinate of ray end.
+   * @param endY Y coordinate of ray end.
+   * @param boundingBox The AABB to test against.
+   * @returns The fraction [0, 1] of the distance to intersection, or Infinity if no hit.
+   */
+  private calculateRayIntersectionDistance(startX: number, startY: number, endX: number, endY: number, boundingBox: AABB): number {
+    const diffX = endX - startX;
+    const diffY = endY - startY;
+    let tMin = 0;
+    let tMax = 1;
 
     // X-axis intersections
-    if (dx !== 0) {
-      const tx1 = (box.x - x1) / dx;
-      const tx2 = ((box.x + box.w) - x1) / dx;
-      tmin = Math.max(tmin, Math.min(tx1, tx2));
-      tmax = Math.min(tmax, Math.max(tx1, tx2));
-    } else if (x1 < box.x || x1 > box.x + box.w) {
-      return Infinity; // Ray is parallel and outside
+    if (diffX !== 0) {
+      const tx1 = (boundingBox.x - startX) / diffX;
+      const tx2 = ((boundingBox.x + boundingBox.width) - startX) / diffX;
+      tMin = Math.max(tMin, Math.min(tx1, tx2));
+      tMax = Math.min(tMax, Math.max(tx1, tx2));
+    } else if (startX < boundingBox.x || startX > boundingBox.x + boundingBox.width) {
+      return Infinity; // Ray is parallel and outside the X bounds.
     }
 
     // Y-axis intersections
-    if (dy !== 0) {
-      const ty1 = (box.y - y1) / dy;
-      const ty2 = ((box.y + box.h) - y1) / dy;
-      tmin = Math.max(tmin, Math.min(ty1, ty2));
-      tmax = Math.min(tmax, Math.max(ty1, ty2));
-    } else if (y1 < box.y || y1 > box.y + box.h) {
-      return Infinity; // Ray is parallel and outside
+    if (diffY !== 0) {
+      const ty1 = (boundingBox.y - startY) / diffY;
+      const ty2 = ((boundingBox.y + boundingBox.height) - startY) / diffY;
+      tMin = Math.max(tMin, Math.min(ty1, ty2));
+      tMax = Math.min(tMax, Math.max(ty1, ty2));
+    } else if (startY < boundingBox.y || startY > boundingBox.y + boundingBox.height) {
+      return Infinity; // Ray is parallel and outside the Y bounds.
     }
 
-    if (tmax >= tmin && tmin >= 0 && tmin <= 1) {
-      return tmin; // Returns fraction of distance to intersection
+    if (tMax >= tMin && tMin >= 0 && tMin <= 1) {
+      return tMin; // Returns fraction of distance to intersection point.
     }
     return Infinity;
   }
@@ -957,337 +1152,389 @@ export class CombatArena implements OnDestroy {
   // RENDER
   // ═══════════════════════════════════════════════════════════════
 
+  /**
+   * Main render loop.
+   * Logic: Clears the canvas, draws the environment, entities (sorted by Y for perspective), and effects.
+   */
   private render() {
-    const ctx = this.ctx;
-    if (!ctx) return;
+    const canvasContext = this.canvasContext;
+    if (!canvasContext) return;
 
-    ctx.fillStyle = '#0a0a1a';
-    ctx.fillRect(0, 0, ARENA_W, ARENA_H);
+    // Clear Background
+    canvasContext.fillStyle = '#0a0a1a';
+    canvasContext.fillRect(0, 0, ARENA_W, ARENA_H);
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let x = 0; x < ARENA_W; x += TILE_SIZE) { ctx.moveTo(x, 0); ctx.lineTo(x, ARENA_H); }
-    for (let y = 0; y < ARENA_H; y += TILE_SIZE) { ctx.moveTo(0, y); ctx.lineTo(ARENA_W, y); }
-    ctx.stroke();
+    // Draw Grid for spatial reference
+    canvasContext.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    canvasContext.lineWidth = 1;
+    canvasContext.beginPath();
+    for (let x = 0; x < ARENA_W; x += TILE_SIZE) { canvasContext.moveTo(x, 0); canvasContext.lineTo(x, ARENA_H); }
+    for (let y = 0; y < ARENA_H; y += TILE_SIZE) { canvasContext.moveTo(0, y); canvasContext.lineTo(ARENA_W, y); }
+    canvasContext.stroke();
 
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = WALL_THICKNESS;
-    ctx.strokeRect(WALL_THICKNESS / 2, WALL_THICKNESS / 2, ARENA_W - WALL_THICKNESS, ARENA_H - WALL_THICKNESS);
+    // Draw Boundary Walls
+    canvasContext.strokeStyle = '#333';
+    canvasContext.lineWidth = WALL_THICKNESS;
+    canvasContext.strokeRect(WALL_THICKNESS / 2, WALL_THICKNESS / 2, ARENA_W - WALL_THICKNESS, ARENA_H - WALL_THICKNESS);
 
-    this.drawObstacles(ctx);
+    this.drawObstacles(canvasContext);
 
+    // Depth Sorting: Entities are sorted by Y position (adjusted for Z/height) to handle visual overlapping.
     this.renderList.length = 0;
-    for (let i = 0; i < this.drones.length; i++) {
-      if (this.drones[i].state !== 'WITHDRAWN') this.renderList.push(this.drones[i]);
+    for (const drone of this.drones) {
+      if (drone.state !== 'WITHDRAWN') this.renderList.push(drone);
     }
     if (this.enemy && this.enemy.state !== 'WITHDRAWN') this.renderList.push(this.enemy);
 
-    this.renderList.sort((a, b) => {
-      const sortA = a.y - (a.z * PERSPECTIVE_SCALE_Y);
-      const sortB = b.y - (b.z * PERSPECTIVE_SCALE_Y);
-      return sortA - sortB;
+    this.renderList.sort((entityA, entityB) => {
+      const sortValueA = entityA.y - (entityA.z * PERSPECTIVE_SCALE_Y);
+      const sortValueB = entityB.y - (entityB.z * PERSPECTIVE_SCALE_Y);
+      return sortValueA - sortValueB;
     });
 
-    for (let i = 0; i < this.renderList.length; i++) {
-      const e = this.renderList[i];
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.beginPath();
-      ctx.ellipse(e.x, e.y, e.radius, e.radius * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
-      ctx.fill();
+    // Draw Shadows
+    for (const entity of this.renderList) {
+      canvasContext.fillStyle = 'rgba(0,0,0,0.5)';
+      canvasContext.beginPath();
+      canvasContext.ellipse(entity.x, entity.y, entity.radius, entity.radius * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
+      canvasContext.fill();
     }
 
-    // Draw Enemy Vision Cone
+    // Draw Vision and Sensor effects
     if (this.enemy && this.enemy.hp > 0 && this.enemy.state !== 'WITHDRAWN') {
-      this.drawEnemyFOV(ctx, this.enemy);
+      this.drawEnemyFOV(canvasContext, this.enemy);
     }
 
-    for (let i = 0; i < this.drones.length; i++) {
-      const d = this.drones[i];
-      if (d.state !== 'WITHDRAWN') {
-        this.drawSensorLink(ctx, d);
-        this.drawDebugOverlay(ctx, d);
+    for (const drone of this.drones) {
+      if (drone.state !== 'WITHDRAWN') {
+        this.drawSensorLink(canvasContext, drone);
+        this.drawDebugOverlay(canvasContext, drone);
       }
     }
 
-    for (let i = 0; i < this.renderList.length; i++) {
-      const e = this.renderList[i];
-      if (e.isEnemy) {
-        this.drawEnemy(ctx, e);
+    // Draw Entities
+    for (const entity of this.renderList) {
+      if (entity.isEnemy) {
+        this.drawEnemy(canvasContext, entity);
       } else {
-        this.drawDrone(ctx, e);
+        this.drawDrone(canvasContext, entity);
       }
     }
 
-    // Draw Projectiles
-    ctx.lineWidth = 2;
-    for (const p of this.projectiles) {
-      ctx.strokeStyle = p.color;
-      ctx.beginPath();
-      // Draw as a small trail
-      ctx.moveTo(p.x, p.y);
-      ctx.lineTo(p.x - p.vx * 0.05, p.y - p.vy * 0.05);
-      ctx.stroke();
+    // Draw Projectiles with trails
+    canvasContext.lineWidth = 2;
+    for (const projectile of this.projectiles) {
+      canvasContext.strokeStyle = projectile.color;
+      canvasContext.beginPath();
+      canvasContext.moveTo(projectile.x, projectile.y);
+      canvasContext.lineTo(projectile.x - projectile.velocityX * 0.05, projectile.y - projectile.velocityY * 0.05);
+      canvasContext.stroke();
 
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-      ctx.fill();
+      canvasContext.fillStyle = '#fff';
+      canvasContext.beginPath();
+      canvasContext.arc(projectile.x, projectile.y, projectile.radius, 0, Math.PI * 2);
+      canvasContext.fill();
     }
   }
 
-  private drawObstacles(ctx: CanvasRenderingContext2D) {
-    for (const obs of this.obstacles) {
-      ctx.fillStyle = '#111520';
-      ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+  /**
+   * Draws static obstacles with a subtle 3D-like perspective.
+   * @param canvasContext The rendering context.
+   */
+  private drawObstacles(canvasContext: CanvasRenderingContext2D) {
+    for (const obstacle of this.obstacles) {
+      canvasContext.fillStyle = '#111520';
+      canvasContext.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
 
-      ctx.fillStyle = '#1c2333';
-      ctx.fillRect(obs.x, obs.y - 15, obs.w, 15);
+      // Draw "top" face for perspective
+      canvasContext.fillStyle = '#1c2333';
+      canvasContext.fillRect(obstacle.x, obstacle.y - 15, obstacle.width, 15);
 
-      ctx.strokeStyle = '#2d3748';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(obs.x, obs.y - 15, obs.w, obs.h + 15);
+      canvasContext.strokeStyle = '#2d3748';
+      canvasContext.lineWidth = 2;
+      canvasContext.strokeRect(obstacle.x, obstacle.y - 15, obstacle.width, obstacle.height + 15);
     }
   }
 
-  private drawEnemyFOV(ctx: CanvasRenderingContext2D, enemy: ArenaEntity) {
+  /**
+   * Renders the Field of View (FOV) cone for the enemy.
+   * Logic: Casts multiple rays within the FOV angle to create a vision polygon clipped by obstacles.
+   * @param canvasContext The rendering context.
+   * @param enemy The enemy entity whose FOV is being drawn.
+   */
+  private drawEnemyFOV(canvasContext: CanvasRenderingContext2D, enemy: ArenaEntity) {
     const drawY = enemy.y - enemy.z * PERSPECTIVE_SCALE_Y;
-    const fovRad = Math.PI * 2 / 3; // 120 degrees total
-    const halfFov = fovRad / 2;
-    const steps = 30; // Resolution of the raycast polygon
+    const fovRadians = Math.PI * 2 / 3; // 120 degrees total arc.
+    const halfFov = fovRadians / 2;
+    const steps = 30; // Resolution of the raycast polygon.
 
-    ctx.fillStyle = 'rgba(255, 50, 50, 0.15)';
-    ctx.beginPath();
-    ctx.moveTo(enemy.x, drawY);
+    canvasContext.fillStyle = 'rgba(255, 50, 50, 0.15)';
+    canvasContext.beginPath();
+    canvasContext.moveTo(enemy.x, drawY);
 
-    for (let i = 0; i <= steps; i++) {
-      const angle = enemy.rotation - halfFov + (fovRad * i / steps);
+    for (let index = 0; index <= steps; index++) {
+      const angle = enemy.rotation - halfFov + (fovRadians * index / steps);
       const targetX = enemy.x + Math.cos(angle) * enemy.sensorRange;
       const targetY = enemy.y + Math.sin(angle) * enemy.sensorRange;
 
-      let minT = 1.0; // Max ray distance is 1.0 (sensorRange)
-      for (const obs of this.obstacles) {
-        const t = this.getRayIntersectionDist(enemy.x, enemy.y, targetX, targetY, obs);
-        if (t < minT) minT = t;
+      let minT = 1.0; // Max ray distance fraction.
+      for (const obstacle of this.obstacles) {
+        const intersectionT = this.calculateRayIntersectionDistance(enemy.x, enemy.y, targetX, targetY, obstacle);
+        if (intersectionT < minT) minT = intersectionT;
       }
 
-      const hitGroundX = enemy.x + Math.cos(angle) * (enemy.sensorRange * minT);
-      const hitGroundY = enemy.y + Math.sin(angle) * (enemy.sensorRange * minT);
-      const hitDrawY = hitGroundY - enemy.z * PERSPECTIVE_SCALE_Y; // Keep polygon flush with ground level
+      const hitX = enemy.x + Math.cos(angle) * (enemy.sensorRange * minT);
+      const hitY = enemy.y + Math.sin(angle) * (enemy.sensorRange * minT);
+      const hitDrawY = hitY - enemy.z * PERSPECTIVE_SCALE_Y;
 
-      ctx.lineTo(hitGroundX, hitDrawY);
+      canvasContext.lineTo(hitX, hitDrawY);
     }
 
-    ctx.closePath();
-    ctx.fill();
+    canvasContext.closePath();
+    canvasContext.fill();
 
-    // Draw the bordering line
-    ctx.strokeStyle = 'rgba(255, 50, 50, 0.3)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    canvasContext.strokeStyle = 'rgba(255, 50, 50, 0.3)';
+    canvasContext.lineWidth = 1;
+    canvasContext.stroke();
   }
 
-  private drawDrone(ctx: CanvasRenderingContext2D, drone: ArenaEntity) {
-    ctx.save();
+  /**
+   * Renders a drone entity on the canvas.
+   * Logic: Draws a triangular ship shape with hit-flash effects and status bars.
+   * @param canvasContext The rendering context.
+   * @param drone The drone entity to draw.
+   */
+  private drawDrone(canvasContext: CanvasRenderingContext2D, drone: ArenaEntity) {
+    canvasContext.save();
     const drawY = drone.y - drone.z * PERSPECTIVE_SCALE_Y;
 
-    ctx.translate(drone.x, drawY);
+    canvasContext.translate(drone.x, drawY);
 
+    // Logic: Visual feedback for taking damage.
     if (drone.hitFlashTimer > 0) {
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(0, 0, drone.radius * 1.5, 0, Math.PI * 2);
-      ctx.fill();
+      canvasContext.fillStyle = '#ffffff';
+      canvasContext.beginPath();
+      canvasContext.arc(0, 0, drone.radius * 1.5, 0, Math.PI * 2);
+      canvasContext.fill();
 
-      // Expanding ring effect
-      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (drone.hitFlashTimer * 5) + ')';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, drone.radius * (2 - drone.hitFlashTimer * 5), 0, Math.PI * 2);
-      ctx.stroke();
+      // Logic: Expanding shockwave ring effect.
+      canvasContext.strokeStyle = 'rgba(255, 255, 255, ' + (drone.hitFlashTimer * 5) + ')';
+      canvasContext.lineWidth = 2;
+      canvasContext.beginPath();
+      canvasContext.arc(0, 0, drone.radius * (2 - drone.hitFlashTimer * 5), 0, Math.PI * 2);
+      canvasContext.stroke();
     }
 
-    ctx.rotate(drone.rotation);
+    canvasContext.rotate(drone.rotation);
 
-    ctx.fillStyle = drone.color;
-    ctx.beginPath();
-    ctx.moveTo(drone.radius, 0);
-    ctx.lineTo(-drone.radius, drone.radius * 0.8);
-    ctx.lineTo(-drone.radius * 0.5, 0);
-    ctx.lineTo(-drone.radius, -drone.radius * 0.8);
-    ctx.closePath();
-    ctx.fill();
+    // Logic: Triangle ship geometry.
+    canvasContext.fillStyle = drone.color;
+    canvasContext.beginPath();
+    canvasContext.moveTo(drone.radius, 0);
+    canvasContext.lineTo(-drone.radius, drone.radius * 0.8);
+    canvasContext.lineTo(-drone.radius * 0.5, 0);
+    canvasContext.lineTo(-drone.radius, -drone.radius * 0.8);
+    canvasContext.closePath();
+    canvasContext.fill();
 
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    canvasContext.strokeStyle = '#ffffff';
+    canvasContext.lineWidth = 1;
+    canvasContext.stroke();
 
-    ctx.restore();
-    this.drawStatusBars(ctx, drone.x, drawY - drone.radius - 10, drone);
+    canvasContext.restore();
+    this.drawStatusBars(canvasContext, drone.x, drawY - drone.radius - 10, drone);
   }
 
-  private drawEnemy(ctx: CanvasRenderingContext2D, enemy: ArenaEntity) {
-    ctx.save();
+  /**
+   * Renders the enemy entity on the canvas.
+   * Logic: Draws a hexagonal shape with an "eye" indicator for rotation.
+   * @param canvasContext The rendering context.
+   * @param enemy The enemy entity to draw.
+   */
+  private drawEnemy(canvasContext: CanvasRenderingContext2D, enemy: ArenaEntity) {
+    canvasContext.save();
     const drawY = enemy.y - enemy.z * PERSPECTIVE_SCALE_Y;
-    ctx.translate(enemy.x, drawY);
+    canvasContext.translate(enemy.x, drawY);
 
+    // Logic: Visual feedback for taking damage.
     if (enemy.hitFlashTimer > 0) {
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(0, 0, enemy.radius * 1.5, 0, Math.PI * 2);
-      ctx.fill();
+      canvasContext.fillStyle = '#ffffff';
+      canvasContext.beginPath();
+      canvasContext.arc(0, 0, enemy.radius * 1.5, 0, Math.PI * 2);
+      canvasContext.fill();
 
-      // Expanding ring effect
-      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (enemy.hitFlashTimer * 5) + ')';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, enemy.radius * (2 - enemy.hitFlashTimer * 5), 0, Math.PI * 2);
-      ctx.stroke();
+      // Logic: Expanding shockwave ring effect.
+      canvasContext.strokeStyle = 'rgba(255, 255, 255, ' + (enemy.hitFlashTimer * 5) + ')';
+      canvasContext.lineWidth = 2;
+      canvasContext.beginPath();
+      canvasContext.arc(0, 0, enemy.radius * (2 - enemy.hitFlashTimer * 5), 0, Math.PI * 2);
+      canvasContext.stroke();
     }
 
-    ctx.rotate(enemy.rotation);
+    canvasContext.rotate(enemy.rotation);
 
-    ctx.fillStyle = enemy.color;
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i;
-      const px = Math.cos(angle) * enemy.radius;
-      const py = Math.sin(angle) * enemy.radius;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
+    // Logic: Hexagonal geometry for the hostile entity.
+    canvasContext.fillStyle = enemy.color;
+    canvasContext.beginPath();
+    for (let index = 0; index < 6; index++) {
+      const angle = (Math.PI / 3) * index;
+      const pointX = Math.cos(angle) * enemy.radius;
+      const pointY = Math.sin(angle) * enemy.radius;
+      if (index === 0) canvasContext.moveTo(pointX, pointY);
+      else canvasContext.lineTo(pointX, pointY);
     }
-    ctx.closePath();
-    ctx.fill();
+    canvasContext.closePath();
+    canvasContext.fill();
 
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(enemy.radius * 0.6, 0, 4, 0, Math.PI * 2);
-    ctx.fill();
+    // Logic: Small indicator representing the entity's forward facing "eye".
+    canvasContext.fillStyle = '#fff';
+    canvasContext.beginPath();
+    canvasContext.arc(enemy.radius * 0.6, 0, 4, 0, Math.PI * 2);
+    canvasContext.fill();
 
-    ctx.restore();
-    this.drawStatusBars(ctx, enemy.x, drawY - enemy.radius - 15, enemy);
+    canvasContext.restore();
+    this.drawStatusBars(canvasContext, enemy.x, drawY - enemy.radius - 15, enemy);
   }
 
-  private drawStatusBars(ctx: CanvasRenderingContext2D, x: number, y: number, entity: ArenaEntity) {
-    const w = 30;
-    const h = 3;
-    const gap = 2;
+  /**
+   * Draws health and energy bars above an entity.
+   * @param canvasContext The rendering context.
+   * @param x X coordinate for the bars.
+   * @param y Y coordinate for the bars.
+   * @param entity The entity whose status is being displayed.
+   */
+  private drawStatusBars(canvasContext: CanvasRenderingContext2D, x: number, y: number, entity: ArenaEntity) {
+    const barWidth = 30;
+    const barHeight = 3;
+    const verticalGap = 2;
 
-    // HP Bar
-    ctx.fillStyle = '#111';
-    ctx.fillRect(x - w / 2, y, w, h);
-    ctx.fillStyle = entity.hp > entity.maxHp * 0.2 ? '#00ffaa' : '#ff3333';
-    ctx.fillRect(x - w / 2, y, w * Math.max(0, entity.hp / entity.maxHp), h);
+    // HP Bar logic: Green if healthy, red if low.
+    canvasContext.fillStyle = '#111';
+    canvasContext.fillRect(x - barWidth / 2, y, barWidth, barHeight);
+    canvasContext.fillStyle = entity.hp > entity.maxHp * 0.2 ? '#00ffaa' : '#ff3333';
+    canvasContext.fillRect(x - barWidth / 2, y, barWidth * Math.max(0, entity.hp / entity.maxHp), barHeight);
 
-    // Energy Bar
-    ctx.fillStyle = '#111';
-    ctx.fillRect(x - w / 2, y + h + gap, w, h - 1);
-    ctx.fillStyle = '#ffee00';
-    ctx.fillRect(x - w / 2, y + h + gap, w * Math.max(0, entity.energy / entity.maxEnergy), h - 1);
+    // Energy Bar logic: Yellow bar representing current action resource.
+    canvasContext.fillStyle = '#111';
+    canvasContext.fillRect(x - barWidth / 2, y + barHeight + verticalGap, barWidth, barHeight - 1);
+    canvasContext.fillStyle = '#ffee00';
+    canvasContext.fillRect(x - barWidth / 2, y + barHeight + verticalGap, barWidth * Math.max(0, entity.energy / entity.maxEnergy), barHeight - 1);
   }
 
-  private drawSensorLink(ctx: CanvasRenderingContext2D, drone: ArenaEntity) {
+  /**
+   * Draws a visual link between a drone and the enemy if they are within sensor range.
+   * Logic: Colors the link based on line-of-sight and sensor capabilities.
+   * @param canvasContext The rendering context.
+   * @param drone The drone searching for the enemy.
+   */
+  private drawSensorLink(canvasContext: CanvasRenderingContext2D, drone: ArenaEntity) {
     if (this.enemy.hp <= 0 || drone.state === 'WITHDRAWN') return;
 
-    const dist = this.dist(drone, this.enemy);
-    if (dist > drone.sensorRange) return;
+    const currentDistance = this.calculateDistance(drone, this.enemy);
+    if (currentDistance > drone.sensorRange) return;
 
-    const blocked = this.isLOSBlocked(drone, this.enemy);
+    const isBlocked = this.isLOSBlocked(drone, this.enemy);
 
-    ctx.beginPath();
-    ctx.moveTo(drone.x, drone.y - drone.z * PERSPECTIVE_SCALE_Y);
-    ctx.lineTo(this.enemy.x, this.enemy.y - this.enemy.z * PERSPECTIVE_SCALE_Y);
+    canvasContext.beginPath();
+    canvasContext.moveTo(drone.x, drone.y - drone.z * PERSPECTIVE_SCALE_Y);
+    canvasContext.lineTo(this.enemy.x, this.enemy.y - this.enemy.z * PERSPECTIVE_SCALE_Y);
 
-    if (blocked) {
+    if (isBlocked) {
       if (drone.sensorId === 'sens-terahertz') {
-        ctx.strokeStyle = 'rgba(200, 50, 255, 0.6)'; // Special color for Terahertz lock through walls
-        ctx.setLineDash([2, 2]);
+        canvasContext.strokeStyle = 'rgba(200, 50, 255, 0.6)'; // Terahertz "x-ray" purple.
+        canvasContext.setLineDash([2, 2]);
       } else {
-        ctx.strokeStyle = 'rgba(255, 50, 50, 0.4)';
-        ctx.setLineDash([4, 4]);
+        canvasContext.strokeStyle = 'rgba(255, 50, 50, 0.4)'; // Obstructed view.
+        canvasContext.setLineDash([4, 4]);
       }
     } else {
-      ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
-      ctx.setLineDash([]);
+      canvasContext.strokeStyle = 'rgba(0, 255, 255, 0.6)'; // Clear target lock.
+      canvasContext.setLineDash([]);
     }
 
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.setLineDash([]);
+    canvasContext.lineWidth = 1;
+    canvasContext.stroke();
+    canvasContext.setLineDash([]);
   }
 
-  private drawDebugOverlay(ctx: CanvasRenderingContext2D, drone: ArenaEntity) {
+  /**
+   * Draws debug overlays for a drone, including sensor range and current state.
+   * Logic: Standard sensors draw a raycasted polygon; Terahertz draws a simple circle.
+   * @param canvasContext The rendering context.
+   * @param drone The drone whose overlay is being drawn.
+   */
+  private drawDebugOverlay(canvasContext: CanvasRenderingContext2D, drone: ArenaEntity) {
     const drawY = drone.y - drone.z * PERSPECTIVE_SCALE_Y;
 
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath();
+    canvasContext.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+    canvasContext.setLineDash([5, 5]);
+    canvasContext.beginPath();
 
     if (drone.sensorId === 'sens-terahertz') {
-      // Terahertz is not clipped by obstacles
-      ctx.ellipse(drone.x, drone.y, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
+      // Logic: Terahertz penetration allows seeing through obstacles, represented as a simple circle.
+      canvasContext.ellipse(drone.x, drone.y, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
     } else {
-      // Standard sensors are clipped by obstacles (360-degree raycast polygon)
-      const steps = 72; // High-res 360-degree scan
-      const stepAngle = (Math.PI * 2) / steps;
-      ctx.moveTo(drone.x, drone.y); // Start at drone center for a fan-like shape
+      // Logic: Standard sensors are clipped by obstacles, rendered as a 360-degree raycast polygon.
+      const resolutionSteps = 72; // High-res scan for visual fidelity.
+      const stepAngle = (Math.PI * 2) / resolutionSteps;
+      canvasContext.moveTo(drone.x, drone.y);
 
-      for (let i = 0; i <= steps; i++) {
-        const angle = i * stepAngle;
-        const targetX = drone.x + Math.cos(angle) * drone.sensorRange;
-        const targetY = drone.y + Math.sin(angle) * drone.sensorRange;
+      for (let index = 0; index <= resolutionSteps; index++) {
+        const angle = index * stepAngle;
+        const targetPointX = drone.x + Math.cos(angle) * drone.sensorRange;
+        const targetPointY = drone.y + Math.sin(angle) * drone.sensorRange;
 
-        let minT = 1.0;
-        for (const obs of this.obstacles) {
-          const t = this.getRayIntersectionDist(drone.x, drone.y, targetX, targetY, obs);
-          if (t < minT) minT = t;
+        let minFraction = 1.0;
+        for (const obstacle of this.obstacles) {
+          const intersectionFraction = this.calculateRayIntersectionDistance(drone.x, drone.y, targetPointX, targetPointY, obstacle);
+          if (intersectionFraction < minFraction) minFraction = intersectionFraction;
         }
 
-        const hitX = drone.x + Math.cos(angle) * (drone.sensorRange * minT);
-        const hitY = drone.y + Math.sin(angle) * (drone.sensorRange * minT);
-        // We use ground Y for the polygon vertices to keep it flush
-        ctx.lineTo(hitX, hitY);
+        const hitX = drone.x + Math.cos(angle) * (drone.sensorRange * minFraction);
+        const hitY = drone.y + Math.sin(angle) * (drone.sensorRange * minFraction);
+        canvasContext.lineTo(hitX, hitY);
       }
     }
 
-    ctx.stroke();
-    ctx.setLineDash([]);
+    canvasContext.stroke();
+    canvasContext.setLineDash([]);
 
-    // Add a very faint fill to make it more "solid"
-    ctx.fillStyle = drone.sensorId === 'sens-terahertz' ? 'rgba(200, 50, 255, 0.05)' : 'rgba(0, 255, 255, 0.03)';
-    ctx.fill();
+    // Add a faint fill to make the sensor range more tangible.
+    canvasContext.fillStyle = drone.sensorId === 'sens-terahertz' ? 'rgba(200, 50, 255, 0.05)' : 'rgba(0, 255, 255, 0.03)';
+    canvasContext.fill();
 
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.font = '10px monospace';
-    ctx.textAlign = 'center';
-    let label = drone.state;
-    ctx.fillText(label, drone.x, drawY - drone.radius - 22);
+    canvasContext.fillStyle = 'rgba(255,255,255,0.7)';
+    canvasContext.font = '10px monospace';
+    canvasContext.textAlign = 'center';
+    canvasContext.fillText(drone.state, drone.x, drawY - drone.radius - 22);
 
+    // Logic: Status indicators for rebooting and strike readiness.
     if (drone.rebootTimer > 0) {
-      ctx.fillStyle = '#ff3333';
-      ctx.font = 'bold 10px monospace';
-      ctx.fillText(`REBOOTING ${drone.rebootTimer.toFixed(1)}s`, drone.x, drawY - drone.radius - 32);
+      canvasContext.fillStyle = '#ff3333';
+      canvasContext.font = 'bold 10px monospace';
+      canvasContext.fillText(`REBOOTING ${drone.rebootTimer.toFixed(1)}s`, drone.x, drawY - drone.radius - 32);
     } else if (drone.canStrike) {
-      ctx.fillStyle = '#ffee00';
-      ctx.font = 'bold 12px monospace';
-      ctx.fillText('⚡', drone.x, drawY - drone.radius - 32);
+      canvasContext.fillStyle = '#ffee00';
+      canvasContext.font = 'bold 12px monospace';
+      canvasContext.fillText('⚡', drone.x, drawY - drone.radius - 32);
     }
 
+    // Logic: Visual marker for the last known location during a search.
     if (drone.state === 'SEARCHING' && drone.lastSeenPos) {
-      ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
-      ctx.beginPath();
-      const sX = drone.lastSeenPos.x;
-      const sY = drone.lastSeenPos.y;
-      ctx.moveTo(sX - 5, sY); ctx.lineTo(sX + 5, sY);
-      ctx.moveTo(sX, sY - 5); ctx.lineTo(sX, sY + 5);
-      ctx.stroke();
+      canvasContext.strokeStyle = 'rgba(255, 255, 0, 0.8)';
+      canvasContext.beginPath();
+      const lastX = drone.lastSeenPos.x;
+      const lastY = drone.lastSeenPos.y;
+      canvasContext.moveTo(lastX - 5, lastY); canvasContext.lineTo(lastX + 5, lastY);
+      canvasContext.moveTo(lastX, lastY - 5); canvasContext.lineTo(lastX, lastY + 5);
+      canvasContext.stroke();
 
-      ctx.beginPath();
-      ctx.setLineDash([2, 4]);
-      ctx.moveTo(drone.x, drone.y);
-      ctx.lineTo(sX, sY);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      canvasContext.beginPath();
+      canvasContext.setLineDash([2, 4]);
+      canvasContext.moveTo(drone.x, drone.y);
+      canvasContext.lineTo(lastX, lastY);
+      canvasContext.stroke();
+      canvasContext.setLineDash([]);
     }
   }
 }

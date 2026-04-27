@@ -59,12 +59,16 @@ We are currently building **Phase 2 (The Liberation Strike / Passive Combat)**. 
 ## 6. Coding Guidelines
 
 * **Component Architecture:** All components MUST be Standalone and strictly use `ChangeDetectionStrategy.OnPush`. Keep components small and isolated (Dumb/Smart component pattern).
+* **SignalStore:** Use RxJS `signalStore` for state management.
 * **Templates & Styles:** Always use inline templates (for component with under 50 lines of code) (`template: '...'`) and inline styles (for component with under 50 lines of code) (`styles: '...'`).
 * **Folder Structure:** Only create specific folders for components when there is more than one file associated with them. Single-file components should reside directly in their parent directory (e.g., `src/app/components/`).
 * **Signal-based APIs:** Exclusively use modern Signal-based APIs for components: `input()`, `output()`, `viewChild()`, and `viewChildren()` instead of the older `@Input`, `@Output`, and `@ViewChild` decorators.
 * Use standard Tailwind utility classes; avoid custom CSS unless absolutely necessary (for specific Cyberpunk neon effects).
-* Write self-documenting code with clear variable names. Add JSDoc comments to complex game logic rules.
-* **ALWAYS add useful, comprehensive comments to quickly grasp the underlying concepts and their inner workings.**
+* **Documenting:**
+    * Explain the reasoning and logic behind complex or non-obvious code implementations. Explain *why* something is done, not just *what* is being done.
+    * Add JSDoc comments to complex game logic rules.
+    * Every method should have a JSDoc comment explaining its purpose, parameters, return value, and any special conditions.
+    * No short variable names. Use descriptive names.
 * **All text in the application MUST be in English.**
 * Whenever generating code, provide complete, runnable snippets.
 * **Game Design Consistency:** Always refer to and adhere to the overall game design and mechanics specified in `docs/game_design.md`. 

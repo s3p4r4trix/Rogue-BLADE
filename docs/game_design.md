@@ -297,8 +297,9 @@ Since this is an AI-driven game, the Tactical Map includes comprehensive visual 
 *   **Enemy Vision Cone:** A faint red polygon representing the hostile entity's 120-degree field of view, dynamically clipped by cover objects.
 *   **Sensor Link:** A tactical line connecting drones to their targets when within sensor range, indicating signal strength (solid/cyan for clear, dashed/red for obscured).
 
-### 13.7 Live Feed Synchronization
-The Tactical Map and Live Feed are synchronized via an event bridge:
-*   The arena emits log events (`arenaLog`) for every significant action: state transitions, strikes, kills, and search status.
-*   The Live Feed consumes these events in real-time, displaying them with appropriate styling.
-*   The player can toggle between views at any time; the Live Feed always reflects the latest arena events regardless of which view is active.
+### 13.7 Live Feed & Telemetry Synchronization
+The Tactical Map, Live Feed, and Sidebar Telemetry are synchronized via a centralized **CombatStore** (NgRx SignalStore):
+*   **CombatStore**: Acts as the single source of truth for the active battle state (Enemy HP, Squad Vitals, Logs).
+*   **Real-time Updates**: The `CombatArena` updates the store directly during its physics tick (0.2s sync) and upon events (damage, strikes, state changes).
+*   **Reactive UI**: The `StrikeReport` and its tactical sidebar reactively display the store's signals. This eliminates the need for log-parsing and ensures 100% telemetry accuracy regardless of which view is active.
+*   **Event Bridge**: While the store handles the state, the arena still emits log events (`arenaLog`) for legacy compatibility and sequential log processing.
