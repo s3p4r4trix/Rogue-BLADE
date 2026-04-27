@@ -20,13 +20,13 @@ export const HARDWARE_INVENTORY = {
     { id: 'react-quantum', name: 'Quantum Singularity', description: 'Infinite-loop gravity-well.', energyRegen: 12, weight: 15 } as Reactor
   ],
   sensors: [
-    { id: 'sens-optical', name: 'Optical Sensors', description: 'Short-range camera array.', range: 500, accuracy: 0.7, unlocksTriggerIds: ['ifEnemyInMeleeRange'], weight: 1 } as Sensor,
-    { id: 'sens-bio', name: 'Biosensors', description: 'Organic signature tracking.', range: 1000, accuracy: 0.85, unlocksTriggerIds: ['ifEnemyIsOrganic'], weight: 2 } as Sensor,
-    { id: 'sens-thermal', name: 'Thermal Sensors', description: 'Infrared heat detection.', range: 800, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyInSight'], weight: 2 } as Sensor,
-    { id: 'sens-em', name: 'EM-Sensors', description: 'Detects active energy fields.', range: 1200, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyIsShielded'], weight: 3 } as Sensor,
-    { id: 'sens-radar', name: 'Radar Array', description: 'Long-range monitoring.', range: 2000, accuracy: 0.8, unlocksTriggerIds: ['ifEnemyInSight'], weight: 5 } as Sensor,
-    { id: 'sens-lidar', name: 'Lidar Array', description: 'Precision optical targeting.', range: 1600, accuracy: 0.98, unlocksTriggerIds: ['ifIncomingProjectile'], weight: 4 } as Sensor,
-    { id: 'sens-terahertz', name: 'Terahertz Array', description: 'Penetrates physical obstacles.', range: 600, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyBehindCover'], weight: 3 } as Sensor
+    { id: 'sens-optical', name: 'Optical Sensors', description: 'Short-range camera array.', range: 300, accuracy: 0.7, unlocksTriggerIds: ['ifEnemyInMeleeRange'], weight: 1 } as Sensor,
+    { id: 'sens-bio', name: 'Biosensors', description: 'Organic signature tracking.', range: 400, accuracy: 0.85, unlocksTriggerIds: ['ifEnemyIsOrganic'], weight: 2 } as Sensor,
+    { id: 'sens-thermal', name: 'Thermal Sensors', description: 'Infrared heat detection.', range: 400, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyInSight'], weight: 2 } as Sensor,
+    { id: 'sens-em', name: 'EM-Sensors', description: 'Detects active energy fields.', range: 500, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyIsShielded'], weight: 3 } as Sensor,
+    { id: 'sens-radar', name: 'Radar Array', description: 'Long-range monitoring.', range: 800, accuracy: 0.8, unlocksTriggerIds: ['ifEnemyInSight'], weight: 5 } as Sensor,
+    { id: 'sens-lidar', name: 'Lidar Array', description: 'Precision optical targeting.', range: 600, accuracy: 0.98, unlocksTriggerIds: ['ifIncomingProjectile'], weight: 4 } as Sensor,
+    { id: 'sens-terahertz', name: 'Terahertz Array', description: 'Penetrates physical obstacles.', range: 350, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyBehindCover'], weight: 3 } as Sensor
   ],
   blades: [
     { id: 'blade-edge', name: 'Sharpened Edge', description: 'Simple metal rim.', damageType: 'SLASHING', baseDamage: 15, critChance: 0.05, critMultiplier: 1.5, energyDrain: 0, unlocksActionIds: ['actionStandardStrike'], weight: 5 } as Blade,
