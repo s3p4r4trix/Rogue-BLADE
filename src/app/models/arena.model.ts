@@ -42,10 +42,11 @@ export interface Projectile {
   vy: number;
   radius: number;
   damage: number;
+  damageType: 'ENERGY' | 'KINETIC'; // Added to support matrix
   ownerId: string;
   isEnemy: boolean;
   color: string;
-  lifeTime: number; // Time in seconds before it despawns if it doesn't hit anything
+  lifeTime: number; 
 }
 
 
@@ -57,35 +58,57 @@ export interface ArenaEntity {
   name: string;
   x: number;
   y: number;
-  z: number;                 // Simulated elevation (drones fly, ground units stay at 0)
+  z: number;                 
   vx: number;
   vy: number;
   speed: number;
   topSpeed: number;
   acceleration: number;
-  radius: number;            // Collision / visual radius
+  radius: number;            
   color: string;
   sensorRange: number;
   state: AIState;
-  orbitAngle: number;        // Current angle when orbiting/searching
+  orbitAngle: number;        
   isEnemy: boolean;
   hp: number;
   maxHp: number;
   
+  // Energy System (New)
+  energy: number;
+  maxEnergy: number;
+  energyRegen: number;
+  energyDrain: number;
+  rebootTimer: number;
+  rechargeBoostTimer: number;
+
+  // Offensive Stats (New)
+  baseDamage: number;
+  damageType: 'SLASHING' | 'KINETIC' | 'ENERGY' | 'EMP';
+  critChance: number;
+  critMultiplier: number;
+
+  // Defensive Stats (New)
+  armorValue: number;
+  evasionRate: number;
+
+  // Weight / Inertia (New)
+  baseWeight: number;
+  
   // Strike gating
-  strikeCooldown: number;    // Seconds remaining before next strike
-  canStrike: boolean;        // True when speed conditions are met
+  strikeCooldown: number;    
+  canStrike: boolean;        
   
   // Intelligence memory
-  lastSeenPos: Vec2 | null;  // Where the target was last visible
-  searchTimer: number;       // Time spent searching at last-seen position
+  lastSeenPos: Vec2 | null;  
+  searchTimer: number;       
+  stuckTimer: number;
   
   // Visual Effects
-  hitFlashTimer: number;     // Remaining flash duration (seconds)
+  hitFlashTimer: number;     
   
   // Combat Logic
-  withdrawalTimer: number;   // Seconds spent at edge while fleeing
-  rotation: number;          // Current facing direction (radians)
-  patrolPos: Vec2 | null;    // Destination when patrolling
-  sensorId: string;          // ID of the equipped sensor
+  withdrawalTimer: number;   
+  rotation: number;          
+  patrolPos: Vec2 | null;    
+  sensorId: string;          
 }

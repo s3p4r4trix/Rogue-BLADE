@@ -22,6 +22,13 @@ const PROJECTILE_SPEED = 300;
 const PROJECTILE_RADIUS = 3;
 const FIRE_RATE = 2.0; // Seconds between shots
 
+const EFFECTIVENESS_MATRIX: Record<string, Record<string, number>> = {
+  'SLASHING': { 'UNARMORED': 1.5, 'HEAVY_ARMOR': 0.2, 'ENERGY_SHIELD': 0.8 },
+  'KINETIC': { 'UNARMORED': 1.0, 'HEAVY_ARMOR': 1.5, 'ENERGY_SHIELD': 0.5 },
+  'ENERGY': { 'UNARMORED': 1.0, 'HEAVY_ARMOR': 1.0, 'ENERGY_SHIELD': 2.0 },
+  'EMP': { 'UNARMORED': 0.0, 'HEAVY_ARMOR': 0.0, 'ENERGY_SHIELD': 100.0 } 
+};
+
 @Component({
   selector: 'app-combat-arena',
   standalone: true,
@@ -120,31 +127,68 @@ export class CombatArena implements OnDestroy {
     this.projectiles = [];
 
     shurikens.forEach((s, idx) => {
+      const f = s.formDesign;
+      const h = s.hull;
+      const e = s.engine;
+      const b = s.blade;
+      const p = s.processor;
+      const cell = s.energyCell;
+      const reactor = s.reactor;
+      const sensor = s.sensor;
+
+      const baseWeight = ((h?.weight || 20) * (f?.weightMult || 1.0)) + 
+                         (e?.weight || 0) + (cell?.weight || 0) + (sensor?.weight || 0) + 
+                         (b?.weight || 0) + (p?.weight || 0) + (s.semiAI?.weight || 0) + 
+                         (s.shield?.weight || 0) + (reactor?.weight || 0);
+
       this.drones.push({
         id: s.id,
         name: s.name,
         x: 100 + (idx * 50), y: 700, z: 20,
         vx: 0, vy: 0,
         speed: 0,
-        topSpeed: s.engine?.topSpeed || 150,
-        acceleration: s.engine?.acceleration || 50,
+        topSpeed: (e?.topSpeed || 150) * (f?.speedMult || 1.0),
+        acceleration: e?.acceleration || 50,
         radius: 12,
         color: '#00f0ff',
-        sensorRange: s.sensor?.range || 200,
+        sensorRange: sensor?.range || 200,
         state: 'PATROLLING',
         orbitAngle: 0,
         isEnemy: false,
-        hp: s.hull?.maxHp || 100,
-        maxHp: s.hull?.maxHp || 100,
-        strikeCooldown: 0,
-        canStrike: false,
+        hp: h?.maxHp || 100,
+        maxHp: h?.maxHp || 100,
+        
+        // Energy
+        energy: cell?.maxEnergy || 100,
+        maxEnergy: cell?.maxEnergy || 100,
+        energyRegen: reactor?.energyRegen || 2,
+        energyDrain: (e?.energyDrain || 5) + (b?.energyDrain || 0),
+        rebootTimer: 0,
+        rechargeBoostTimer: 0,
+
+        // Offensive
+        baseDamage: (b?.baseDamage || 10) * (f?.damageMult || 1.0),
+        damageType: (b?.damageType as any) || 'SLASHING',
+        critChance: (b?.critChance || 0.05) * (f?.critChanceMult || 1.0),
+        critMultiplier: b?.critMultiplier || 1.5,
+
+        // Defensive
+        armorValue: (h?.armorValue || 0) * (f?.armorMult || 1.0),
+        evasionRate: e?.evasionRate || 0.0,
+
+        // Weight
+        baseWeight: baseWeight,
+
         lastSeenPos: null,
         searchTimer: 0,
+        stuckTimer: 0,
+        strikeCooldown: 0,
+        canStrike: false,
         hitFlashTimer: 0,
         withdrawalTimer: 0,
         rotation: -Math.PI / 2,
         patrolPos: this.getRandomPatrolPos(),
-        sensorId: s.sensor?.id || 'sens-optical'
+        sensorId: sensor?.id || 'sens-optical'
       });
     });
 
@@ -168,10 +212,33 @@ export class CombatArena implements OnDestroy {
       isEnemy: true,
       hp: targetHull,
       maxHp: targetHull,
-      strikeCooldown: 0,
-      canStrike: false,
+
+      // Energy (Hostiles have high capacity usually)
+      energy: 500,
+      maxEnergy: 500,
+      energyRegen: 5,
+      energyDrain: 0,
+      rebootTimer: 0,
+      rechargeBoostTimer: 0,
+
+      // Offensive
+      baseDamage: ENEMY_DAMAGE,
+      damageType: 'ENERGY',
+      critChance: 0.05,
+      critMultiplier: 1.5,
+
+      // Defensive
+      armorValue: mission?.armorValue || 0,
+      evasionRate: mission?.enemyEvasionRate || 0,
+
+      // Weight
+      baseWeight: 500,
+
       lastSeenPos: null,
       searchTimer: 0,
+      stuckTimer: 0,
+      strikeCooldown: 0,
+      canStrike: false,
       hitFlashTimer: 0,
       withdrawalTimer: 0,
       rotation: Math.PI / 2,
@@ -216,35 +283,95 @@ export class CombatArena implements OnDestroy {
     if (this.isGameOver) return;
 
     this.drones.forEach(drone => {
+      // 1. Energy & Reboot Logic
+      if (drone.rebootTimer > 0) {
+        drone.rebootTimer -= dt;
+        if (drone.rebootTimer <= 0) {
+          drone.energy = drone.maxEnergy * 0.3;
+          drone.rechargeBoostTimer = 3.0;
+          this.emitLog(`${drone.name}: [SYSTEM] Reboot Complete. Energy restored to 30%.`);
+        }
+      } else {
+        const energyEfficiency = drone.rechargeBoostTimer > 0 ? 1.5 : 1.0;
+        drone.energy = Math.min(drone.maxEnergy, drone.energy + ((drone.energyRegen * energyEfficiency) - drone.energyDrain) * dt);
+        if (drone.energy <= 0) {
+          drone.energy = 0;
+          drone.rebootTimer = 3.0; 
+          this.emitLog(`${drone.name}: [CRITICAL] Energy Depleted. Initiating Emergency Reboot.`);
+        }
+      }
+      if (drone.rechargeBoostTimer > 0) drone.rechargeBoostTimer -= dt;
+
+      const isRebooting = drone.rebootTimer > 0;
+
+      // 2. AI & Physics
       this.updateEntityAI(drone, this.enemy, dt);
-      const targetV = this.getBehaviorVelocity(drone, this.enemy, dt);
+      const targetV = isRebooting ? { x: 0, y: 0 } : this.getBehaviorVelocity(drone, this.enemy, dt);
       this.updateEntityPhysics(drone, targetV, dt, 0.6);
 
       if (drone.strikeCooldown > 0) drone.strikeCooldown -= dt;
       if (drone.hitFlashTimer > 0) drone.hitFlashTimer -= dt;
-      drone.canStrike = drone.speed >= (drone.topSpeed * MIN_STRIKE_SPEED);
+      
+      const isExhausted = drone.energy < (drone.maxEnergy * 0.05);
+      const strikeSpeedMult = isExhausted ? 0.6 : MIN_STRIKE_SPEED;
+      drone.canStrike = drone.speed >= (drone.topSpeed * strikeSpeedMult) && !isRebooting;
     });
 
+    // 3. Entity-to-Entity Collision Resolution
+    const allEntities = [...this.drones, this.enemy];
+    for (let i = 0; i < allEntities.length; i++) {
+      for (let j = i + 1; j < allEntities.length; j++) {
+        const a = allEntities[i];
+        const b = allEntities[j];
+        if (a.hp <= 0 || b.hp <= 0 || a.state === 'WITHDRAWN' || b.state === 'WITHDRAWN') continue;
+        
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const minDist = a.radius + b.radius;
+        if (dist < minDist && dist > 0) {
+          const overlap = minDist - dist;
+          const nx = dx / dist;
+          const ny = dy / dist;
+          // Push both away
+          a.x -= nx * overlap * 0.5;
+          a.y -= ny * overlap * 0.5;
+          b.x += nx * overlap * 0.5;
+          b.y += ny * overlap * 0.5;
+        }
+      }
+    }
+
     if (this.enemy.hp > 0) {
+      const enemy = this.enemy;
+      
+      // Enemy Energy Logic (Simplified)
+      if (enemy.rebootTimer > 0) {
+        enemy.rebootTimer -= dt;
+      } else {
+        enemy.energy = Math.min(enemy.maxEnergy, enemy.energy + enemy.energyRegen * dt);
+      }
+
+      const isRebooting = enemy.rebootTimer > 0;
+
       let closestDrone = null;
       let minDist = Infinity;
       this.drones.forEach(d => {
-        const dist = this.dist(this.enemy, d);
+        const dist = this.dist(enemy, d);
         if (dist < minDist && d.state !== 'WITHDRAWN' && d.hp > 0) { minDist = dist; closestDrone = d; }
       });
 
-      if (closestDrone) {
-        this.updateEntityAI(this.enemy, closestDrone, dt);
-        const enemyV = this.getBehaviorVelocity(this.enemy, closestDrone, dt);
-        this.updateEntityPhysics(this.enemy, enemyV, dt, 0.4);
+      if (closestDrone && !isRebooting) {
+        this.updateEntityAI(enemy, closestDrone, dt);
+        const enemyV = this.getBehaviorVelocity(enemy, closestDrone, dt);
+        this.updateEntityPhysics(enemy, enemyV, dt, 0.4);
       } else {
-        // If no targets, patrol
-        const patrolV = this.getBehaviorVelocity(this.enemy, this.enemy, dt);
-        this.updateEntityPhysics(this.enemy, patrolV, dt, 0.4);
+        const patrolV = isRebooting ? { x: 0, y: 0 } : this.getBehaviorVelocity(enemy, enemy, dt);
+        this.updateEntityPhysics(enemy, patrolV, dt, 0.4);
       }
-      if (this.enemy.strikeCooldown > 0) this.enemy.strikeCooldown -= dt;
-      if (this.enemy.hitFlashTimer > 0) this.enemy.hitFlashTimer -= dt;
-      this.enemy.canStrike = true;
+      if (enemy.strikeCooldown > 0) enemy.strikeCooldown -= dt;
+      if (enemy.hitFlashTimer > 0) enemy.hitFlashTimer -= dt;
+      enemy.canStrike = !isRebooting;
     }
 
     this.updateProjectiles(dt);
@@ -292,7 +419,10 @@ export class CombatArena implements OnDestroy {
       this.emitLog(`${entity.name} sustained critical damage. Initiating Emergency Withdrawal.`);
     }
 
-    if (entity.state === 'FLEEING') return;
+    if (entity.rebootTimer > 0) {
+      entity.state = 'REBOOTING';
+      return;
+    }
 
     if (canSeeTarget) {
       entity.lastSeenPos = { x: target.x, y: target.y };
@@ -331,19 +461,44 @@ export class CombatArena implements OnDestroy {
   }
 
   private executeStrike(attacker: ArenaEntity, defender: ArenaEntity) {
-    if (attacker.isEnemy) {
-      defender.hp -= ENEMY_DAMAGE;
-      defender.hitFlashTimer = 0.2;
-      this.emitLog(`Impact -> ${defender.name} (Hull: -${ENEMY_DAMAGE}) [REM: ${Math.max(0, Math.ceil(defender.hp))} HP]`);
-    } else {
-      const speedMult = attacker.speed / attacker.topSpeed;
-      const damage = Math.max(5, Math.floor(20 * (1 + speedMult)));
-      defender.hp -= damage;
-      defender.hitFlashTimer = 0.2;
-      this.emitLog(`${defender.name}: Hull Hit (-${damage} H) [REM: ${Math.max(0, Math.ceil(defender.hp))}]`);
+    let isCrit = Math.random() <= attacker.critChance;
+    let grossDamage = attacker.baseDamage * (isCrit ? attacker.critMultiplier : 1.0);
+
+    // Momentum Scaling
+    if (attacker.damageType === 'KINETIC') {
+      const momentumMultiplier = 1.0 + ((attacker.speed / 100) * (attacker.baseWeight / 100));
+      grossDamage *= momentumMultiplier;
     }
 
-    // Reactive Awareness: Defender becomes immediately aware of the attacker's position
+    // Matrix Multiplier
+    // For now, enemies are considered HEAVY_ARMOR unless specified (drones are UNARMORED in early game)
+    const armorType = defender.isEnemy ? 'HEAVY_ARMOR' : 'UNARMORED';
+    const matrix = EFFECTIVENESS_MATRIX[attacker.damageType] || EFFECTIVENESS_MATRIX['SLASHING'];
+    const multiplier = matrix[armorType] || 1.0;
+    grossDamage *= multiplier;
+
+    // Evasion Check
+    let effectiveEvasion = defender.evasionRate;
+    if (defender.rebootTimer > 0 || defender.energy < defender.maxEnergy * 0.05) effectiveEvasion = 0;
+
+    if (Math.random() <= effectiveEvasion) {
+      this.emitLog(`${attacker.name} missed -> ${defender.name} (EVADED)`);
+    } else {
+      // Armor Mitigation (Matches Service Balancing)
+      const mitigation = defender.isEnemy ? defender.armorValue : (defender.armorValue / 5);
+      let netDamage = Math.max(1, grossDamage - mitigation);
+      
+      // Reboot vulnerability
+      if (defender.rebootTimer > 0) netDamage *= 1.5;
+
+      defender.hp = Math.max(0, defender.hp - netDamage);
+      defender.hitFlashTimer = 0.2;
+      
+      const dmgLabel = isCrit ? 'CRITICAL HIT' : 'Hit';
+      this.emitLog(`${attacker.name} ${dmgLabel} -> ${defender.name} (-${Math.ceil(netDamage)} H) [REM: ${Math.max(0, Math.ceil(defender.hp))} HP]`);
+    }
+
+    // Reactive Awareness
     defender.lastSeenPos = { x: attacker.x, y: attacker.y };
     defender.searchTimer = 0;
 
@@ -451,7 +606,8 @@ export class CombatArena implements OnDestroy {
       vx: dir.x * PROJECTILE_SPEED,
       vy: dir.y * PROJECTILE_SPEED,
       radius: PROJECTILE_RADIUS,
-      damage: ENEMY_DAMAGE,
+      damage: attacker.baseDamage || ENEMY_DAMAGE,
+      damageType: attacker.damageType as any || 'ENERGY',
       ownerId: attacker.id,
       isEnemy: attacker.isEnemy,
       color: attacker.color,
@@ -502,9 +658,11 @@ export class CombatArena implements OnDestroy {
           if (drone.hp > 0 && drone.state !== 'WITHDRAWN') {
             const dist = Math.sqrt((p.x - drone.x) ** 2 + (p.y - drone.y) ** 2);
             if (dist < drone.radius + p.radius) {
-              drone.hp -= p.damage;
+              // Apply Armor Mitigation (Drone logic: /5)
+              const netDmg = Math.max(1, p.damage - (drone.armorValue / 5));
+              drone.hp -= netDmg;
               drone.hitFlashTimer = 0.2;
-              this.emitLog(`Impact -> ${drone.name} (Hull: -${p.damage}) [REM: ${Math.max(0, Math.ceil(drone.hp))} HP]`);
+              this.emitLog(`Impact -> ${drone.name} (Hull: -${Math.ceil(netDmg)}) [REM: ${Math.max(0, Math.ceil(drone.hp))} HP]`);
               
               // Reactive Awareness: Drone becomes aware of the enemy's position
               drone.lastSeenPos = { x: this.enemy.x, y: this.enemy.y };
@@ -523,9 +681,11 @@ export class CombatArena implements OnDestroy {
         // Check enemy
         const dist = Math.sqrt((p.x - this.enemy.x) ** 2 + (p.y - this.enemy.y) ** 2);
         if (dist < this.enemy.radius + p.radius) {
-          this.enemy.hp -= p.damage;
+          // Apply Armor Mitigation: Enemy has flat armor value mitigation
+          const netDmg = Math.max(1, p.damage - this.enemy.armorValue);
+          this.enemy.hp -= netDmg;
           this.enemy.hitFlashTimer = 0.2;
-          this.emitLog(`${this.enemy.name}: Hull Hit (-${p.damage} H) [REM: ${Math.max(0, Math.ceil(this.enemy.hp))}]`);
+          this.emitLog(`${this.enemy.name}: Hull Hit (-${Math.ceil(netDmg)} H) [REM: ${Math.max(0, Math.ceil(this.enemy.hp))}]`);
           
           // Reactive Awareness: Enemy becomes aware of the attacker's position
           const attacker = this.drones.find(d => d.id === p.ownerId);
@@ -547,13 +707,44 @@ export class CombatArena implements OnDestroy {
     let finalTargetVx = targetV.x;
     let finalTargetVy = targetV.y;
 
-    if (avoidance.x !== 0 || avoidance.y !== 0) {
-      finalTargetVx = (targetV.x * (1 - avoidanceWeight)) + (avoidance.x * avoidanceWeight);
-      finalTargetVy = (targetV.y * (1 - avoidanceWeight)) + (avoidance.y * avoidanceWeight);
+    let finalAvoidanceWeight = avoidanceWeight;
+
+    // Combat Intent: Reduce avoidance when pursuing a target that is very close
+    // This allows drones to close the gap for a strike even near walls.
+    if (entity.state === 'PURSUING' && entity.lastSeenPos) {
+      const distToTarget = this.dist(entity, entity.lastSeenPos);
+      if (distToTarget < 50) {
+        finalAvoidanceWeight *= 0.3; // Allow much closer approach
+      }
     }
 
-    const accelStep = entity.acceleration * dt * 10;
+    if (avoidance.x !== 0 || avoidance.y !== 0) {
+      finalTargetVx = (targetV.x * (1 - finalAvoidanceWeight)) + (avoidance.x * finalAvoidanceWeight);
+      finalTargetVy = (targetV.y * (1 - finalAvoidanceWeight)) + (avoidance.y * finalAvoidanceWeight);
+    }
 
+    // Weight-based acceleration scaling (from Section 3.1 of core_mechanics)
+    const weightFactor = Math.max(0.1, 1 - (entity.baseWeight / 1000));
+    const accelStep = entity.acceleration * weightFactor * dt * 10;
+
+    // 1. Unstuck Mechanism
+    const targetSpeedSq = targetV.x ** 2 + targetV.y ** 2;
+    if (targetSpeedSq > 100 && entity.speed < 10) {
+      entity.stuckTimer += dt;
+      if (entity.stuckTimer > 1.2) {
+        // Kick in a perpendicular direction, but much gentler
+        const perpX = -targetV.y * 0.2;
+        const perpY = targetV.x * 0.2;
+        entity.vx += perpX;
+        entity.vy += perpY;
+        entity.stuckTimer = 0;
+        this.emitLog(`${entity.name}: [NAVIGATION] Applying gentle unstuck nudge.`);
+      }
+    } else {
+      entity.stuckTimer = 0;
+    }
+
+    // 2. Physics Acceleration
     if (entity.vx < finalTargetVx) entity.vx = Math.min(finalTargetVx, entity.vx + accelStep);
     if (entity.vx > finalTargetVx) entity.vx = Math.max(finalTargetVx, entity.vx - accelStep);
     if (entity.vy < finalTargetVy) entity.vy = Math.min(finalTargetVy, entity.vy + accelStep);
@@ -603,17 +794,42 @@ export class CombatArena implements OnDestroy {
   }
 
   private getSteeringAvoidance(entity: ArenaEntity): Vec2 {
-    const feelerDist = 60;
-    const fx = entity.x + Math.cos(entity.rotation) * feelerDist;
-    const fy = entity.y + Math.sin(entity.rotation) * feelerDist;
+    const feelerDist = 90;
+    // Weighted feelers: [AngleOffset, Weight]
+    const sensors = [
+      { angle: 0, weight: 1.0 },              // Front
+      { angle: -Math.PI / 4, weight: 0.5 },    // Diagonal Left
+      { angle: Math.PI / 4, weight: 0.5 },     // Diagonal Right
+      { angle: -Math.PI / 2, weight: 0.3 },    // Side Left
+      { angle: Math.PI / 2, weight: 0.3 }      // Side Right
+    ];
+    
+    let bestSteer: Vec2 = { x: 0, y: 0 };
+    let totalWeight = 0;
 
-    for (const obs of this.obstacles) {
-      if (fx >= obs.x && fx <= obs.x + obs.w && fy >= obs.y && fy <= obs.y + obs.h) {
-        const cx = obs.x + obs.w / 2;
-        const cy = obs.y + obs.h / 2;
-        const steer = this.normalize({ x: entity.x - cx, y: entity.y - cy });
-        return { x: steer.x * entity.topSpeed, y: steer.y * entity.topSpeed };
+    for (const s of sensors) {
+      const angle = entity.rotation + s.angle;
+      const fx = entity.x + Math.cos(angle) * feelerDist;
+      const fy = entity.y + Math.sin(angle) * feelerDist;
+
+      for (const obs of this.obstacles) {
+        if (fx >= obs.x && fx <= obs.x + obs.w && fy >= obs.y && fy <= obs.y + obs.h) {
+          const cx = obs.x + obs.w / 2;
+          const cy = obs.y + obs.h / 2;
+          const steer = this.normalize({ x: entity.x - cx, y: entity.y - cy });
+          bestSteer.x += steer.x * s.weight;
+          bestSteer.y += steer.y * s.weight;
+          totalWeight += s.weight;
+          break; 
+        }
       }
+    }
+
+    if (totalWeight > 0) {
+      const finalSteer = this.normalize({ x: bestSteer.x, y: bestSteer.y });
+      // Lower strength for smoother transitions
+      const strength = 0.8; 
+      return { x: finalSteer.x * entity.topSpeed * strength, y: finalSteer.y * entity.topSpeed * strength };
     }
     return { x: 0, y: 0 };
   }
@@ -657,7 +873,7 @@ export class CombatArena implements OnDestroy {
     const distSq = dx * dx + dy * dy;
 
     if (distSq < r * r) {
-      const dist = Math.sqrt(distSq);
+      const dist = Math.sqrt(distSq) || 0.001; // Avoid division by zero
       const overlap = r - dist;
       const nx = dx / dist;
       const ny = dy / dist;
@@ -882,6 +1098,13 @@ export class CombatArena implements OnDestroy {
       ctx.beginPath();
       ctx.arc(0, 0, drone.radius * 1.5, 0, Math.PI * 2);
       ctx.fill();
+
+      // Expanding ring effect
+      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (drone.hitFlashTimer * 5) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, drone.radius * (2 - drone.hitFlashTimer * 5), 0, Math.PI * 2);
+      ctx.stroke();
     }
 
     ctx.rotate(drone.rotation);
@@ -900,7 +1123,7 @@ export class CombatArena implements OnDestroy {
     ctx.stroke();
 
     ctx.restore();
-    this.drawHPBar(ctx, drone.x, drawY - drone.radius - 10, drone.hp, drone.maxHp);
+    this.drawStatusBars(ctx, drone.x, drawY - drone.radius - 10, drone);
   }
 
   private drawEnemy(ctx: CanvasRenderingContext2D, enemy: ArenaEntity) {
@@ -913,6 +1136,13 @@ export class CombatArena implements OnDestroy {
       ctx.beginPath();
       ctx.arc(0, 0, enemy.radius * 1.5, 0, Math.PI * 2);
       ctx.fill();
+
+      // Expanding ring effect
+      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (enemy.hitFlashTimer * 5) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, enemy.radius * (2 - enemy.hitFlashTimer * 5), 0, Math.PI * 2);
+      ctx.stroke();
     }
 
     ctx.rotate(enemy.rotation);
@@ -935,16 +1165,25 @@ export class CombatArena implements OnDestroy {
     ctx.fill();
 
     ctx.restore();
-    this.drawHPBar(ctx, enemy.x, drawY - enemy.radius - 15, enemy.hp, enemy.maxHp);
+    this.drawStatusBars(ctx, enemy.x, drawY - enemy.radius - 15, enemy);
   }
 
-  private drawHPBar(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, maxHp: number) {
+  private drawStatusBars(ctx: CanvasRenderingContext2D, x: number, y: number, entity: ArenaEntity) {
     const w = 30;
-    const h = 4;
-    ctx.fillStyle = '#333';
+    const h = 3;
+    const gap = 2;
+
+    // HP Bar
+    ctx.fillStyle = '#111';
     ctx.fillRect(x - w / 2, y, w, h);
-    ctx.fillStyle = hp > maxHp * 0.2 ? '#00ffaa' : '#ff3333';
-    ctx.fillRect(x - w / 2, y, w * Math.max(0, hp / maxHp), h);
+    ctx.fillStyle = entity.hp > entity.maxHp * 0.2 ? '#00ffaa' : '#ff3333';
+    ctx.fillRect(x - w / 2, y, w * Math.max(0, entity.hp / entity.maxHp), h);
+
+    // Energy Bar
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x - w / 2, y + h + gap, w, h - 1);
+    ctx.fillStyle = '#ffee00';
+    ctx.fillRect(x - w / 2, y + h + gap, w * Math.max(0, entity.energy / entity.maxEnergy), h - 1);
   }
 
   private drawSensorLink(ctx: CanvasRenderingContext2D, drone: ArenaEntity) {
@@ -1022,8 +1261,17 @@ export class CombatArena implements OnDestroy {
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
     let label = drone.state;
-    if (drone.canStrike) label += ' ⚡';
-    ctx.fillText(label, drone.x, drawY - drone.radius - 20);
+    ctx.fillText(label, drone.x, drawY - drone.radius - 22);
+
+    if (drone.rebootTimer > 0) {
+      ctx.fillStyle = '#ff3333';
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText(`REBOOTING ${drone.rebootTimer.toFixed(1)}s`, drone.x, drawY - drone.radius - 32);
+    } else if (drone.canStrike) {
+      ctx.fillStyle = '#ffee00';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText('⚡', drone.x, drawY - drone.radius - 32);
+    }
 
     if (drone.state === 'SEARCHING' && drone.lastSeenPos) {
       ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
