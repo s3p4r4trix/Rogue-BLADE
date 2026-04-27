@@ -36,7 +36,7 @@ import { CombatArena } from '../components/combat-arena';
 
           <!-- Elapsed Time -->
           <div class="flex flex-col items-center">
-            <span class="text-[9px] text-green-800 uppercase font-bold tracking-[0.2em] mt-1">Elapsed_Time</span>
+            <span class="text-[9px] text-green-800 uppercase font-bold tracking-[0.2em] mb-1">Elapsed_Time</span>
             <div class="h-[38px] flex items-center justify-center bg-green-900/20 px-4 border border-green-800 animate-pulse text-green-400 font-black text-lg">
               {{ formatTime(Math.floor(timeElapsed())) }}
             </div>
