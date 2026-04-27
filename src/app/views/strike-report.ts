@@ -82,7 +82,7 @@ import { ScrapFilterService } from '../services/scrap-filter.service';
                     <!-- Enemy Shields -->
                     @if (enemyMaxShields() > 0) {
                       <div class="flex justify-between items-center text-[8px] text-cyan-700 uppercase font-bold tracking-tighter">
-                        <span>Shield_Array</span>
+                        <span>Shield_Generator</span>
                         <span>{{ Math.ceil((enemyShields() / enemyMaxShields()) * 100) }}%</span>
                       </div>
                       <div class="w-full h-1 bg-cyan-950/20">
@@ -313,14 +313,16 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private processLogEvent(log: string) {
-    // Telemetry Parsing: "[TELEMETRY] ShurikenName: E:80/100 R:30"
-    const telemetryMatch = log.match(/\[TELEMETRY\] (.*): E:(\d+)\/(\d+) R:(\d+)/);
+    // Telemetry Parsing: "[TELEMETRY] ShurikenName: H:100/100 S:50/50 E:80/100 R:30"
+    const telemetryMatch = log.match(/\[TELEMETRY\] (.*): H:(\d+)\/(\d+) S:(\d+)\/(\d+) E:(\d+)\/(\d+) R:(\d+)/);
     if (telemetryMatch) {
       const name = telemetryMatch[1];
-      const energy = parseInt(telemetryMatch[2]);
-      const reboot = parseInt(telemetryMatch[4]);
+      const hp = parseInt(telemetryMatch[2]);
+      const shields = parseInt(telemetryMatch[4]);
+      const energy = parseInt(telemetryMatch[6]);
+      const reboot = parseInt(telemetryMatch[8]);
       this.squadStatuses.update(statuses => statuses.map(s =>
-        s.name === name ? { ...s, energy, rebootTicks: reboot } : s
+        s.name === name ? { ...s, hp, shields, energy, rebootTicks: reboot } : s
       ));
     }
 
@@ -353,7 +355,7 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
     // 2. Shuriken Shield Parsing: "Beam-Pulse -> ShurikenName (Shields: -10)"
     const shieldMatch = log.match(/Beam-Pulse -> (.*) \(Shields: -(\d+)\)/);
     if (shieldMatch) {
-      const name = shieldMatch[1];
+      const name = shieldMatch[1].replace('HOSTILE: ', '').trim();
       const dmg = parseInt(shieldMatch[2]);
       this.squadStatuses.update(statuses => statuses.map(s =>
         s.name === name ? { ...s, shields: Math.max(0, s.shields - dmg) } : s
@@ -363,7 +365,7 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
     // 3. Shuriken Hull Parsing: "Impact -> ShurikenName (Hull: -10) [REM: 45 HP]"
     const hullMatch = log.match(/Impact -> (.*) \(Hull: -(\d+)\) \[REM: (\d+) HP\]/);
     if (hullMatch) {
-      const name = hullMatch[1];
+      const name = hullMatch[1].replace('HOSTILE: ', '').trim();
       const remaining = parseInt(hullMatch[3]);
       this.squadStatuses.update(statuses => statuses.map(s =>
         s.name === name ? { ...s, hp: remaining } : s

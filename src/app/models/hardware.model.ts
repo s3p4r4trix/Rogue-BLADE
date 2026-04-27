@@ -99,6 +99,15 @@ export interface SemiAI extends HardwareComponent {
 }
 
 /**
+ * Energy Shield Generator hardware.
+ */
+export interface ShieldGenerator extends HardwareComponent {
+  shieldCapacity: number;
+  regenRate: number; // Shields recovered per second
+  energyCostPerRegen: number; // Energy consumed per shield point recovered
+}
+
+/**
  * Persistent stats for a specific Shuriken.
  */
 export interface ShurikenStats {
@@ -130,6 +139,7 @@ export interface Shuriken {
   blade: Blade | null;
   formDesign: FormDesign | null;
   processor: Processor | null;
+  shield: ShieldGenerator | null; // New slot
   semiAI: SemiAI | null; // Optional slot
   
   // Coordination Mode

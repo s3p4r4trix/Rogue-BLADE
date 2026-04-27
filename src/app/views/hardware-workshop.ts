@@ -155,6 +155,18 @@ import { HardwareComponent, Shuriken, CyberOption } from '../models/hardware.mod
                      </select>
                    </div>
 
+                   <!-- Shield Generator -->
+                   <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// SHIELD_GENERATOR</div>
+                     <select class="cyber-native-select"
+                             [value]="shuriken.shield?.id" 
+                             (change)="onNativeSwap(shuriken.id, 'shield', $event, inventory.shields)">
+                        @for (opt of getShieldOptions(); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                     </select>
+                   </div>
+
                    <!-- Semi-AI -->
                    <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
                      <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// SEMI_AI_BRAIN</div>
@@ -307,7 +319,7 @@ import { HardwareComponent, Shuriken, CyberOption } from '../models/hardware.mod
 export class HardwareWorkshop {
   workshop = inject(WorkshopService);
   router = inject(Router);
-  
+
   inventory = HARDWARE_INVENTORY;
   shurikens = this.workshop.availableShurikens;
   activeShuriken = this.workshop.activeShuriken;
@@ -377,6 +389,10 @@ export class HardwareWorkshop {
   getSemiAIOptions(): CyberOption[] {
     const options = this.getUnlocked(this.inventory.semiAIs).map((c: any) => ({ value: c.id, label: c.name }));
     return [{ value: '', label: 'NONE [SOLO_MODE]' }, ...options];
+  }
+  getShieldOptions(): CyberOption[] {
+    const options = this.getUnlocked(this.inventory.shields).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.shieldCapacity})` }));
+    return [{ value: '', label: 'NONE [OFFLINE]' }, ...options];
   }
   getBladeOptions(): CyberOption[] {
     return this.getUnlocked(this.inventory.blades).map((c: any) => ({ value: c.id, label: c.name }));

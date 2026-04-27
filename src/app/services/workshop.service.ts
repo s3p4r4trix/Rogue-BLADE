@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
 import { Action, GambitRoutine, Trigger } from '../models/gambit.model';
-import { Shuriken, HardwareComponent, AntiGravEngine, EnergyCell, Sensor, Blade, FormDesign, HullMaterial, Processor, SemiAI } from '../models/hardware.model';
+import { Shuriken, AntiGravEngine, EnergyCell, Sensor, Blade, FormDesign, HullMaterial, Processor, SemiAI, ShieldGenerator } from '../models/hardware.model';
 import { moveItemInArray } from '@angular/cdk/drag-drop';
 
 export const HARDWARE_INVENTORY = {
@@ -48,6 +48,9 @@ export const HARDWARE_INVENTORY = {
   semiAIs: [
     { id: 'semi-feral', name: 'Scrap-Code "Feral"', description: 'Aggressive instinct paths.', iffAccuracy: 70, behaviorBuff: 'aggressive' } as SemiAI,
     { id: 'semi-guardian', name: 'Aegis "Guardian"', description: 'Protective sub-routines.', iffAccuracy: 95, behaviorBuff: 'defensive' } as SemiAI
+  ],
+  shields: [
+    { id: 'shield-basic', name: 'Scrap-Capacitor', description: 'Crude static field generator.', shieldCapacity: 50, regenRate: 2, energyCostPerRegen: 5 } as ShieldGenerator
   ]
 };
 
@@ -59,6 +62,7 @@ const DEFAULT_SHURIKEN: Omit<Shuriken, 'id' | 'name'> = {
   formDesign: HARDWARE_INVENTORY.formDesigns[0],
   hull: HARDWARE_INVENTORY.hulls[0],
   processor: HARDWARE_INVENTORY.processors[0],
+  shield: null, // Locked until research
   semiAI: null, // Optional, unlocked later
   coordinationMode: 'SOLO',
   stats: { enemiesKilled: 0, timeRepairing: 0, lostHealth: 0, timeOnline: 0 }
@@ -71,9 +75,9 @@ function loadShurikens(): Shuriken[] {
   ];
   const saved = localStorage.getItem('rogueBlade_shurikens');
   if (saved) {
-    try { 
+    try {
       return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) { }
   }
   return defaults;
 }
@@ -81,7 +85,7 @@ function loadShurikens(): Shuriken[] {
 function loadUnlockedComponents(): string[] {
   const saved = localStorage.getItem('rogueBlade_unlockedComponents');
   if (saved) {
-    try { return JSON.parse(saved); } catch (e) {}
+    try { return JSON.parse(saved); } catch (e) { }
   }
   return [
     'eng-drifter', 'cell-scrap', 'sens-optical', 'blade-edge', 'form-standard', 'hull-scrap', 'proc-abacus'
@@ -91,20 +95,20 @@ function loadUnlockedComponents(): string[] {
 function loadSavedRoutinesMap(): Record<string, GambitRoutine[]> {
   const saved = localStorage.getItem('rogueBlade_routinesMap');
   if (saved) {
-    try { return JSON.parse(saved); } catch (e) {}
+    try { return JSON.parse(saved); } catch (e) { }
   }
-  
+
   // Default routines for new players
   const defaultRoutines: GambitRoutine[] = [
-    { 
-      priority: 1, 
-      trigger: { id: 'ifEnemyInMeleeRange', type: 'trigger', value: 'Enemy in melee range', name: 'Enemy: Close Proximity', description: 'Target is within strike radius.' }, 
-      action: { id: 'actionStandardStrike', type: 'action', value: 'Standard Strike', name: 'Execute: Standard Strike', energyCost: 0, description: 'Basic attack maneuver.', baseLatency: 200 } 
+    {
+      priority: 1,
+      trigger: { id: 'ifEnemyInMeleeRange', type: 'trigger', value: 'Enemy in melee range', name: 'Enemy: Close Proximity', description: 'Target is within strike radius.' },
+      action: { id: 'actionStandardStrike', type: 'action', value: 'Standard Strike', name: 'Execute: Standard Strike', energyCost: 0, description: 'Basic attack maneuver.', baseLatency: 200 }
     },
-    { 
-      priority: 2, 
-      trigger: { id: 'ifEnemyInSight', type: 'trigger', value: 'Enemy in sight', name: 'Enemy: Detected', description: 'Target detected by radar/lidar.', requiredSensor: 'Radar/Lidar' }, 
-      action: { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: 'Execute: Kinetic Ram', energyCost: 15, description: 'High-speed physical collision.', baseLatency: 500 } 
+    {
+      priority: 2,
+      trigger: { id: 'ifEnemyInSight', type: 'trigger', value: 'Enemy in sight', name: 'Enemy: Detected', description: 'Target detected by radar/lidar.', requiredSensor: 'Radar/Lidar' },
+      action: { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: 'Execute: Kinetic Ram', energyCost: 15, description: 'High-speed physical collision.', baseLatency: 500 }
     }
   ];
 
@@ -188,11 +192,12 @@ export class WorkshopService {
       if (!repaired.engine || !repaired.engine.topSpeed) repaired.engine = HARDWARE_INVENTORY.engines[0];
       if (!repaired.energyCell || !repaired.energyCell.maxEnergy) repaired.energyCell = HARDWARE_INVENTORY.energyCells[0];
       if (!repaired.semiAI || !repaired.semiAI.iffAccuracy) {
-         // Only reset if it exists but is broken. If null, keep as null.
-         if (repaired.semiAI) repaired.semiAI = null; 
+        // Only reset if it exists but is broken. If null, keep as null.
+        if (repaired.semiAI) repaired.semiAI = null;
       }
       if (!repaired.formDesign || !repaired.formDesign.speedMult) repaired.formDesign = HARDWARE_INVENTORY.formDesigns[0];
-      
+      if (!repaired.shield) repaired.shield = null;
+
       // Coordination Migration
       if (!repaired.coordinationMode) repaired.coordinationMode = 'SOLO';
       if (repaired.semiAI && repaired.coordinationMode === 'SOLO') repaired.coordinationMode = 'MASTER';
@@ -225,7 +230,7 @@ export class WorkshopService {
     this.availableShurikens.update(list => list.map(s => {
       if (s.id !== shurikenId) return s;
       const updated = { ...s, [slot]: component };
-      
+
       // Auto-update coordination mode based on AI slot
       if (slot === 'semiAI') {
         if (component) {

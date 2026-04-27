@@ -139,6 +139,21 @@ export class ResearchService {
         isCompleted: false,
         isStarted: false,
         progressPercent: 0
+      },
+      {
+        id: 'res-shielding',
+        name: 'Energy Shielding',
+        description: 'Atmospheric ionization for personal kinetic shields.',
+        category: 'SHIELD',
+        costPolymer: 500,
+        costScrap: 300,
+        costCredits: 2000,
+        timeToCompleteSeconds: 180,
+        unlockedComponentId: 'shield-basic',
+        prerequisites: ['res-plasma'],
+        isCompleted: false,
+        isStarted: false,
+        progressPercent: 0
       }
     ];
   }

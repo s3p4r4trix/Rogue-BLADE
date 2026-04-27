@@ -2,7 +2,7 @@ export interface ResearchProject {
   id: string;
   name: string;
   description: string;
-  category: 'ALLOY' | 'COMPONENT' | 'AI' | 'UTILITY';
+  category: 'ALLOY' | 'COMPONENT' | 'AI' | 'UTILITY' | 'SHIELD';
   costPolymer: number;
   costScrap: number;
   costCredits: number;

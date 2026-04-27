@@ -39,8 +39,8 @@ export class CombatSimulationService {
             hp: h?.maxHp || 100,
             maxHp: h?.maxHp || 100,
             armorValue: (h?.armorValue || 0) * (f?.armorMult || 1.0),
-            shields: h?.shieldCapacity || 0,
-            maxShields: h?.shieldCapacity || 0,
+            shields: (s.shield?.shieldCapacity || 0) + (h?.shieldCapacity || 0),
+            maxShields: (s.shield?.shieldCapacity || 0) + (h?.shieldCapacity || 0),
             evasionRate: e?.evasionRate || 0.0,
             // Mobility
             baseWeight: (h?.weight || 20) * (f?.weightMult || 1.0),
@@ -188,7 +188,7 @@ export class CombatSimulationService {
             }
 
             // Telemetry Log (for UI consumption)
-            logs.push(`[TELEMETRY] ${s.name}: E:${Math.floor(s.energy)}/${s.maxEnergy} R:${s.rebootTicks}`);
+            logs.push(`[TELEMETRY] ${s.name}: H:${Math.ceil(s.hp)}/${s.maxHp} S:${Math.ceil(s.shields)}/${s.maxShields} E:${Math.floor(s.energy)}/${s.maxEnergy} R:${s.rebootTicks}`);
          });
 
          // 2. Enemy Counter-Attack (Fair Cooldown scaling with Tier)
