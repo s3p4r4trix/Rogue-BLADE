@@ -150,15 +150,16 @@ export class CombatArena implements AfterViewInit, OnDestroy {
   /** Place 4 rectangular cover obstacles in the arena interior */
   private initObstacles() {
     this.obstacles = [
-      { x: 200, y: 200, w: 80, h: 60 },
-      { x: 520, y: 180, w: 60, h: 100 },
-      { x: 180, y: 520, w: 100, h: 60 },
-      { x: 500, y: 500, w: 80, h: 80 },
+      { x: 400, y: 400, w: 80, h: 60 },
     ];
   }
 
   /** Create drone and enemy entities from game data */
   private initEntities(shurikens: Shuriken[], mission: MissionContract | null) {
+    this.isGameOver = false;
+    this.arenaTime = 0;
+    this.telemetryTimer = 0;
+    
     // Spawn drones along bottom-left quadrant
     this.drones = shurikens.map((s, i) => ({
       id: s.id,
@@ -172,7 +173,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       acceleration: s.engine?.acceleration ?? 15,
       radius: 14,
       color: `hsl(${180 + i * 40}, 80%, 55%)`,
-      sensorRange: s.sensor?.range ?? 120,
+      sensorRange: (s.sensor?.range ?? 200) * 1.5, // Increased default range
       meleeRange: 20,
       state: 'PATROLLING' as AIState,
       orbitAngle: (Math.PI * 2 / Math.max(1, shurikens.length)) * i,
@@ -207,27 +208,33 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       color: '#ef4444',
       sensorRange: 200,
       meleeRange: 40,
-      state: 'PURSUING' as AIState,
+      state: 'PATROLLING' as AIState,
       orbitAngle: 0,
       isEnemy: true,
       hp: mission?.hull ?? 300,
       maxHp: (mission?.hull ?? 300) + (mission?.shields ?? 0),
       strikeCooldown: 0,
       canStrike: false,
-      lastSeenPos: {
-        x: WALL_THICKNESS + 100 + Math.random() * (ARENA_W - 200 - WALL_THICKNESS * 2),
-        y: WALL_THICKNESS + 100 + Math.random() * (ARENA_H - 200 - WALL_THICKNESS * 2)
-      },
+      lastSeenPos: null,
       searchTimer: 0,
       hitFlashTimer: 0,
       withdrawalTimer: 0,
       rotation: Math.PI * 0.75, // Facing towards bottom-left (drone spawn)
-      patrolPos: null
+      patrolPos: {
+        x: WALL_THICKNESS + 100 + Math.random() * (ARENA_W - 200 - WALL_THICKNESS * 2),
+        y: WALL_THICKNESS + 100 + Math.random() * (ARENA_H - 200 - WALL_THICKNESS * 2)
+      }
     };
 
     this.arenaTime = 0;
     this.emitLog(`[SYSTEM] STRIKE INITIATED: ${this.enemy.name}`);
     this.emitLog(`[SYSTEM] DEPLOYING ${this.drones.length} UNIT(S) TO ARENA`);
+
+    // Initial Status Logs
+    this.emitLog(`${this.enemy.name}: [INITIAL_STATE] ${this.enemy.state}`);
+    for (const d of this.drones) {
+      this.emitLog(`${d.name}: [INITIAL_STATE] ${d.state}`);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -235,7 +242,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
   // ═══════════════════════════════════════════════════════════════
 
   private tick = (now: number) => {
-    const dt = Math.min((now - this.lastTime) / 1000, 0.05);
+    const dt = Math.max(0, Math.min((now - this.lastTime) / 1000, 0.05));
     this.lastTime = now;
     this.arenaTime += dt;
     this.update(dt);
@@ -259,31 +266,18 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     if (this.enemy.hitFlashTimer > 0) this.enemy.hitFlashTimer -= dt;
     if (this.enemy.strikeCooldown > 0) this.enemy.strikeCooldown -= dt;
 
-    // Periodic Telemetry Logs
-    this.telemetryTimer += dt;
-    if (this.telemetryTimer >= 1.0) {
-      this.telemetryTimer = 0;
-      for (const d of this.drones) {
-        if (d.hp > 0) {
-          // Format expected by StrikeReport: "[TELEMETRY] Name: H:hp/maxHp S:s/maxS E:e/maxE R:reboot"
-          this.emitLog(`[TELEMETRY] ${d.name}: H:${Math.ceil(d.hp)}/${d.maxHp} S:0/0 E:100/100 R:0`);
-        }
-      }
-    }
-
     // Enemy Counter-Attack Logic
-    if (this.enemy.strikeCooldown <= 0 && this.enemy.hp > 0) {
-      // Find nearest drone in engagement range
-      const targetDrone = this.drones.find(d => d.hp > 0 && this.dist(d, this.enemy) < this.enemy.radius + d.radius + 15);
-      if (targetDrone) {
+    if (this.enemy.hp > 0 && this.enemy.strikeCooldown <= 0) {
+      const activeDronesInRange = this.drones.filter(d =>
+        d.hp > 0 && d.state !== 'WITHDRAWN' && this.dist(this.enemy, d) < this.enemy.meleeRange + d.radius
+      );
+      if (activeDronesInRange.length > 0) {
+        const targetDrone = activeDronesInRange[0];
         targetDrone.hp = Math.max(0, targetDrone.hp - ENEMY_DAMAGE);
         targetDrone.hitFlashTimer = 0.2;
         this.enemy.strikeCooldown = ENEMY_STRIKE_COOLDOWN;
         this.emitLog(`[WARNING] ${this.enemy.name} Counter: ${targetDrone.name} hit! (-${ENEMY_DAMAGE} HP)`);
-        
-        if (targetDrone.hp <= 0) {
-          this.emitLog(`[CRITICAL] ${targetDrone.name} SIGNAL LOST.`);
-        }
+        if (targetDrone.hp <= 0) this.emitLog(`[CRITICAL] ${targetDrone.name} SIGNAL LOST.`);
       }
     }
 
@@ -292,284 +286,122 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     let destroyedDronesCount = 0;
 
     for (const drone of this.drones) {
-      if (drone.state === 'WITHDRAWN') {
-        withdrawnDronesCount++;
-        continue;
-      }
-      if (drone.hp <= 0) {
-        destroyedDronesCount++;
-        continue;
-      }
-
+      if (drone.state === 'WITHDRAWN') { withdrawnDronesCount++; continue; }
+      if (drone.hp <= 0) { destroyedDronesCount++; continue; }
       activeDronesCount++;
 
       // Tick cooldowns
       if (drone.strikeCooldown > 0) drone.strikeCooldown -= dt;
       if (drone.hitFlashTimer > 0) drone.hitFlashTimer -= dt;
 
+      // Update AI State
+      const prevState = drone.state;
       const distToEnemy = this.dist(drone, this.enemy);
       const hasLOS = !this.isLOSBlocked(drone, this.enemy);
+      const canSeeEnemy = this.canSee(drone, this.enemy, drone.sensorRange);
 
-      // Update strike readiness: drone must reach minimum velocity
       drone.canStrike = drone.speed >= (drone.topSpeed * MIN_STRIKE_SPEED);
-
-      // ── Update last-seen memory ──
-      if (hasLOS && distToEnemy < drone.sensorRange) {
-        drone.lastSeenPos = { x: this.enemy.x, y: this.enemy.y };
-        drone.searchTimer = 0;
-      }
-
-      // ── Determine AI State ──
-      const prevState = drone.state;
 
       if (drone.hp < drone.maxHp * 0.2) {
         drone.state = 'FLEEING';
       } else if (distToEnemy < drone.meleeRange + this.enemy.radius && hasLOS && drone.canStrike) {
-        // CLOSE COMBAT: Ready to hit
         drone.state = 'FIGHTING';
       } else if (distToEnemy < drone.meleeRange + this.enemy.radius && (hasLOS || drone.state === 'FIGHTING')) {
-        // CLOSE COMBAT: Repositioning for next strike
         drone.state = 'ORBITING';
-      } else if (distToEnemy < drone.sensorRange && hasLOS) {
-        // PURSUIT: Target visible and in range
+      } else if (canSeeEnemy) {
         drone.state = 'PURSUING';
       } else if (drone.lastSeenPos) {
-        // SEARCH: Target lost, investigating last known location
         drone.state = 'SEARCHING';
       } else {
-        // PATROL: No target knowledge
         drone.state = 'PATROLLING';
       }
 
-      // Log state transitions
+      if (canSeeEnemy) {
+        drone.lastSeenPos = { x: this.enemy.x, y: this.enemy.y };
+        drone.searchTimer = 0;
+      }
+
       if (prevState !== drone.state) {
-        // Specific tactical logs for sensor status
-        if ((prevState === 'PATROLLING' || prevState === 'SEARCHING') && 
-            (drone.state === 'PURSUING' || drone.state === 'FIGHTING' || drone.state === 'ORBITING')) {
+        if ((prevState === 'PATROLLING' || prevState === 'SEARCHING') && (drone.state === 'PURSUING' || drone.state === 'FIGHTING' || drone.state === 'ORBITING')) {
           this.emitLog(`[SENSOR] ${drone.name}: Target Lock Achieved.`);
-        } else if ((prevState === 'PURSUING' || prevState === 'FIGHTING' || prevState === 'ORBITING') && 
-                   drone.state === 'SEARCHING') {
+        } else if (drone.state === 'SEARCHING') {
           this.emitLog(`[SENSOR] ${drone.name}: Signal Lost. Investigating last known pos.`);
         }
-        
         this.emitLog(`${drone.name}: [STATE] ${prevState} → ${drone.state}`);
       }
 
-      // ── Execute Movement Behavior ──
-      let targetVx = 0;
-      let targetVy = 0;
+      // Physics & Movement
+      const targetV = this.getBehaviorVelocity(drone, this.enemy, dt);
 
-      switch (drone.state) {
-        case 'PURSUING':
-        case 'FIGHTING': {
-          const dir = this.normalize({ x: this.enemy.x - drone.x, y: this.enemy.y - drone.y });
-          targetVx = dir.x * drone.topSpeed;
-          targetVy = dir.y * drone.topSpeed;
-          break;
-        }
-        case 'ORBITING': {
-          const orbitRadius = 80;
-          drone.orbitAngle += (drone.topSpeed / orbitRadius) * dt;
-          const goalX = this.enemy.x + Math.cos(drone.orbitAngle) * orbitRadius;
-          const goalY = this.enemy.y + Math.sin(drone.orbitAngle) * orbitRadius;
-          const dir = this.normalize({ x: goalX - drone.x, y: goalY - drone.y });
-          targetVx = dir.x * drone.topSpeed;
-          targetVy = dir.y * drone.topSpeed;
-          break;
-        }
-        case 'FLEEING': {
-          const away = this.normalize({ x: drone.x - this.enemy.x, y: drone.y - this.enemy.y });
-          targetVx = away.x * drone.topSpeed;
-          targetVy = away.y * drone.topSpeed;
-
-          // Check for edge disengagement
-          const atEdge = drone.x <= WALL_THICKNESS + drone.radius + 2 ||
-                         drone.x >= ARENA_W - WALL_THICKNESS - drone.radius - 2 ||
-                         drone.y <= WALL_THICKNESS + drone.radius + 2 ||
-                         drone.y >= ARENA_H - WALL_THICKNESS - drone.radius - 2;
-
-          if (atEdge) {
-            drone.withdrawalTimer += dt;
-            if (drone.withdrawalTimer >= 2.0) {
-              drone.state = 'WITHDRAWN';
-              this.emitLog(`[SYSTEM] ${drone.name}: Emergency Withdrawal Complete. Unit Secured.`);
-            }
-          } else {
-            drone.withdrawalTimer = 0;
+      if (drone.state === 'FLEEING') {
+        const atEdge = drone.x <= WALL_THICKNESS + drone.radius + 2 ||
+          drone.x >= ARENA_W - WALL_THICKNESS - drone.radius - 2 ||
+          drone.y <= WALL_THICKNESS + drone.radius + 2 ||
+          drone.y >= ARENA_H - WALL_THICKNESS - drone.radius - 2;
+        if (atEdge) {
+          drone.withdrawalTimer += dt;
+          if (drone.withdrawalTimer >= 2.0) {
+            drone.state = 'WITHDRAWN';
+            this.emitLog(`[SYSTEM] ${drone.name}: Emergency Withdrawal Complete. Unit Secured.`);
           }
-          break;
-        }
-        case 'SEARCHING': {
-          // Navigate to last-seen position; if arrived, expand search pattern
-          const target = drone.lastSeenPos || { x: ARENA_W / 2, y: ARENA_H / 2 };
-          const distToLastSeen = this.dist(drone, target);
-
-          if (distToLastSeen < 30) {
-            // Arrived at last-seen → linger & orbit to scan area
-            drone.searchTimer += dt;
-            const searchRadius = 60 + drone.searchTimer * 15; // Expanding spiral
-            drone.orbitAngle += (drone.topSpeed / searchRadius) * dt;
-            const goalX = target.x + Math.cos(drone.orbitAngle) * Math.min(searchRadius, 200);
-            const goalY = target.y + Math.sin(drone.orbitAngle) * Math.min(searchRadius, 200);
-            const dir = this.normalize({ x: goalX - drone.x, y: goalY - drone.y });
-            targetVx = dir.x * drone.topSpeed * 0.6;
-            targetVy = dir.y * drone.topSpeed * 0.6;
-
-            // After lingering too long, forget and seek directly
-            if (drone.searchTimer > SEARCH_LINGER_TIME) {
-              drone.lastSeenPos = null;
-              drone.searchTimer = 0;
-              this.emitLog(`${drone.name}: [SEARCH] Last contact lost. Expanding sweep.`);
-            }
-          } else {
-            // Move toward last-seen position
-            const dir = this.normalize({ x: target.x - drone.x, y: target.y - drone.y });
-            targetVx = dir.x * drone.topSpeed;
-            targetVy = dir.y * drone.topSpeed;
-          }
-          break;
-        }
-        case 'PATROLLING': {
-          // Move to random waypoints until something is found
-          if (!drone.patrolPos) {
-            drone.patrolPos = {
-              x: WALL_THICKNESS + 100 + Math.random() * (ARENA_W - 200 - WALL_THICKNESS * 2),
-              y: WALL_THICKNESS + 100 + Math.random() * (ARENA_H - 200 - WALL_THICKNESS * 2)
-            };
-          }
-          const distToPatrol = this.dist(drone, drone.patrolPos);
-          if (distToPatrol < 40) {
-            drone.patrolPos = null; // Pick new point next frame
-          } else {
-            const dir = this.normalize({ x: drone.patrolPos.x - drone.x, y: drone.patrolPos.y - drone.y });
-            targetVx = dir.x * drone.topSpeed * 0.8;
-            targetVy = dir.y * drone.topSpeed * 0.8;
-          }
-          break;
+        } else {
+          drone.withdrawalTimer = 0;
         }
       }
 
-      // ── Obstacle Avoidance (Feeler) ──
-      const avoid = this.getSteeringAvoidance(drone);
-      if (avoid.x !== 0 || avoid.y !== 0) {
-        targetVx = targetVx * 0.4 + avoid.x * 0.6;
-        targetVy = targetVy * 0.4 + avoid.y * 0.6;
-      }
+      this.updateEntityPhysics(drone, targetV, dt, 0.6);
 
-      // Smooth acceleration
-      const accelFactor = drone.acceleration * dt;
-      drone.vx += (targetVx - drone.vx) * Math.min(1, accelFactor * 0.1);
-      drone.vy += (targetVy - drone.vy) * Math.min(1, accelFactor * 0.1);
-
-      // Apply velocity
-      let newX = drone.x + drone.vx * dt;
-      let newY = drone.y + drone.vy * dt;
-
-      // Clamp to arena walls
-      newX = Math.max(WALL_THICKNESS + drone.radius, Math.min(ARENA_W - WALL_THICKNESS - drone.radius, newX));
-      newY = Math.max(WALL_THICKNESS + drone.radius, Math.min(ARENA_H - WALL_THICKNESS - drone.radius, newY));
-
-      // Obstacle collision (Multi-pass for stability)
-      for (let i = 0; i < 2; i++) {
-        for (const obs of this.obstacles) {
-          const res = this.resolveCircleAABB(newX, newY, drone.radius, obs);
-          if (res.x !== newX || res.y !== newY) {
-            // Dampen velocity component that hit the wall
-            if (Math.abs(res.x - newX) > 0.01) drone.vx *= -0.2;
-            if (Math.abs(res.y - newY) > 0.01) drone.vy *= -0.2;
-            newX = res.x;
-            newY = res.y;
-          }
-        }
-      }
-
-      // Drone-to-Enemy Collision
+      // Drone-to-Enemy Impulse (Pushing each other)
       if (this.enemy.hp > 0) {
-        const distToEnemy = this.dist({ x: newX, y: newY }, this.enemy);
+        const d = this.dist(drone, this.enemy);
         const minDist = drone.radius + this.enemy.radius;
-        if (distToEnemy < minDist && distToEnemy > 0) {
-          const overlap = minDist - distToEnemy;
-          const dir = this.normalize({ x: newX - this.enemy.x, y: newY - this.enemy.y });
-          newX += dir.x * overlap;
-          newY += dir.y * overlap;
-          // Apply mutual impulse
-          drone.vx += dir.x * 30;
-          drone.vy += dir.y * 30;
-          this.enemy.vx -= dir.x * 10;
-          this.enemy.vy -= dir.y * 10;
+        if (d < minDist && d > 0) {
+          const overlap = minDist - d;
+          const dir = this.normalize({ x: drone.x - this.enemy.x, y: drone.y - this.enemy.y });
+          drone.x += dir.x * overlap;
+          drone.y += dir.y * overlap;
+          drone.vx += dir.x * 30; drone.vy += dir.y * 30;
+          this.enemy.vx -= dir.x * 10; this.enemy.vy -= dir.y * 10;
         }
       }
 
-      drone.x = newX;
-      drone.y = newY;
-      drone.speed = Math.sqrt(drone.vx * drone.vx + drone.vy * drone.vy);
-
-      // ── Strike Detection ──
-      // Drone hits enemy when: in melee range, LOS clear, speed threshold met, cooldown ready
-      if (distToEnemy < drone.meleeRange + this.enemy.radius
-          && hasLOS && drone.canStrike && drone.strikeCooldown <= 0
-          && this.enemy.hp > 0) {
+      // Strike Detection
+      if (drone.state === 'FIGHTING' && drone.strikeCooldown <= 0 && this.enemy.hp > 0) {
         const dmg = Math.floor(10 + drone.speed * 0.15);
         this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
-        this.enemy.hitFlashTimer = 0.2; // 200ms white flash
+        this.enemy.hitFlashTimer = 0.2;
         drone.strikeCooldown = STRIKE_COOLDOWN;
-
         this.emitLog(`${drone.name}: Hull Hit (-${dmg} H) [REM: ${Math.ceil(this.enemy.hp)}]`);
-
         if (this.enemy.hp <= 0) {
           this.isGameOver = true;
           this.emitLog(`[SYSTEM] MISSION OBJECTIVE NEUTRALIZED.`);
           this.missionComplete.emit({ success: true });
         }
-
-        // Bounce away after strike (adds fly-by variation)
         const bounceDir = this.normalize({ x: drone.x - this.enemy.x, y: drone.y - this.enemy.y });
         drone.vx = bounceDir.x * drone.topSpeed * 0.7;
         drone.vy = bounceDir.y * drone.topSpeed * 0.7;
       }
 
-      // Update drone rotation based on velocity (if moving)
-      if (drone.speed > 5) {
-        const targetRot = Math.atan2(drone.vy, drone.vx);
-        drone.rotation = this.lerpAngle(drone.rotation, targetRot, dt * 4);
-      }
+      drone.speed = Math.sqrt(drone.vx * drone.vx + drone.vy * drone.vy);
     }
 
-    // Check Loss Condition: No active drones left (all either withdrawn or destroyed)
+    // Loss Condition
     if (activeDronesCount === 0 && this.drones.length > 0 && !this.isGameOver) {
       this.isGameOver = true;
-      if (withdrawnDronesCount > 0) {
-        this.emitLog(`[SYSTEM] SQUAD WITHDRAWN. MISSION ABORTED.`);
-      } else {
-        this.emitLog(`[CRITICAL] SQUAD ELIMINATED. MISSION FAILURE.`);
-      }
+      if (withdrawnDronesCount > 0) this.emitLog(`[SYSTEM] SQUAD WITHDRAWN. MISSION ABORTED.`);
+      else this.emitLog(`[CRITICAL] SQUAD ELIMINATED. MISSION FAILURE.`);
       this.missionComplete.emit({ success: false });
     }
 
-    // ── Enemy Movement AI ──
+    // Enemy Movement AI
     if (this.enemy.hp > 0 && !this.isGameOver) {
       const activeDrones = this.drones.filter(d => d.hp > 0 && d.state !== 'WITHDRAWN');
-      
-      // 1. Vision Check: Can enemy see any drone?
       let bestTarget: ArenaEntity | null = null;
       let closestDist = Infinity;
-
       for (const d of activeDrones) {
-        const dDist = this.dist(this.enemy, d);
-        if (dDist < 250) { // 25m sensor range
-          const angleToDrone = Math.atan2(d.y - this.enemy.y, d.x - this.enemy.x);
-          let angleDiff = Math.abs(angleToDrone - this.enemy.rotation);
-          // Normalize angle diff
-          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-          angleDiff = Math.abs(angleDiff);
-
-          // 120 degree cone = 60 degrees either side (~1.04 radians)
-          if (angleDiff < 1.05 && !this.isLOSBlocked(this.enemy, d)) {
-            if (dDist < closestDist) {
-              closestDist = dDist;
-              bestTarget = d;
-            }
-          }
+        if (this.canSee(this.enemy, d, this.enemy.sensorRange, 1.2)) {
+          const dDist = this.dist(this.enemy, d);
+          if (dDist < closestDist) { closestDist = dDist; bestTarget = d; }
         }
       }
 
@@ -581,141 +413,40 @@ export class CombatArena implements AfterViewInit, OnDestroy {
         this.enemy.searchTimer = 0;
       } else if (this.enemy.lastSeenPos) {
         this.enemy.state = 'SEARCHING';
-      } else if (this.enemy.state !== 'PATROLLING') {
+      } else if (this.enemy.state !== 'PATROLLING' && this.enemy.state !== 'IDLE') {
         this.enemy.state = 'IDLE';
       }
 
       if (prevEnemyState !== this.enemy.state) {
-        if (this.enemy.state === 'PURSUING' || this.enemy.state === 'FIGHTING') {
-          this.emitLog(`[WARNING] ${this.enemy.name}: Target Detected. Engaging.`);
-        }
+        if (this.enemy.state === 'PURSUING' || this.enemy.state === 'FIGHTING') this.emitLog(`[WARNING] ${this.enemy.name}: Target Detected. Engaging.`);
         this.emitLog(`${this.enemy.name}: [STATE] ${prevEnemyState} → ${this.enemy.state}`);
       }
 
-      // 2. State-based Movement
-      let targetVx = 0;
-      let targetVy = 0;
-
-      switch (this.enemy.state) {
-        case 'PURSUING':
-        case 'FIGHTING': {
-          if (bestTarget) {
-            const dir = this.normalize({ x: bestTarget.x - this.enemy.x, y: bestTarget.y - this.enemy.y });
-            targetVx = dir.x * this.enemy.topSpeed;
-            targetVy = dir.y * this.enemy.topSpeed;
-            
-            const targetRotation = Math.atan2(dir.y, dir.x);
-            this.enemy.rotation = this.lerpAngle(this.enemy.rotation, targetRotation, dt * 5);
+      // Periodic Telemetry Logs
+      this.telemetryTimer += dt;
+      if (this.telemetryTimer >= 1.0) {
+        this.telemetryTimer = 0;
+        for (const d of this.drones) {
+          if (d.hp > 0) {
+            // Format expected by StrikeReport: "[TELEMETRY] Name: H:hp/maxHp S:s/maxS E:e/maxE R:reboot"
+            this.emitLog(`[TELEMETRY] ${d.name}: H:${Math.ceil(d.hp)}/${d.maxHp} S:0/0 E:100/100 R:0`);
           }
-          break;
         }
-        case 'SEARCHING': {
-          if (this.enemy.lastSeenPos) {
-            const lsp = this.enemy.lastSeenPos;
-            const distToLSP = this.dist(this.enemy, lsp);
-            
-            if (distToLSP > 30 && this.enemy.searchTimer < 3) {
-              const dir = this.normalize({ x: lsp.x - this.enemy.x, y: lsp.y - this.enemy.y });
-              targetVx = dir.x * this.enemy.topSpeed;
-              targetVy = dir.y * this.enemy.topSpeed;
-              
-              const targetRotation = Math.atan2(dir.y, dir.x);
-              this.enemy.rotation = this.lerpAngle(this.enemy.rotation, targetRotation, dt * 5);
-            } else {
-              this.enemy.searchTimer += dt;
-              // Spiral search + Scanning rotation
-              const searchRadius = Math.min(200, 60 + this.enemy.searchTimer * 20);
-              const orbitAngle = this.arenaTime * 1.5;
-              const goalX = lsp.x + Math.cos(orbitAngle) * searchRadius;
-              const goalY = lsp.y + Math.sin(orbitAngle) * searchRadius;
-              const dir = this.normalize({ x: goalX - this.enemy.x, y: goalY - this.enemy.y });
-              targetVx = dir.x * this.enemy.topSpeed;
-              targetVy = dir.y * this.enemy.topSpeed;
-              
-              // Rotate along movement + extra scan wiggle
-              this.enemy.rotation = Math.atan2(dir.y, dir.x) + Math.sin(this.arenaTime * 3) * 0.2;
-              
-              if (this.enemy.searchTimer > 10) {
-                this.enemy.lastSeenPos = null;
-                this.enemy.state = 'IDLE';
-              }
-            }
-          }
-          break;
-        }
-        case 'PATROLLING': {
-          if (this.enemy.lastSeenPos) {
-            const distToPoint = this.dist(this.enemy, this.enemy.lastSeenPos);
-            if (distToPoint < 20) {
-              this.enemy.state = 'IDLE';
-              this.enemy.searchTimer = 0;
-            } else {
-              const dir = this.normalize({ x: this.enemy.lastSeenPos.x - this.enemy.x, y: this.enemy.lastSeenPos.y - this.enemy.y });
-              targetVx = dir.x * (this.enemy.topSpeed * 0.8); // Move faster while patrolling
-              targetVy = dir.y * (this.enemy.topSpeed * 0.8);
-              
-              const targetRotation = Math.atan2(dir.y, dir.x);
-              this.enemy.rotation = this.lerpAngle(this.enemy.rotation, targetRotation, dt * 3);
-            }
-          } else {
-            this.enemy.state = 'IDLE';
-          }
-          break;
-        }
-        case 'IDLE':
-          this.enemy.vx *= 0.95;
-          this.enemy.vy *= 0.95;
-          this.enemy.searchTimer += dt;
-          // Scanning behavior
-          this.enemy.rotation += Math.sin(this.arenaTime * 0.8) * 0.015;
-          
-          // After 4 seconds of idle scanning, pick a new patrol point
-          if (this.enemy.searchTimer > 4) {
-            this.enemy.state = 'PATROLLING';
-            this.enemy.lastSeenPos = {
-              x: WALL_THICKNESS + 100 + Math.random() * (ARENA_W - 200 - WALL_THICKNESS * 2),
-              y: WALL_THICKNESS + 100 + Math.random() * (ARENA_H - 200 - WALL_THICKNESS * 2)
-            };
-          }
-          break;
       }
 
-      if (this.enemy.state !== 'IDLE') {
-        // ── Obstacle Avoidance (Feeler) ──
-        const avoid = this.getSteeringAvoidance(this.enemy);
-        if (avoid.x !== 0 || avoid.y !== 0) {
-          targetVx = targetVx * 0.3 + avoid.x * 0.7;
-          targetVy = targetVy * 0.3 + avoid.y * 0.7;
+      if (this.enemy.state === 'IDLE') {
+        this.enemy.searchTimer += dt;
+        this.enemy.rotation += Math.sin(this.arenaTime * 0.8) * 0.015;
+        if (this.enemy.searchTimer > 4) {
+          this.enemy.state = 'PATROLLING';
+          this.enemy.lastSeenPos = null;
         }
-
-        const accelFactor = this.enemy.acceleration * dt;
-        this.enemy.vx += (targetVx - this.enemy.vx) * Math.min(1, accelFactor * 0.1);
-        this.enemy.vy += (targetVy - this.enemy.vy) * Math.min(1, accelFactor * 0.1);
-
-        let newX = this.enemy.x + this.enemy.vx * dt;
-        let newY = this.enemy.y + this.enemy.vy * dt;
-
-        newX = Math.max(WALL_THICKNESS + this.enemy.radius, Math.min(ARENA_W - WALL_THICKNESS - this.enemy.radius, newX));
-        newY = Math.max(WALL_THICKNESS + this.enemy.radius, Math.min(ARENA_H - WALL_THICKNESS - this.enemy.radius, newY));
-
-        // Obstacle collision (Multi-pass)
-        for (let i = 0; i < 2; i++) {
-          for (const obs of this.obstacles) {
-            const res = this.resolveCircleAABB(newX, newY, this.enemy.radius, obs);
-            if (res.x !== newX || res.y !== newY) {
-              if (Math.abs(res.x - newX) > 0.01) this.enemy.vx *= -0.2;
-              if (Math.abs(res.y - newY) > 0.01) this.enemy.vy *= -0.2;
-              newX = res.x;
-              newY = res.y;
-            }
-          }
-        }
-
-        this.enemy.x = newX;
-        this.enemy.y = newY;
-        this.enemy.speed = Math.sqrt(this.enemy.vx * this.enemy.vx + this.enemy.vy * this.enemy.vy);
       }
+
+      const targetV = this.getBehaviorVelocity(this.enemy, bestTarget, dt);
+      this.updateEntityPhysics(this.enemy, targetV, dt, 0.7);
     }
+
 
     // ── Drone-to-Drone Collision ──
     for (let i = 0; i < this.drones.length; i++) {
@@ -837,6 +568,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
 
   /** Render a drone entity with drop shadow and elevation offset */
   private drawDrone(ctx: CanvasRenderingContext2D, drone: ArenaEntity) {
+    ctx.save();
     const drawY = drone.y - drone.z * PERSPECTIVE_SCALE_Y; // Z offsets upward
 
     // ── Drop Shadow at ground level (x, y) ──
@@ -848,16 +580,34 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     ctx.fill();
     ctx.restore();
 
-    // ── Sensor Radius (Faint Pulse) ──
+    // ── Sensor Radius (Omnidirectional Pulse) ──
     ctx.save();
-    const sensorPulse = 0.03 + Math.sin(this.arenaTime * 2) * 0.02;
-    ctx.fillStyle = `rgba(34, 197, 94, ${sensorPulse})`;
-    ctx.beginPath();
-    ctx.ellipse(drone.x, drone.y, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
-    ctx.fill();
+    // Cap visual radius to prevent canvas rendering issues with extreme values
+    const visualRange = Math.min(drone.sensorRange, 1200);
+
+    // Static boundary ring (very faint)
     ctx.strokeStyle = 'rgba(34, 197, 94, 0.08)';
     ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(drone.x, drone.y, visualRange, Math.max(0.1, visualRange * PERSPECTIVE_SCALE_Y), 0, 0, Math.PI * 2);
     ctx.stroke();
+
+    // Expanding pulse ring (1s cycle)
+    const pulseProgress = Math.max(0, this.arenaTime % 1.0);
+    const pulseRadius = Math.max(0.1, visualRange * pulseProgress);
+    const pulseAlpha = 0.3 * (1 - pulseProgress);
+    
+    ctx.strokeStyle = `rgba(34, 197, 94, ${pulseAlpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(drone.x, drone.y, pulseRadius, Math.max(0.1, pulseRadius * PERSPECTIVE_SCALE_Y), 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Subtle area glow
+    ctx.fillStyle = 'rgba(34, 197, 94, 0.02)';
+    ctx.beginPath();
+    ctx.ellipse(drone.x, drone.y, visualRange, Math.max(0.1, visualRange * PERSPECTIVE_SCALE_Y), 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
 
     // ── Elevation connector line (shadow to drone) ──
@@ -899,52 +649,52 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     // ── State label ──
     const stateColors: Record<AIState, string> = {
       PURSUING: '#22d3ee', ORBITING: '#a78bfa', FLEEING: '#f97316',
-      IDLE: '#6b7280', REBOOTING: '#ef4444', SEARCHING: '#facc15', 
+      IDLE: '#6b7280', REBOOTING: '#ef4444', SEARCHING: '#facc15',
       WITHDRAWN: '#4ade80', PATROLLING: '#94a3b8', FIGHTING: '#ef4444'
     };
     ctx.fillStyle = stateColors[drone.state] || '#fff';
     ctx.font = 'bold 8px monospace';
     const stateLabel = drone.canStrike ? `${drone.state} ⚡` : drone.state;
     ctx.fillText(stateLabel, drone.x, drawY - drone.radius - 8);
+    ctx.restore();
   }
 
   /** Render the hostile enemy entity */
   private drawEnemy(ctx: CanvasRenderingContext2D, enemy: ArenaEntity) {
     ctx.save();
-    
+
     // ── FOV Cone (120 degrees, clipped by obstacles) ──
-    const sensorRange = 250;
     const fovAngle = 1.05; // ~60 degrees
     const step = 0.05; // Ray frequency
-    
+
     ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
     ctx.beginPath();
     ctx.moveTo(enemy.x, enemy.y);
-    
+
     for (let a = enemy.rotation - fovAngle; a <= enemy.rotation + fovAngle; a += step) {
-      const tx = enemy.x + Math.cos(a) * sensorRange;
-      const ty = enemy.y + Math.sin(a) * sensorRange;
-      
+      const tx = enemy.x + Math.cos(a) * enemy.sensorRange;
+      const ty = enemy.y + Math.sin(a) * enemy.sensorRange;
+
       let minT = 1.0;
       for (const obs of this.obstacles) {
         const t = this.getRayIntersectionDist(enemy.x, enemy.y, tx, ty, obs);
         if (t < minT) minT = t;
       }
-      
-      ctx.lineTo(enemy.x + Math.cos(a) * sensorRange * minT, enemy.y + Math.sin(a) * sensorRange * minT);
+
+      ctx.lineTo(enemy.x + Math.cos(a) * enemy.sensorRange * minT, enemy.y + Math.sin(a) * enemy.sensorRange * minT);
     }
-    
+
     // Final ray at exact boundary
     const finalA = enemy.rotation + fovAngle;
-    const ftx = enemy.x + Math.cos(finalA) * sensorRange;
-    const fty = enemy.y + Math.sin(finalA) * sensorRange;
+    const ftx = enemy.x + Math.cos(finalA) * enemy.sensorRange;
+    const fty = enemy.y + Math.sin(finalA) * enemy.sensorRange;
     let fMinT = 1.0;
     for (const obs of this.obstacles) {
       const t = this.getRayIntersectionDist(enemy.x, enemy.y, ftx, fty, obs);
       if (t < fMinT) fMinT = t;
     }
-    ctx.lineTo(enemy.x + Math.cos(finalA) * sensorRange * fMinT, enemy.y + Math.sin(finalA) * sensorRange * fMinT);
-    
+    ctx.lineTo(enemy.x + Math.cos(finalA) * enemy.sensorRange * fMinT, enemy.y + Math.sin(finalA) * enemy.sensorRange * fMinT);
+
     ctx.closePath();
     ctx.fill();
 
@@ -974,11 +724,12 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     ctx.fill();
 
     // Pulsing threat ring
-    const pulse = 0.5 + Math.sin(performance.now() * 0.005) * 0.3;
-    ctx.strokeStyle = `rgba(239, 68, 68, ${pulse})`;
+    const pulseAlpha = Math.max(0, 0.5 + Math.sin(performance.now() * 0.005) * 0.3);
+    ctx.strokeStyle = `rgba(239, 68, 68, ${pulseAlpha})`;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(enemy.x, enemy.y, enemy.radius + 6, (enemy.radius + 6) * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
+    const tr = Math.max(0.1, enemy.radius + 6);
+    ctx.ellipse(enemy.x, enemy.y, tr, tr * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     // Name
@@ -990,7 +741,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     // State Label
     const stateColors: Record<AIState, string> = {
       PURSUING: '#ef4444', ORBITING: '#f87171', FLEEING: '#f97316',
-      IDLE: '#6b7280', REBOOTING: '#ef4444', SEARCHING: '#facc15', 
+      IDLE: '#6b7280', REBOOTING: '#ef4444', SEARCHING: '#facc15',
       WITHDRAWN: '#4ade80', PATROLLING: '#94a3b8', FIGHTING: '#ffffff'
     };
     ctx.fillStyle = stateColors[enemy.state] || '#fff';
@@ -1005,6 +756,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     ctx.fillRect(enemy.x - barW / 2, enemy.y - enemy.radius - 8, barW, barH);
     ctx.fillStyle = hpPct > 0.5 ? '#ef4444' : '#f97316';
     ctx.fillRect(enemy.x - barW / 2, enemy.y - enemy.radius - 8, barW * hpPct, barH);
+    ctx.restore();
   }
 
   /** Draw debug overlays: sensor range, LOS lines */
@@ -1041,6 +793,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     ctx.beginPath();
     ctx.ellipse(drone.x, drawY, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
     ctx.fill();
+
     ctx.restore();
 
 
@@ -1120,7 +873,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     if (isBlocked) {
       // Weak/Interrupted signal - only show if we have a reason to track (lastSeenPos)
       if (!drone.lastSeenPos || drone.state === 'PATROLLING') return;
-      
+
       ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
       ctx.setLineDash([2, 6]);
       ctx.lineWidth = 1;
@@ -1133,7 +886,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       const alpha = 0.2 + Math.sin(this.arenaTime * 5) * 0.1;
       ctx.strokeStyle = `rgba(34, 211, 238, ${alpha})`;
       ctx.lineWidth = 1.5;
-      
+
       ctx.beginPath();
       ctx.moveTo(drone.x, drawY);
       ctx.lineTo(this.enemy.x, this.enemy.y);
@@ -1143,7 +896,7 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       const progress = (this.arenaTime % 1.0);
       const scanX = drone.x + (this.enemy.x - drone.x) * progress;
       const scanY = drawY + (this.enemy.y - drawY) * progress;
-      
+
       ctx.fillStyle = 'rgba(34, 211, 238, 0.6)';
       ctx.beginPath();
       ctx.arc(scanX, scanY, 2, 0, Math.PI * 2);
@@ -1192,30 +945,214 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     return false;
   }
 
-  /** Smoothly interpolates between two angles (in radians) */
-  private lerpAngle(a: number, b: number, t: number): number {
-    const diff = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
-    const finalDiff = diff < -Math.PI ? diff + Math.PI * 2 : diff;
-    return a + finalDiff * t;
+  /** Returns true if observer can see target (checks range, LOS, and optional FOV) */
+  private canSee(observer: ArenaEntity, target: ArenaEntity, range: number, fovRad: number | null = null): boolean {
+    const d = this.dist(observer, target);
+    if (d > range) return false;
+
+    if (fovRad !== null) {
+      const angleToTarget = Math.atan2(target.y - observer.y, target.x - observer.x);
+      let angleDiff = Math.abs(angleToTarget - observer.rotation);
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      angleDiff = Math.abs(angleDiff);
+      if (angleDiff > fovRad / 2) return false;
+    }
+
+    return !this.isLOSBlocked(observer, target);
   }
 
-  /** Calculates a steering vector to avoid obstacles based on a feeler point */
-  private getSteeringAvoidance(entity: ArenaEntity): Vec2 {
-    const feelerDist = 50;
-    const feelerX = entity.x + Math.cos(entity.rotation) * feelerDist;
-    const feelerY = entity.y + Math.sin(entity.rotation) * feelerDist;
+  /** Calculates desired velocity based on AI state */
+  private getBehaviorVelocity(entity: ArenaEntity, target: ArenaEntity | Vec2 | null, dt: number): Vec2 {
+    let targetVx = 0;
+    let targetVy = 0;
+
+    switch (entity.state) {
+      case 'PURSUING':
+      case 'FIGHTING': {
+        if (target) {
+          const dir = this.normalize({ x: target.x - entity.x, y: target.y - entity.y });
+          targetVx = dir.x * entity.topSpeed;
+          targetVy = dir.y * entity.topSpeed;
+        }
+        break;
+      }
+      case 'ORBITING': {
+        if (target) {
+          const orbitRadius = 80;
+          entity.orbitAngle += (entity.topSpeed / orbitRadius) * dt;
+          const goalX = target.x + Math.cos(entity.orbitAngle) * orbitRadius;
+          const goalY = target.y + Math.sin(entity.orbitAngle) * orbitRadius;
+          const dir = this.normalize({ x: goalX - entity.x, y: goalY - entity.y });
+          targetVx = dir.x * entity.topSpeed;
+          targetVy = dir.y * entity.topSpeed;
+        }
+        break;
+      }
+      case 'FLEEING': {
+        if (target) {
+          const away = this.normalize({ x: entity.x - target.x, y: entity.y - target.y });
+          targetVx = away.x * entity.topSpeed;
+          targetVy = away.y * entity.topSpeed;
+        }
+        break;
+      }
+      case 'SEARCHING': {
+        const lsp = entity.lastSeenPos || { x: ARENA_W / 2, y: ARENA_H / 2 };
+        const distToLSP = this.dist(entity, lsp);
+
+        if (distToLSP > 30 && entity.searchTimer < 3) {
+          const dir = this.normalize({ x: lsp.x - entity.x, y: lsp.y - entity.y });
+          targetVx = dir.x * entity.topSpeed;
+          targetVy = dir.y * entity.topSpeed;
+        } else {
+          entity.searchTimer += dt;
+          const searchRadius = Math.min(200, 60 + entity.searchTimer * 15);
+          entity.orbitAngle += (entity.topSpeed / searchRadius) * dt;
+          const goalX = lsp.x + Math.cos(entity.orbitAngle) * searchRadius;
+          const goalY = lsp.y + Math.sin(entity.orbitAngle) * searchRadius;
+          const dir = this.normalize({ x: goalX - entity.x, y: goalY - entity.y });
+          targetVx = dir.x * entity.topSpeed * 0.6;
+          targetVy = dir.y * entity.topSpeed * 0.6;
+        }
+        break;
+      }
+      case 'PATROLLING': {
+        if (!entity.patrolPos) {
+          entity.patrolPos = {
+            x: WALL_THICKNESS + 100 + Math.random() * (ARENA_W - 200 - WALL_THICKNESS * 2),
+            y: WALL_THICKNESS + 100 + Math.random() * (ARENA_H - 200 - WALL_THICKNESS * 2)
+          };
+        }
+        const distToPatrol = this.dist(entity, entity.patrolPos);
+        if (distToPatrol < 40) {
+          entity.patrolPos = null;
+        } else {
+          const dir = this.normalize({ x: entity.patrolPos.x - entity.x, y: entity.patrolPos.y - entity.y });
+          targetVx = dir.x * entity.topSpeed * 0.8;
+          targetVy = dir.y * entity.topSpeed * 0.8;
+        }
+        break;
+      }
+    }
+
+    return { x: targetVx, y: targetVy };
+  }
+
+  /** Applies movement, steering avoidance, and collision resolution */
+  private updateEntityPhysics(entity: ArenaEntity, targetV: Vec2, dt: number, avoidanceWeight: number) {
+    let finalTargetVx = targetV.x;
+    let finalTargetVy = targetV.y;
+
+    // Obstacle Avoidance
+    const avoid = this.getSteeringAvoidance(entity);
+    if (avoid.x !== 0 || avoid.y !== 0) {
+      // Very strong avoidance weight to ensure 90-degree turn override
+      finalTargetVx = finalTargetVx * 0.2 + avoid.x * 0.8;
+      finalTargetVy = finalTargetVy * 0.2 + avoid.y * 0.8;
+    }
+
+    // Acceleration
+    const accelFactor = entity.acceleration * dt;
+    entity.vx += (finalTargetVx - entity.vx) * Math.min(1, accelFactor);
+    entity.vy += (finalTargetVy - entity.vy) * Math.min(1, accelFactor);
+
+    // Position & Collisions
+    const res = this.resolveCollisions(entity, entity.x + entity.vx * dt, entity.y + entity.vy * dt);
     
+    // NaN Guard
+    if (!isNaN(res.x) && !isNaN(res.y)) {
+      entity.x = res.x;
+      entity.y = res.y;
+    }
+    
+    entity.speed = Math.sqrt(entity.vx * entity.vx + entity.vy * entity.vy);
+
+    // Rotation
+    if (entity.state === 'PURSUING' || entity.state === 'FIGHTING' || entity.state === 'ORBITING') {
+      // Rotate towards movement or target depending on context? 
+      // For simplicity, smooth towards current velocity if moving fast enough
+      if (entity.speed > 5) {
+        const targetRot = Math.atan2(entity.vy, entity.vx);
+        entity.rotation = this.lerpAngle(entity.rotation, targetRot, dt * 5);
+      }
+    } else if (entity.speed > 5) {
+      const targetRot = Math.atan2(entity.vy, entity.vx);
+      entity.rotation = this.lerpAngle(entity.rotation, targetRot, dt * 4);
+    }
+  }
+
+  /** Calculates a steering vector to avoid obstacles by rotating 90 degrees */
+  private getSteeringAvoidance(entity: ArenaEntity): Vec2 {
+    const feelerDist = 80;
+    const sideFeelerDist = 50;
+
+    // Define 3 feelers: Central, Left-Whisker, Right-Whisker
+    const feelers = [
+      { x: entity.x + Math.cos(entity.rotation) * feelerDist, y: entity.y + Math.sin(entity.rotation) * feelerDist },
+      { x: entity.x + Math.cos(entity.rotation - 0.5) * sideFeelerDist, y: entity.y + Math.sin(entity.rotation - 0.5) * sideFeelerDist },
+      { x: entity.x + Math.cos(entity.rotation + 0.5) * sideFeelerDist, y: entity.y + Math.sin(entity.rotation + 0.5) * sideFeelerDist }
+    ];
+
     for (const obs of this.obstacles) {
-      if (feelerX > obs.x - 5 && feelerX < obs.x + obs.w + 5 && 
-          feelerY > obs.y - 5 && feelerY < obs.y + obs.h + 5) {
-        // Steer away from obstacle center
-        const centerX = obs.x + obs.w / 2;
-        const centerY = obs.y + obs.h / 2;
-        const steer = this.normalize({ x: entity.x - centerX, y: entity.y - centerY });
-        return { x: steer.x * entity.topSpeed, y: steer.y * entity.topSpeed };
+      for (const f of feelers) {
+        if (f.x > obs.x - 5 && f.x < obs.x + obs.w + 5 &&
+          f.y > obs.y - 5 && f.y < obs.y + obs.h + 5) {
+
+          // 90-degree turn relative to current heading
+          const leftTurn = { x: Math.cos(entity.rotation - Math.PI / 2), y: Math.sin(entity.rotation - Math.PI / 2) };
+          const rightTurn = { x: Math.cos(entity.rotation + Math.PI / 2), y: Math.sin(entity.rotation + Math.PI / 2) };
+
+          const centerX = obs.x + obs.w / 2;
+          const centerY = obs.y + obs.h / 2;
+
+          const leftDist = this.dist({ x: entity.x + leftTurn.x * 50, y: entity.y + leftTurn.y * 50 }, { x: centerX, y: centerY });
+          const rightDist = this.dist({ x: entity.x + rightTurn.x * 50, y: entity.y + rightTurn.y * 50 }, { x: centerX, y: centerY });
+
+          const chosen = leftDist > rightDist ? leftTurn : rightTurn;
+          return { x: chosen.x * entity.topSpeed * 1.2, y: chosen.y * entity.topSpeed * 1.2 };
+        }
       }
     }
     return { x: 0, y: 0 };
+  }
+
+  /** Resolves boundary and obstacle collisions for any entity */
+  private resolveCollisions(entity: ArenaEntity, x: number, y: number): Vec2 {
+    let newX = x;
+    let newY = y;
+
+    // ── Boundary collision (Arena Walls) ──
+    if (newX < WALL_THICKNESS + entity.radius) {
+      newX = WALL_THICKNESS + entity.radius;
+      entity.vx *= -0.2;
+    }
+    if (newX > ARENA_W - WALL_THICKNESS - entity.radius) {
+      newX = ARENA_W - WALL_THICKNESS - entity.radius;
+      entity.vx *= -0.2;
+    }
+    if (newY < WALL_THICKNESS + entity.radius) {
+      newY = WALL_THICKNESS + entity.radius;
+      entity.vy *= -0.2;
+    }
+    if (newY > ARENA_H - WALL_THICKNESS - entity.radius) {
+      newY = ARENA_H - WALL_THICKNESS - entity.radius;
+      entity.vy *= -0.2;
+    }
+
+    // ── Obstacle collision (Multi-pass for stability) ──
+    for (let i = 0; i < 2; i++) {
+      for (const obs of this.obstacles) {
+        const res = this.resolveCircleAABB(newX, newY, entity.radius, obs);
+        if (res.x !== newX || res.y !== newY) {
+          if (Math.abs(res.x - newX) > 0.01) entity.vx *= -0.2;
+          if (Math.abs(res.y - newY) > 0.01) entity.vy *= -0.2;
+          newX = res.x;
+          newY = res.y;
+        }
+      }
+    }
+
+    return { x: newX, y: newY };
   }
 
   /**
@@ -1282,6 +1219,13 @@ export class CombatArena implements AfterViewInit, OnDestroy {
 
     if (tmax >= tmin && tmax >= 0 && tmin <= 1) return Math.max(0, tmin);
     return 1.0;
+  }
+
+  /** Smoothly interpolates between two angles (in radians) */
+  private lerpAngle(a: number, b: number, t: number): number {
+    const diff = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
+    const finalDiff = diff < -Math.PI ? diff + Math.PI * 2 : diff;
+    return a + finalDiff * t;
   }
 
   /**
