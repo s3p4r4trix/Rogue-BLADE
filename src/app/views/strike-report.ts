@@ -92,27 +92,17 @@ import { CombatArena } from '../components/combat-arena';
                 
                 <div class="space-y-4">
                   <div class="flex justify-between items-end">
-                    <span class="text-xs font-black text-gray-100 uppercase tracking-tighter">{{ mission()?.targetName }}</span>
-                    <span class="text-[10px] font-mono text-red-500">{{ Math.ceil(enemyHull() + enemyShields()) }} <span class="opacity-30">/</span> {{ result()?.initialEnemyHP }}</span>
+                    <span class="text-xs font-black text-gray-100 uppercase tracking-tighter">{{ mission()?.targetName || 'UNKNOWN_TARGET' }}</span>
+                    <span class="text-[10px] font-mono text-red-500">{{ Math.ceil(enemyHull()) }} <span class="opacity-30">/</span> {{ enemyMaxHull() }}</span>
                   </div>
                   
                   <div class="space-y-1.5">
-                    <!-- Enemy Shields -->
-                    @if (enemyMaxShields() > 0) {
-                      <div class="flex justify-between items-center text-[8px] text-cyan-700 uppercase font-bold tracking-tighter">
-                        <span>Shield_Generator</span>
-                        <span>{{ Math.ceil((enemyShields() / enemyMaxShields()) * 100) }}%</span>
-                      </div>
-                      <div class="w-full h-1 bg-cyan-950/20">
-                        <div class="h-full bg-cyan-500 transition-all duration-300" [style.width.%]="(enemyShields() / enemyMaxShields()) * 100"></div>
-                      </div>
-                    }
 
                     <!-- Enemy Hull -->
-                    <div class="flex justify-between items-center text-[8px] text-red-900 uppercase font-bold tracking-tighter">
-                      <span>Hull_Integrity</span>
-                      <span>{{ Math.ceil((enemyHull() / enemyMaxHull()) * 100) }}%</span>
-                    </div>
+                      <div class="flex justify-between items-center text-[8px] text-red-900 uppercase font-bold tracking-tighter">
+                        <span>Hull_Integrity</span>
+                        <span>{{ enemyMaxHull() > 0 ? Math.ceil((enemyHull() / enemyMaxHull()) * 100) : 0 }}%</span>
+                      </div>
                     <div class="w-full h-2 bg-red-950/20">
                       <div class="h-full bg-red-600 transition-all duration-300" 
                            [ngClass]="{'animate-pulse bg-red-500': enemyHull() < (enemyMaxHull() * 0.3)}"
@@ -135,14 +125,6 @@ import { CombatArena } from '../components/combat-arena';
                         </span>
                       </div>
                       
-                      <div class="space-y-1">
-                        <!-- Shield Bar -->
-                        @if (s.maxShields > 0) {
-                          <div class="w-full h-1 bg-white/5 relative">
-                             <div class="h-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.4)] transition-all duration-500" 
-                                  [style.width.%]="(s.shields / s.maxShields) * 100"></div>
-                          </div>
-                        }
 
                          <!-- Hull Bar -->
                          <div class="flex justify-between items-center text-[7px] font-black text-gray-500 uppercase tracking-tighter mb-0.5">
@@ -175,7 +157,6 @@ import { CombatArena } from '../components/combat-arena';
                            <div class="text-[8px] font-bold text-green-900 uppercase">Status: Online</div>
                         }
                       </div>
-                   </div>
                  }
               </div>
            </div>
@@ -309,8 +290,8 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
     // Initialize enemy status
     this.enemyMaxHull.set(res.initialEnemyHull);
     this.enemyHull.set(res.initialEnemyHull);
-    this.enemyMaxShields.set(res.initialEnemyShields);
-    this.enemyShields.set(res.initialEnemyShields);
+    this.enemyMaxShields.set(0);
+    this.enemyShields.set(0);
     this.enemyIntegrity.set(100);
 
     // Elapsed time ticker (runs regardless of view)

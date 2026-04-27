@@ -55,13 +55,13 @@ export class MissionService {
   private generateContracts(): MissionContract[] {
     const contracts: MissionContract[] = [];
     const usedTargets = new Set<string>();
-    
+
     for (let i = 0; i < 3; i++) {
       let contract: MissionContract;
       do {
         contract = this.generateSingleContract(i);
       } while (usedTargets.has(contract.targetName));
-      
+
       usedTargets.add(contract.targetName);
       contracts.push(contract);
     }
@@ -76,7 +76,7 @@ export class MissionService {
       const proc = s.processor?.routineCapacity || 1;
       const blade = s.blade?.baseDamage || 5;
       const sens = s.sensor?.range || 5;
-      return acc + (proc * 50) + (blade * 10) + (sens * 5);
+      return acc + (proc * 50) + (blade * 10) + (sens * 1.0); // Reduced weight of sensor range
     }, 0) / shurikens.length;
   }
 
@@ -87,7 +87,7 @@ export class MissionService {
 
     const target = TARGETS[Math.floor(Math.random() * TARGETS.length)];
     const desc = DESCRIPTIONS[Math.floor(Math.random() * DESCRIPTIONS.length)];
-    
+
     // Force Unarmored/No-Shield for the very first few runs
     let resProfile;
     if (true) { // ToDo: Remove this check - only for testing
@@ -95,7 +95,7 @@ export class MissionService {
     } else {
       resProfile = RESISTANCES[Math.floor(Math.random() * RESISTANCES.length)];
     }
-    
+
     let diffStr: MissionDifficulty;
     let durSecs: number;
     let pMin, pMax, sMin, sMax, cBonus;
@@ -105,7 +105,7 @@ export class MissionService {
     // Tier II starts at 1.0 and scales to 2.0
     // Tier III starts at 2.5 and scales to 5.0
     const tierMultiplier = [
-      Math.min(0.8, 0.4 + (successfulRuns * 0.04)), 
+      Math.min(0.8, 0.4 + (successfulRuns * 0.04)),
       Math.min(2.0, 1.0 + (successfulRuns * 0.1)),
       Math.min(5.0, 2.5 + (successfulRuns * 0.25))
     ][index];
@@ -115,22 +115,22 @@ export class MissionService {
     if (index === 0) {
       diffStr = 'Tier I (Low)';
       // Progressive Duration: Starts at 30s, +5s per success, max 90s
-      durSecs = Math.min(90, 30 + (successfulRuns * 5)); 
+      durSecs = Math.min(90, 30 + (successfulRuns * 5));
     } else if (index === 1) {
       diffStr = 'Tier II (Moderate)';
-      durSecs = Math.min(180, 60 + (successfulRuns * 10)); 
+      durSecs = Math.min(180, 60 + (successfulRuns * 10));
     } else {
       diffStr = 'Tier III (High)';
-      durSecs = Math.min(300, 120 + (successfulRuns * 15)); 
+      durSecs = Math.min(300, 120 + (successfulRuns * 15));
     }
 
     pMin = Math.floor(baseLoot * 0.5);
     pMax = Math.floor(baseLoot * 0.8);
     sMin = Math.floor(baseLoot * 0.7);
     sMax = Math.floor(baseLoot * 1.2);
-    cBonus = Math.floor(baseLoot * 1.5); // Slightly reduced bonus ratio for cleaner numbers
+    cBonus = Math.floor(baseLoot * 1.5);
 
-    const hull = Math.floor(baseLoot * 1.5);
+    const hull = Math.floor(baseLoot * 0.8); // Reduced hull multiplier from 1.5 to 0.8
     // Force 0 shields/armor for early game (onboarding)
     const shields = (successfulRuns < 10) ? 0 : (resProfile.type === 'ENERGY_SHIELD' ? Math.floor(baseLoot * 1.2) : Math.floor(baseLoot * 0.2));
     const armorValue = (successfulRuns < 10) ? 0 : (resProfile.type === 'HEAVY_ARMOR' ? Math.floor(baseLoot * 0.15) : 0);

@@ -147,9 +147,13 @@ export class CombatArena implements OnDestroy {
       });
     });
 
+    const targetHull = mission?.hull || 500;
+    const targetShields = mission?.shields || 0;
+    const targetName = mission?.targetName || 'Zenith Warden';
+
     this.enemy = {
       id: 'enemy_1',
-      name: 'Zenith Warden',
+      name: targetName,
       x: 400, y: 100, z: 0,
       vx: 0, vy: 0,
       speed: 0,
@@ -161,8 +165,8 @@ export class CombatArena implements OnDestroy {
       state: 'PATROLLING',
       orbitAngle: 0,
       isEnemy: true,
-      hp: 500,
-      maxHp: 500,
+      hp: targetHull,
+      maxHp: targetHull,
       strikeCooldown: 0,
       canStrike: false,
       lastSeenPos: null,
@@ -243,6 +247,13 @@ export class CombatArena implements OnDestroy {
 
     this.updateProjectiles(dt);
 
+    // Periodic Telemetry for Squad UI (every 0.5s)
+    if (Math.floor(this.arenaTime * 2) > Math.floor((this.arenaTime - dt) * 2)) {
+      this.drones.forEach(d => {
+        this.arenaLog.emit(`[TELEMETRY] ${d.name}: H:${Math.ceil(d.hp)}/${d.maxHp} S:0/0 E:100/100 R:0`);
+      });
+    }
+
     const livingDrones = this.drones.filter(d => d.hp > 0 && d.state !== 'WITHDRAWN');
 
     if (livingDrones.length === 0) {
@@ -320,13 +331,13 @@ export class CombatArena implements OnDestroy {
     if (attacker.isEnemy) {
       defender.hp -= ENEMY_DAMAGE;
       defender.hitFlashTimer = 0.2;
-      this.emitLog(`Hostile struck ${defender.name} for ${ENEMY_DAMAGE} DMG!`);
+      this.emitLog(`Impact -> ${defender.name} (Hull: -${ENEMY_DAMAGE}) [REM: ${Math.max(0, Math.ceil(defender.hp))} HP]`);
     } else {
       const speedMult = attacker.speed / attacker.topSpeed;
       const damage = Math.max(5, Math.floor(20 * (1 + speedMult)));
       defender.hp -= damage;
       defender.hitFlashTimer = 0.2;
-      this.emitLog(`${attacker.name} executed kinetic strike for ${damage} DMG!`);
+      this.emitLog(`${defender.name}: Hull Hit (-${damage} H) [REM: ${Math.max(0, Math.ceil(defender.hp))}]`);
     }
 
     // Reactive Awareness: Defender becomes immediately aware of the attacker's position
@@ -490,7 +501,7 @@ export class CombatArena implements OnDestroy {
             if (dist < drone.radius + p.radius) {
               drone.hp -= p.damage;
               drone.hitFlashTimer = 0.2;
-              this.emitLog(`Projectile hit ${drone.name} for ${p.damage} DMG!`);
+              this.emitLog(`Impact -> ${drone.name} (Hull: -${p.damage}) [REM: ${Math.max(0, Math.ceil(drone.hp))} HP]`);
               
               // Reactive Awareness: Drone becomes aware of the enemy's position
               drone.lastSeenPos = { x: this.enemy.x, y: this.enemy.y };
@@ -511,7 +522,7 @@ export class CombatArena implements OnDestroy {
         if (dist < this.enemy.radius + p.radius) {
           this.enemy.hp -= p.damage;
           this.enemy.hitFlashTimer = 0.2;
-          this.emitLog(`Projectile hit ${this.enemy.name} for ${p.damage} DMG!`);
+          this.emitLog(`${this.enemy.name}: Hull Hit (-${p.damage} H) [REM: ${Math.max(0, Math.ceil(this.enemy.hp))}]`);
           
           // Reactive Awareness: Enemy becomes aware of the attacker's position
           const attacker = this.drones.find(d => d.id === p.ownerId);

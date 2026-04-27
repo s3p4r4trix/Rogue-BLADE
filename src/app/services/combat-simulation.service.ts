@@ -39,8 +39,8 @@ export class CombatSimulationService {
             hp: h?.maxHp || 100,
             maxHp: h?.maxHp || 100,
             armorValue: (h?.armorValue || 0) * (f?.armorMult || 1.0),
-            shields: (s.shield?.shieldCapacity || 0) + (h?.shieldCapacity || 0),
-            maxShields: (s.shield?.shieldCapacity || 0) + (h?.shieldCapacity || 0),
+            shields: 0,
+            maxShields: 0,
             evasionRate: e?.evasionRate || 0.0,
             // Mobility
             baseWeight: ((h?.weight || 20) * (f?.weightMult || 1.0)) + 
@@ -77,7 +77,7 @@ export class CombatSimulationService {
 
       // Enemy Stats
       let enemyHull = mission.hull;
-      let enemyShields = mission.shields;
+      let enemyShields = 0; // DEFERRED
       const initialEnemyHP = enemyHull + enemyShields;
       const initialSquadHP = shurikenStates.reduce((acc, s) => acc + s.hp + s.shields, 0);
 
@@ -344,22 +344,9 @@ export class CombatSimulationService {
       } else {
          let netDamage = Math.max(1, grossDamage - (enemyRef.shields > 0 ? 0 : mission.armorValue));
 
-         if (enemyRef.shields > 0) {
-            const sDmg = Math.min(enemyRef.shields, netDamage);
-            enemyRef.shields -= sDmg;
-            logs.push(`${s.name}: ${isCrit ? '[CRIT] ' : ''}Shield Hit (-${Math.ceil(sDmg)} S) [REM: ${Math.ceil(enemyRef.shields + enemyRef.hull)}]`);
-            if (enemyRef.shields <= 0) {
-               logs.push(`[SYSTEM] ${mission.targetName}: SHIELD SHATTERED.`);
-            }
-         } else {
-            const hDmg = Math.min(enemyRef.hull, netDamage);
-            const hullWasFull = enemyRef.hull === mission.hull;
-            enemyRef.hull -= hDmg;
-            logs.push(`${s.name}: ${isCrit ? '[CRIT] ' : ''}Hull Hit (-${Math.ceil(hDmg)} H) [REM: ${Math.ceil(enemyRef.hull)}]`);
-            if (hullWasFull && enemyRef.hull < mission.hull) {
-               logs.push(`[SYSTEM] ${mission.targetName}: HULL BREACHED.`);
-            }
-         }
+         const hDmg = Math.min(enemyRef.hull, netDamage);
+         enemyRef.hull -= hDmg;
+         logs.push(`${s.name}: ${isCrit ? '[CRIT] ' : ''}Hull Hit (-${Math.ceil(hDmg)} H) [REM: ${Math.ceil(enemyRef.hull)}]`);
       }
    }
 

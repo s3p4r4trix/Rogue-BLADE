@@ -103,7 +103,7 @@ To prevent the "Death Spiral" of doing zero damage and moving slowly until death
 ## 4. Damage Types vs. Armor Types (Effectiveness Matrix)
 When a Shuriken attacks an enemy, the damageType is checked against the enemy's armorType. The resulting damage is multiplied by the effectiveness factor.
 
-| Damage Type | vs UNARMORED (Flesh/Light) | vs HEAVY ARMOR (Mechs) | vs ENERGY SHIELD (Zenith) |
+| Damage Type | vs UNARMORED (Flesh/Light) | vs HEAVY ARMOR (Mechs) | vs ENERGY SHIELD (DEFERRED) |
 |-------------|----------------------------|------------------------|-----------------------------|
 | SLASHING (Razor) | 1.5x (150%) | 0.2x (20%) | 0.8x (80%) |
 | KINETIC (Blunt) | 1.0x (100%) | 1.5x (150%) | 0.5x (50%) |
@@ -151,8 +151,8 @@ Every trigger must evaluate to a boolean (true / false). Many triggers are locke
     * **logic:** Returns true if an enemy is within the global tracking radius.
 
 * **`ifEnemyIsShielded`** (Tactical: **Enemy: Shield Active**)
-    * **reqSensor:** EM-Scanner
-    * **logic:** Returns true if the target has an active Energy Shield.
+    * **reqSensor:** EM-Scanner (DEFERRED)
+    * **logic:** Currently returns false.
 
 * **`ifEnemyIsOrganic`** (Tactical: **Enemy: Soft Target**)
     * **reqSensor:** Biosensor

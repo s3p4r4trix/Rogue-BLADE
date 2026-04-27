@@ -50,8 +50,8 @@ Every trigger must evaluate to a boolean (true / false). Many triggers are locke
     * **logic:** Returns true if an enemy is within the global tracking radius.
 
 * **`ifEnemyIsShielded`** (Designation: **Enemy: Shield Active**)
-    * **reqSensor:** EM-Scanner
-    * **logic:** Returns true if the target has an active Energy Shield.
+    * **reqSensor:** EM-Scanner (DEFERRED)
+    * **logic:** Currently returns false (Shields disabled in prototype).
 
 * **`ifEnemyIsOrganic`** (Designation: **Enemy: Soft Target**)
     * **reqSensor:** Biosensor
@@ -199,8 +199,8 @@ Zenith forces utilize advanced tactical protocols when engaging human resistance
 ## 7.1 Onboarding & Early-Game Balancing
 To ensure a smooth player onboarding experience, the first successful Liberation Strike utilizes a simplified combat profile:
 * **Target Resistance:** Forced to `UNARMORED`.
-* **Shields:** Disabled (0).
-* **Armor Value:** Disabled (0).
+* **Shields:** Disabled (0) - Mechanics deferred for prototype stability.
+* **Armor Value:** Disabled (0) - Calculations simplified.
 * **Duration:** Shorter (approx. 30-45 seconds).
 This allows players to validate their basic "If-Then" routines and see significant impact (30+ damage per hit) before facing Zenith defensive tech like Shields and Heavy Armor.
 
