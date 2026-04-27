@@ -37,10 +37,10 @@ When a Shuriken is fully assembled, its components calculate these final attribu
 
 ### A. Anti-Grav Engines
 
-* **Drifter (Basic):** speed: +50, acceleration: +10, evasionRate: +0.05, energyDrain: 5, stealthValue: 10
-* **Hauler (Tank):** speed: +30, acceleration: +5, evasionRate: +0.0, energyDrain: 8, weightCapacity: High
-* **Screamer (Speed):** speed: +120, acceleration: +30, evasionRate: +0.15, energyDrain: 15, stealthValue: -20
-* **Ghost (Stealth):** speed: +60, acceleration: +15, evasionRate: +0.10, energyDrain: 8, stealthValue: +50
+* **Drifter (Basic):** speed: +230, acceleration: +75, evasionRate: +0.05, energyDrain: 5, stealthValue: 10
+* **Hauler (Tank):** speed: +180, acceleration: +55, evasionRate: +0.0, energyDrain: 8, weightCapacity: High
+* **Screamer (Speed):** speed: +500, acceleration: +160, evasionRate: +0.15, energyDrain: 15, stealthValue: -20
+* **Ghost (Stealth):** speed: +320, acceleration: +133, evasionRate: +0.10, energyDrain: 8, stealthValue: +50
 
 ### B. Hull Materials
 
@@ -50,9 +50,9 @@ When a Shuriken is fully assembled, its components calculate these final attribu
 
 ### C. Blades & Edges
 
-* **Carbon Razor:** damage: 20, type: SLASHING, critChance: 0.10, energyDrain: 0
-* **Titan Breaker:** damage: 40, type: KINETIC, critChance: 0.05, energyDrain: 0
-* **Plasma Edge:** damage: 35, type: ENERGY, critChance: 0.15, energyDrain: 25
+* **Carbon Razor:** damage: 40, type: SLASHING, critChance: 0.10, energyDrain: 0
+* **Titan Breaker:** damage: 80, type: KINETIC, critChance: 0.05, energyDrain: 0
+* **Plasma Edge:** damage: 70, type: ENERGY, critChance: 0.15, energyDrain: 25
 
 ### D. Form Designs (Chassis Multipliers)
 
@@ -105,7 +105,7 @@ When a Shuriken attacks an enemy, the damageType is checked against the enemy's 
 
 | Damage Type | vs UNARMORED (Flesh/Light) | vs HEAVY ARMOR (Mechs) | vs ENERGY SHIELD (DEFERRED) |
 |-------------|----------------------------|------------------------|-----------------------------|
-| SLASHING (Razor) | 1.5x (150%) | 0.2x (20%) | 0.8x (80%) |
+| SLASHING (Razor) | 1.5x (150%) | 0.4x (40%) | 0.8x (80%) |
 | KINETIC (Blunt) | 1.0x (100%) | 1.5x (150%) | 0.5x (50%) |
 | ENERGY (Plasma) | 1.0x (100%) | 1.0x (100%) | 2.0x (200%) |
 | EMP (Utility) | 0.0x (Stun only) | 0.0x (Stun only) | Instantly Breaks Shield |
@@ -246,7 +246,7 @@ All movement uses smooth acceleration toward a target velocity. The acceleration
     ```
 
 #### Obstacle Avoidance (Feeler System)
-Both drones and enemies utilize a "feeler" point projected 50 units ahead of their current `rotation`. If this point intersects an obstacle AABB, a steering force is applied away from the `obstacle.center`.
+Both drones and enemies utilize a "feeler" point projected 25 units ahead of their current `rotation`. If this point intersects an obstacle AABB, a steering force is applied away from the `obstacle.center`.
 * **Blending:** `targetVelocity = (desiredVector * 0.4) + (steeringVector * 0.6)`
 * **Result:** Units steer proactively around cover rather than colliding and stopping.
 
@@ -266,9 +266,9 @@ targetVelocity = direction * topSpeed
 ```
 
 #### Patrol (Idle Navigation)
-When no target is known or seen, the unit moves at 80% top speed between random waypoints within the arena to scan for threats.
+When no target is known or seen, the unit moves at 100% top speed between random waypoints within the arena to scan for threats.
 ```
-targetVelocity = normalize(waypoint - entity.position) * (topSpeed * 0.8)
+targetVelocity = normalize(waypoint - entity.position) * topSpeed
 ```
 
 #### Orbit (actionDefendAlly)
@@ -319,10 +319,14 @@ Drones and enemies resolve physical overlap to prevent stacking.
 * **Separation:** Entities push each other apart by `overlap / 2`.
 * **Mutual Impulse:** contact triggers a small velocity boost away from the point of impact.
 
-#### Obstacle Avoidance (Feeler System)
-AI entities project path safety to steer around cover.
-* **Logic:** Projects a "feeler" point `50 units` ahead of current `rotation`.
-* **Avoidance:** If the feeler hits an AABB, a steering force is applied away from the `obstacle.center`.
+#### Obstacle Avoidance (Multi-Feeler System)
+AI entities project path safety to steer around cover using a weighted array of feeler sensors.
+* **Logic:** Projects multiple feeler points at specific angles relative to current `rotation` at a distance of `25 units`.
+* **Sensor Weights:**
+    * **Front (0°):** 0.8 weight.
+    * **Diagonal (±45°):** 0.4 weight.
+    * **Side (±90°):** 0.2 weight.
+* **Avoidance:** If any feeler hits an AABB, a steering force is calculated from the obstacle's center and scaled by the sensor's weight.
 * **Blending:** `targetVelocity = (pursuitVector * 0.3) + (avoidanceVector * 0.7)`.
 
 ### 6.5 Sensors & Detection
@@ -364,8 +368,8 @@ Drones must reach a minimum velocity before a strike attempt is valid. This prev
 
 * **Minimum Strike Speed:** `MIN_STRIKE_SPEED = 0.4` (40% of `topSpeed`)
 * **Gate Check:** `canStrike = currentSpeed >= (topSpeed * MIN_STRIKE_SPEED)`
-* **Strike Cooldown:** After a successful hit, `strikeCooldown = 1.5 seconds` before the next strike.
-* **Post-Strike Bounce:** After hitting, the drone's velocity is redirected away from the target at 70% of topSpeed, creating natural fly-by patterns.
+* **Strike Cooldown:** After a successful hit, `strikeCooldown = 1.0 seconds` before the next strike.
+* **Post-Strike Bounce:** After hitting, the drone's velocity is redirected away from the target at 100% of topSpeed, creating natural fly-by patterns.
 
 ### 6.7 Strike Damage (Arena)
 

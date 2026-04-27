@@ -271,13 +271,13 @@ These are the core spatial behaviors mapped to existing GDD actions:
     *   **Exit:** After the 2-second hold, the drone leaves the combat zone (state: `WITHDRAWN`). This preserves the hardware for future missions at a significantly lower repair cost compared to full destruction.
     *   **Mission End:** If all drones are either `WITHDRAWN` or `DESTROYED`, the mission ends in failure (unless the objective was already met).
 *   **Search (LOS Lost):** When an enemy disappears behind cover, the drone navigates to its **last-seen position** and performs an expanding spiral search while scanning its FOV. After a set time (`SEARCH_LINGER_TIME = 3s`), the last-seen memory is cleared and the drone falls back to patrolling.
-*   **Patrol (Idle Movement):** When no target is known or seen (common at mission start), the unit moves at 80% top speed between random waypoints, actively scanning its surroundings with its sensors.
+*   **Patrol (Idle Movement):** When no target is known or seen (common at mission start), the unit moves at 100% top speed between random waypoints, actively scanning its surroundings with its sensors.
 *   **Idle (Observation):** Stationary state where the unit rotates its sensors/FOV to scan for incoming threats.
 
 ### 13.4.1 Minimum Strike Velocity
 Drones must reach a minimum speed threshold (`MIN_STRIKE_SPEED = 40%` of `topSpeed`) before they can execute a strike. This prevents drones from circling endlessly at low speed without meaningful engagement. After a successful strike, the drone bounces away, naturally resetting its orbit for another high-speed pass.
 
-*   **Strike Cooldown:** After each hit, a cooldown (`STRIKE_COOLDOWN = 1.5s`) prevents rapid repeated strikes.
+*   **Strike Cooldown:** After each hit, a cooldown (`STRIKE_COOLDOWN = 1.0s`) prevents rapid repeated strikes.
 *   **Visual Indicator:** A ⚡ icon appears next to the drone's state label when it has reached strike-ready velocity.
 
 ### 13.5 Sensors & Spatial Detection

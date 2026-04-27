@@ -14,7 +14,7 @@ const WALL_THICKNESS = 16;
 const TILE_SIZE = 40;
 const PERSPECTIVE_SCALE_Y = 0.7;
 const MIN_STRIKE_SPEED = 0.4;
-const STRIKE_COOLDOWN = 1.5;
+const STRIKE_COOLDOWN = 1.0;
 const SEARCH_LINGER_TIME = 3;
 const ENEMY_STRIKE_COOLDOWN = 2.0;
 const ENEMY_DAMAGE = 15;
@@ -23,7 +23,7 @@ const PROJECTILE_RADIUS = 3;
 const FIRE_RATE = 2.0; // Seconds between shots
 
 const EFFECTIVENESS_MATRIX: Record<string, Record<string, number>> = {
-  'SLASHING': { 'UNARMORED': 1.5, 'HEAVY_ARMOR': 0.2, 'ENERGY_SHIELD': 0.8 },
+  'SLASHING': { 'UNARMORED': 1.5, 'HEAVY_ARMOR': 0.4, 'ENERGY_SHIELD': 0.8 },
   'KINETIC': { 'UNARMORED': 1.0, 'HEAVY_ARMOR': 1.5, 'ENERGY_SHIELD': 0.5 },
   'ENERGY': { 'UNARMORED': 1.0, 'HEAVY_ARMOR': 1.0, 'ENERGY_SHIELD': 2.0 },
   'EMP': { 'UNARMORED': 0.0, 'HEAVY_ARMOR': 0.0, 'ENERGY_SHIELD': 100.0 }
@@ -505,8 +505,8 @@ export class CombatArena implements OnDestroy {
     attacker.strikeCooldown = attacker.isEnemy ? ENEMY_STRIKE_COOLDOWN : STRIKE_COOLDOWN;
 
     const bounceVec = this.normalize({ x: attacker.x - defender.x, y: attacker.y - defender.y });
-    attacker.vx = bounceVec.x * (attacker.topSpeed * 0.7);
-    attacker.vy = bounceVec.y * (attacker.topSpeed * 0.7);
+    attacker.vx = bounceVec.x * attacker.topSpeed;
+    attacker.vy = bounceVec.y * attacker.topSpeed;
   }
 
   private getBehaviorVelocity(entity: ArenaEntity, target: ArenaEntity, dt: number): Vec2 {
@@ -547,8 +547,8 @@ export class CombatArena implements OnDestroy {
             const tx = entity.lastSeenPos.x + Math.cos(entity.orbitAngle) * radius;
             const ty = entity.lastSeenPos.y + Math.sin(entity.orbitAngle) * radius;
             const sDir = this.normalize({ x: tx - entity.x, y: ty - entity.y });
-            targetVx = sDir.x * (entity.topSpeed * 0.6);
-            targetVy = sDir.y * (entity.topSpeed * 0.6);
+            targetVx = sDir.x * (entity.topSpeed * 0.8);
+            targetVy = sDir.y * (entity.topSpeed * 0.8);
           }
         }
         break;
@@ -560,8 +560,8 @@ export class CombatArena implements OnDestroy {
           entity.patrolPos = this.getRandomPatrolPos();
         } else {
           const pDir = this.normalize({ x: entity.patrolPos.x - entity.x, y: entity.patrolPos.y - entity.y });
-          targetVx = pDir.x * (entity.topSpeed * 0.8);
-          targetVy = pDir.y * (entity.topSpeed * 0.8);
+          targetVx = pDir.x * entity.topSpeed;
+          targetVy = pDir.y * entity.topSpeed;
         }
         break;
 
@@ -794,10 +794,10 @@ export class CombatArena implements OnDestroy {
   }
 
   private getSteeringAvoidance(entity: ArenaEntity): Vec2 {
-    const feelerDist = 90;
+    const feelerDist = 25;
     // Weighted feelers: [AngleOffset, Weight]
     const sensors = [
-      { angle: 0, weight: 1.0 },              // Front
+      { angle: 0, weight: 0.8 },              // Front
       { angle: -Math.PI / 4, weight: 0.4 },    // Diagonal Left
       { angle: Math.PI / 4, weight: 0.4 },     // Diagonal Right
       { angle: -Math.PI / 2, weight: 0.2 },    // Side Left
