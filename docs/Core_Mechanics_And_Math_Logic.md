@@ -213,3 +213,129 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
 * **`actionEmergencyWithdrawal`** (Tactical: **Execute: Emergency Withdrawal**)
     * **behavior:** Moves to the furthest possible edge of the combat zone away from the highest density of enemies to regenerate shields/HP.
     * **energyCost:** 0
+
+## 6. 2D Combat Arena: Spatial Mechanics & Math
+
+This section defines the math and logic for the real-time 2D combat arena prototype, which renders the battle from a 3/4 top-down perspective.
+
+### 6.1 Camera & 3/4 Perspective
+
+The arena uses a simulated 3/4 (isometric-lite) perspective. The camera looks down at an angle, so vertical dimensions appear compressed.
+
+* **Perspective Scale Y:** `PERSPECTIVE_SCALE_Y = 0.7`
+* **Visual Effect:** All vertical radii (for ellipses) are multiplied by this factor. Circles become ellipses to simulate the angled view. Floor grids remain rectangular.
+
+### 6.2 Depth Sorting (Y-Sort with Z-Axis Elevation)
+
+Entities must be rendered in the correct visual order. Entities "further back" (higher up the screen) draw first. Elevation (Z-axis) also affects draw order: an elevated entity appears to float above ground-level entities.
+
+* **Sort Key:** `sortValue = entity.y - (entity.z * PERSPECTIVE_SCALE_Y)`
+* **Logic:** Entities with a **lower** `sortValue` are drawn **first** (they are further back). Entities with a higher `sortValue` are drawn last (they are in front).
+* **Z-Axis Rendering:**
+    * **Shadow:** Drawn at the entity's ground position `(x, y)` as a semi-transparent ellipse.
+    * **Sprite:** Drawn at `(x, y - z * PERSPECTIVE_SCALE_Y)` to simulate elevation offset.
+
+### 6.3 AI Movement Behaviors
+All movement uses smooth acceleration toward a target velocity. The acceleration factor prevents instant direction changes, creating inertia.
+
+* **Acceleration Smoothing:**
+    ```
+    accelFactor = acceleration * deltaTime
+    vx += (targetVx - vx) * min(1, accelFactor * 0.1)
+    vy += (targetVy - vy) * min(1, accelFactor * 0.1)
+    ```
+
+#### Seek (actionStandardStrike)
+Moves in a straight, interpolated line directly toward the target entity.
+```
+direction = normalize(target.position - drone.position)
+targetVelocity = direction * topSpeed
+```
+
+#### Orbit (actionDefendAlly)
+Calculates a circular path around a target entity at a set radius.
+```
+orbitRadius = 80 units
+orbitAngle += (topSpeed / orbitRadius) * deltaTime
+goalX = target.x + cos(orbitAngle) * orbitRadius
+goalY = target.y + sin(orbitAngle) * orbitRadius
+direction = normalize(goal - drone.position)
+targetVelocity = direction * topSpeed
+```
+
+#### Flee / Retreat (actionEmergencyWithdrawal)
+Calculates the vector directly away from the nearest enemy and moves toward the furthest arena boundary.
+```
+awayDirection = normalize(drone.position - enemy.position)
+targetVelocity = awayDirection * topSpeed
+```
+
+### 6.4 Collision Detection
+
+#### Circle vs. AABB (Drone vs. Obstacle)
+Drones are modeled as circles. Obstacles are Axis-Aligned Bounding Boxes (AABB).
+```
+closestPoint.x = clamp(circle.x, box.x, box.x + box.w)
+closestPoint.y = clamp(circle.y, box.y, box.y + box.h)
+distance = dist(circle.center, closestPoint)
+if (distance < circle.radius):
+    overlap = radius - distance
+    pushDirection = normalize(circle.center - closestPoint)
+    circle.center += pushDirection * overlap
+```
+
+### 6.5 Sensors & Detection
+
+#### Radius Checks (AoE)
+Simple Euclidean distance check between entities on the 2D ground plane.
+* **Radar Range:** `sensorRange` (default 120 units). Returns `true` if `dist(drone, target) <= sensorRange`.
+* **Melee Range:** `meleeRange` (default 20 units). Returns `true` if `dist(drone, target) <= meleeRange`.
+
+#### Line of Sight (ifEnemyBehindCover)
+A parametric ray is cast from the drone's position to the target. If the ray segment intersects any obstacle AABB, the target is **obscured** (returns `true`).
+
+**Slab Method (Parametric Line-AABB Intersection):**
+```
+For each axis (X, Y):
+    t1 = (box.min[axis] - ray.origin[axis]) / ray.direction[axis]
+    t2 = (box.max[axis] - ray.origin[axis]) / ray.direction[axis]
+    if t1 > t2: swap(t1, t2)
+    tmin = max(tmin, t1)
+    tmax = min(tmax, t2)
+    if tmin > tmax: no intersection
+
+if tmin <= tmax AND tmin >= 0 AND tmax <= 1: ray is blocked
+```
+The `t` range `[0, 1]` represents the line segment from origin to target. Only intersections within this range count.
+
+### 6.6 Strike Velocity Gating
+
+Drones must reach a minimum velocity before a strike attempt is valid. This prevents low-energy circling and encourages fly-by attack patterns.
+
+* **Minimum Strike Speed:** `MIN_STRIKE_SPEED = 0.4` (40% of `topSpeed`)
+* **Gate Check:** `canStrike = currentSpeed >= (topSpeed * MIN_STRIKE_SPEED)`
+* **Strike Cooldown:** After a successful hit, `strikeCooldown = 1.5 seconds` before the next strike.
+* **Post-Strike Bounce:** After hitting, the drone's velocity is redirected away from the target at 70% of topSpeed, creating natural fly-by patterns.
+
+### 6.7 Strike Damage (Arena)
+
+When a drone's strike connects:
+```
+damage = floor(10 + currentSpeed * 0.15)
+```
+Higher speed = more damage, rewarding fast approach vectors.
+
+### 6.8 Search Behavior (SEARCHING State)
+
+When LOS to the enemy is lost, drones transition to SEARCHING:
+
+1. **Last-Seen Memory:** While LOS is clear, drones continuously update `lastSeenPos = { enemy.x, enemy.y }`.
+2. **Navigate to Last-Seen:** Drone moves to `lastSeenPos` at full speed.
+3. **Expanding Spiral:** Upon arrival (within 30 units), the drone orbits with an expanding radius:
+```
+searchRadius = 60 + searchTimer * 15  (capped at 200)
+orbitAngle += (topSpeed / searchRadius) * deltaTime
+goalX = lastSeen.x + cos(orbitAngle) * searchRadius
+goalY = lastSeen.y + sin(orbitAngle) * searchRadius
+```
+4. **Memory Expiry:** After `SEARCH_LINGER_TIME = 3 seconds`, `lastSeenPos` is cleared and the drone falls back to direct SEEKING.

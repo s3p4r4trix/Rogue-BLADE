@@ -10,7 +10,6 @@ You are an expert Game Developer, Software Architect, and Senior Frontend Engine
 The core gameplay loop is divided into two strict phases:
 
 * **Phase 1 (Active - The Workshop):** A UI-heavy management phase. The player builds, repairs, and programs flying high-tech drones (the "Smart-Shurikens").
-
 * **Phase 2 (Passive - The Run):** A 2D auto-battler simulation. The Shurikens fight waves of enemies completely autonomously based on the hardware and programming the player assigned in Phase 1.
 
 ## 3. Technology Stack
@@ -44,19 +43,23 @@ The programming relies on a "Gambit" system (Slot-based priority list).
 
 ## 5. Current Development Goal (Milestone 2)
 
-We are currently building **Phase 2 (The Liberation Strike / Passive Combat)**. We have established the core combat simulation, damage matrices, and mission generation systems.
+We are currently building **Phase 2 (The Liberation Strike / Passive Combat)**. We have established the core combat simulation, damage matrices, mission generation systems, and a **2D Combat Arena Prototype** (Tactical Map).
 
 ### Immediate Tasks for the Agent:
 
-1. **Combat Simulation:** Refine the high-frequency (0.1s) battle engine to ensure fair hostile attack speeds and accurate shuriken latency processing.
-2. **Game Balancing:** Implement onboarding mechanics (Unarmored/Shield-less starts) and progressive difficulty scaling based on player success.
-3. **Live Feed UX:** Polish the Strike Report view with immersive tactical data and smooth log processing.
-4. **Math Integrity:** Ensure all combat logic strictly adheres to `docs/Core_Mechanics_And_Math_Logic.md`.
+1. **2D Arena (Tactical Map):** Canvas-based 2D combat arena with 3/4 perspective, Y+Z depth sorting, obstacle cover, AI visualization, and **Live Feed synchronization** (arena emits log events to the feed via `arenaLog` output).
+2. **AI Movement Behaviors:** Seek, Orbit, Flee, and **Search** (new: navigates to last-seen enemy position with expanding spiral when LOS is lost). Smooth acceleration with obstacle collision.
+3. **Strike Velocity Gating:** Drones must reach **40% of topSpeed** (`MIN_STRIKE_SPEED`) before strikes connect. Post-strike bounce creates fly-by attack patterns. 1.5s cooldown between strikes.
+4. **Sensors & Raycasting:** Radius detection (Radar/Melee), parametric LOS raycasting, and **last-seen memory** that drives SEARCHING behavior when LOS is blocked.
+5. **Visual Feedback:** Hit flash VFX (white ring + flash on enemy), ⚡ strike-ready indicator, LAST CONTACT crosshair marker for search state, and full debug overlays.
+6. **Combat Simulation:** Refine the high-frequency (0.1s) battle engine to ensure fair hostile attack speeds and accurate shuriken latency processing.
+7. **Game Balancing:** Implement onboarding mechanics (Unarmored/Shield-less starts) and progressive difficulty scaling based on player success.
+8. **Math Integrity:** Ensure all combat logic strictly adheres to `docs/Core_Mechanics_And_Math_Logic.md`.
 
 ## 6. Coding Guidelines
 
 * **Component Architecture:** All components MUST be Standalone and strictly use `ChangeDetectionStrategy.OnPush`. Keep components small and isolated (Dumb/Smart component pattern).
-* **Templates & Styles:** Always use inline templates (`template: \`...\``) and inline styles (`styles: [\`...\`]`) when the HTML or SCSS code is under 50 lines.
+* **Templates & Styles:** Always use inline templates (for component with under 50 lines of code) (`template: '...'`) and inline styles (for component with under 50 lines of code) (`styles: '...'`).
 * **Folder Structure:** Only create specific folders for components when there is more than one file associated with them. Single-file components should reside directly in their parent directory (e.g., `src/app/components/`).
 * **Signal-based APIs:** Exclusively use modern Signal-based APIs for components: `input()`, `output()`, `viewChild()`, and `viewChildren()` instead of the older `@Input`, `@Output`, and `@ViewChild` decorators.
 * Use standard Tailwind utility classes; avoid custom CSS unless absolutely necessary (for specific Cyberpunk neon effects).

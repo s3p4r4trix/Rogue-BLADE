@@ -234,4 +234,53 @@ Instead of fixed slots (1 Engine, 1 Sensor, etc.), advanced chassis forms will f
 *   **[x] Tactical Naming:** Conditions and Actions use player-friendly tactical terminology.
 *   **[x] System Reference v2:** Integrated "Tactical Wiki" with real-time search and auto-diagnostic display.
 *   **[x] Smart Onboarding:** New shurikens are pre-loaded with a "Standard Tactical Routine" (Close Proximity Strike / Long Range Ram).
+*   **[x] Tactical Map (2D Arena):** Canvas-based combat arena with 3/4 perspective, Y+Z depth sorting, and real-time AI visualization.
 *   **[ ] Combat Latency UI:** Visualization of effective latency based on hardware weight/acceleration in the Routine Compiler.
+
+## 13. 2D Combat Arena (Active Combat Prototype)
+
+### 13.1 Overview
+The Liberation Strike's **Phase 2 (Passive)** is accompanied by a **Tactical Map** – a 2D combat arena that visually represents the spatial battlefield. The player can toggle between the **Live Feed** (text log) and the **Tactical Map** (arena view) during a strike using a button in the War Room header.
+
+### 13.2 Rendering & Perspective
+*   **3/4 Top-Down View:** The arena is rendered from a slightly angled perspective. Entities are drawn as ellipses (squashed circles) to simulate depth.
+*   **Free 360° Movement:** Drones move freely in continuous 2D space (not grid-locked), enabling smooth flying and orbiting.
+*   **Y-Sorting with Z-Axis:** Entities are depth-sorted by their Y-coordinate combined with their Z (elevation) value. Higher Y = further forward. Higher Z = hovering above.
+*   **Drop Shadows:** Flying drones cast a semi-transparent shadow at their ground position `(x, y)`, while their sprite renders at `(x, y - z)` to simulate altitude.
+
+### 13.3 Arena & Obstacles
+*   **Walled Arena:** An 800x800 unit arena bounded by solid walls.
+*   **Cover Objects:** 3-4 solid rectangular obstacles placed in the interior. These block both physical movement (collision) and vision (raycasts).
+
+### 13.4 AI Movement Behaviors
+These are the core spatial behaviors mapped to existing GDD actions:
+*   **Seek (Standard Strike):** Drone moves in a straight line toward its target with smooth acceleration.
+*   **Orbit (Defend Ally):** Drone maintains a fixed radius around the target and continuously rotates, useful for intercepting or maintaining distance. Also used after a strike to build speed for the next pass.
+*   **Flee (Emergency Withdrawal):** Drone calculates the vector away from the nearest enemy and moves toward the furthest arena boundary.
+*   **Search (LOS Lost):** When an enemy disappears behind cover, the drone navigates to its **last-seen position** and performs an expanding spiral search. After a set time (`SEARCH_LINGER_TIME = 3s`), the last-seen memory is cleared and the drone falls back to direct seeking.
+
+### 13.4.1 Minimum Strike Velocity
+Drones must reach a minimum speed threshold (`MIN_STRIKE_SPEED = 40%` of `topSpeed`) before they can execute a strike. This prevents drones from circling endlessly at low speed without meaningful engagement. After a successful strike, the drone bounces away, naturally resetting its orbit for another high-speed pass.
+
+*   **Strike Cooldown:** After each hit, a cooldown (`STRIKE_COOLDOWN = 1.5s`) prevents rapid repeated strikes.
+*   **Visual Indicator:** A ⚡ icon appears next to the drone's state label when it has reached strike-ready velocity.
+
+### 13.5 Sensors & Spatial Detection
+*   **Radius Checks:** Euclidean distance checks for Radar range (120 units) and Melee range (20 units).
+*   **Line of Sight (LOS):** A parametric raycast from the drone to its target. If the ray intersects any obstacle AABB, the target is considered **obscured** (behind cover). This directly maps to the `ifEnemyBehindCover` trigger.
+*   **Last-Seen Memory:** When a drone has clear LOS, it continuously updates a `lastSeenPos` coordinate. When LOS is lost, this memory drives the SEARCHING behavior.
+
+### 13.6 Visual Feedback & Debugging
+Since this is an AI-driven game, the Tactical Map includes comprehensive visual feedback:
+*   **Hit Flash VFX:** When a drone strikes the enemy, the target flashes white with an expanding ring effect (200ms duration).
+*   **Sensor Range Wireframe:** A faint, dashed ellipse around each drone showing its current detection radius.
+*   **LOS Raycast Line:** A line drawn from each drone to its target. Colored **Green** if LOS is clear, **Red** if blocked by cover, with a midpoint status label.
+*   **State Labels:** A small text label above each drone displaying its current AI state (e.g., `SEEKING`, `ORBITING`, `FLEEING`, `SEARCHING`).
+*   **Last-Seen Marker:** When a drone is in SEARCHING state, a yellow crosshair appears at the last-known enemy position with a dashed line from the drone.
+*   **Melee Range Indicator:** A smaller yellow wireframe showing the close-combat engagement zone.
+
+### 13.7 Live Feed Synchronization
+The Tactical Map and Live Feed are synchronized via an event bridge:
+*   The arena emits log events (`arenaLog`) for every significant action: state transitions, strikes, kills, and search status.
+*   The Live Feed consumes these events in real-time, displaying them with appropriate styling.
+*   The player can toggle between views at any time; the Live Feed always reflects the latest arena events regardless of which view is active.

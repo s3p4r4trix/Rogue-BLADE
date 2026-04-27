@@ -7,12 +7,13 @@ import { PlayerService } from '../services/player.service';
 import { CombatSimulationService } from '../services/combat-simulation.service';
 import { StrikeResult, ShurikenStatus } from '../models/combat.model';
 import { ScrapFilterService } from '../services/scrap-filter.service';
+import { CombatArena } from '../components/combat-arena';
 
 
 @Component({
   selector: 'app-strike-report',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CombatArena],
   template: `
     <div class="h-screen bg-black text-green-500 font-mono p-8 flex flex-col overflow-hidden">
       <!-- War Room Header -->
@@ -25,35 +26,51 @@ import { ScrapFilterService } from '../services/scrap-filter.service';
             </div>
           </div>
           <div>
-            <h1 class="text-xl font-black tracking-tighter uppercase italic text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">Liberation_Strike // LIVE_FEED</h1>
+            <h1 class="text-xl font-black tracking-tighter uppercase italic text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">Liberation_Strike // {{ activeView() === 'LIVE_FEED' ? 'LIVE_FEED' : 'TACTICAL_MAP' }}</h1>
             <p class="text-[10px] text-green-800 uppercase tracking-widest">Target: {{ mission()?.targetName }} | Status: [ACTIVE_ENGAGEMENT]</p>
           </div>
         </div>
+        <!-- View Toggle Button -->
+        <button (click)="toggleView()" class="px-4 py-2 border text-[10px] uppercase font-black tracking-widest transition-all cursor-pointer"
+                [ngClass]="activeView() === 'LIVE_FEED'
+                  ? 'border-cyan-700 text-cyan-400 hover:bg-cyan-900/30'
+                  : 'border-green-700 text-green-400 hover:bg-green-900/30'">
+          {{ activeView() === 'LIVE_FEED' ? '[ TACTICAL_MAP ]' : '[ LIVE_FEED ]' }}
+        </button>
       </div>
 
       <!-- Main Feed -->
       <div class="flex-1 overflow-hidden flex flex-col lg:flex-row gap-8">
-        <!-- Terminal Logs -->
-        <div class="flex-1 bg-[#050110] border border-white/5 p-4 flex flex-col relative overflow-hidden">
-          <!-- Background Grid -->
-          <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: linear-gradient(#1e1b4b 1px, transparent 1px), linear-gradient(90deg, #1e1b4b 1px, transparent 1px); background-size: 40px 40px;"></div>
-          
-          <div class="absolute top-0 right-0 p-2 text-[8px] text-cyan-900 uppercase tracking-widest bg-black/40 border-l border-b border-white/5">Secure_Link: 256-bit_AES</div>
-          
-          <div #logContainer class="flex-1 overflow-y-auto space-y-1 pr-4 relative z-10">
-            @for (log of visibleLogs(); track $index) {
-              @if (shouldShowLog(log)) {
-                <div class="text-[11px] font-mono animate-in fade-in slide-in-from-left-1 duration-200">
-                  <span class="opacity-30 mr-2">[{{ $index.toString().padStart(3, '0') }}]</span>
-                  <span [ngClass]="getLogClass(log)">{{ log }}</span>
-                </div>
+        <!-- View: Terminal Logs (LIVE_FEED) -->
+        @if (activeView() === 'LIVE_FEED') {
+          <div class="flex-1 bg-[#050110] border border-white/5 p-4 flex flex-col relative overflow-hidden">
+            <!-- Background Grid -->
+            <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: linear-gradient(#1e1b4b 1px, transparent 1px), linear-gradient(90deg, #1e1b4b 1px, transparent 1px); background-size: 40px 40px;"></div>
+            
+            <div class="absolute top-0 right-0 p-2 text-[8px] text-cyan-900 uppercase tracking-widest bg-black/40 border-l border-b border-white/5">Secure_Link: 256-bit_AES</div>
+            
+            <div #logContainer class="flex-1 overflow-y-auto space-y-1 pr-4 relative z-10">
+              @for (log of visibleLogs(); track $index) {
+                @if (shouldShowLog(log)) {
+                  <div class="text-[11px] font-mono animate-in fade-in slide-in-from-left-1 duration-200">
+                    <span class="opacity-30 mr-2">[{{ $index.toString().padStart(3, '0') }}]</span>
+                    <span [ngClass]="getLogClass(log)">{{ log }}</span>
+                  </div>
+                }
               }
-            }
-            @if (!isFinished()) {
-              <div class="animate-pulse text-cyan-500 font-bold ml-10">_</div>
-            }
+              @if (!isFinished()) {
+                <div class="animate-pulse text-cyan-500 font-bold ml-10">_</div>
+              }
+            </div>
           </div>
-        </div>
+        }
+
+        <!-- View: Tactical Map (COMBAT_ARENA) -->
+        @if (activeView() === 'TACTICAL_MAP') {
+          <div class="flex-1 bg-[#050110] border border-white/5 p-4 flex items-center justify-center relative overflow-hidden">
+            <app-combat-arena [mission]="mission()" [shurikens]="shurikens()" (arenaLog)="onArenaLog($event)" />
+          </div>
+        }
 
         <!-- Tactical Sidebar -->
         <div class="w-full lg:w-96 flex flex-col gap-6 overflow-hidden">
@@ -233,6 +250,9 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   result = signal<StrikeResult | null>(null);
   isFinished = signal(false);
 
+  /** Toggle between the Live Feed (logs) and the Tactical Map (arena) */
+  activeView = signal<'LIVE_FEED' | 'TACTICAL_MAP'>('TACTICAL_MAP');
+
   squadStatuses = signal<ShurikenStatus[]>([]);
   enemyIntegrity = signal(100);
   enemyHull = signal(0);
@@ -276,6 +296,11 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
     if (this.intervalId) clearInterval(this.intervalId);
   }
 
+  /** Switch between LIVE_FEED (logs) and TACTICAL_MAP (arena) */
+  toggleView() {
+    this.activeView.update(v => v === 'LIVE_FEED' ? 'TACTICAL_MAP' : 'LIVE_FEED');
+  }
+
   private startSimulation() {
     const res = this.combat.simulateStrike(this.mission()!, this.shurikens());
     this.result.set(res);
@@ -287,19 +312,20 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
     this.enemyShields.set(res.initialEnemyShields);
     this.enemyIntegrity.set(100);
 
-    let logIndex = 0;
+    // Elapsed time ticker (runs regardless of view)
     this.intervalId = setInterval(() => {
-      if (logIndex < res.logs.length) {
-        const log = res.logs[logIndex];
-        this.visibleLogs.update(logs => [...logs, log]);
-        this.processLogEvent(log);
-        this.timeRemaining.update(t => Math.max(0, t - 0.1));
-        this.timeElapsed.update(t => t + 0.1);
-        logIndex++;
-      } else {
-        this.finishStrike();
-      }
+      this.timeElapsed.update(t => t + 0.1);
+      this.timeRemaining.update(t => Math.max(0, t - 0.1));
     }, 100);
+  }
+
+  /**
+   * Receives log events from the CombatArena component.
+   * This is the bridge: Tactical Map emits events → Live Feed displays them.
+   */
+  onArenaLog(log: string) {
+    this.visibleLogs.update(logs => [...logs, log]);
+    this.processLogEvent(log);
   }
 
   ngAfterViewChecked() {
@@ -409,11 +435,14 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
 
   getLogClass(log: string): string {
     if (log.includes('[CRITICAL]') || log.includes('[FAILURE]')) return 'text-red-500 font-black italic';
-    if (log.includes('[SUCCESS]') || log.includes('[SYSTEM] TARGET NEUTRALIZED')) return 'text-green-400 font-bold';
+    if (log.includes('[SUCCESS]') || log.includes('[SYSTEM] TARGET NEUTRALIZED') || log.includes('MISSION OBJECTIVE NEUTRALIZED')) return 'text-green-400 font-bold';
     if (log.includes('[OVERCLOCK]')) return 'text-yellow-400 font-black shadow-[0_0_10px_rgba(250,204,21,0.5)]';
     if (log.includes('HOSTILE_ENTITY') || log.includes('HOSTILE:')) return 'text-orange-500 font-bold';
     if (log.includes('[SYSTEM]')) return 'text-cyan-500 opacity-80';
-    if (log.includes('[MISS]')) return 'text-gray-600 italic';
+    if (log.includes('[STATE]')) return 'text-purple-400 opacity-70';
+    if (log.includes('[SEARCH]')) return 'text-yellow-500 italic opacity-80';
+    if (log.includes('[MISS]') || log.includes('[EVADED]')) return 'text-gray-600 italic';
+    if (log.includes('Hull Hit')) return 'text-green-400 font-bold';
     return 'text-green-600';
   }
 
