@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
-import { MissionService } from '../services/mission.service';
+import { MissionStore } from '../services/mission.store';
 import { WorkshopService } from '../services/workshop.service';
 import { MissionContract } from '../models/mission.model';
 
@@ -91,7 +91,7 @@ import { MissionContract } from '../models/mission.model';
              <span class="text-red-700">|</span> ACTIVE_BOUNTIES
           </h2>
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-             @for (contract of contracts(); track contract.id) {
+             @for (contract of availableContracts(); track contract.id) {
                <div class="bg-[#050110] border-t-2 p-5 flex flex-col gap-4 transition-all duration-300 cursor-pointer relative group overflow-hidden"
                     [ngClass]="{
                       'border-red-500 shadow-[0_10px_30px_-10px_rgba(239,68,68,0.2)] bg-[#0a051a]': selectedContract()?.id === contract.id,
@@ -204,51 +204,78 @@ import { MissionContract } from '../models/mission.model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LiberationStrike {
-  missionService = inject(MissionService);
+  /** Centralized store for mission state and logic. */
+  missionStore = inject(MissionStore);
+  
+  /** Reference to the workshop for squad state and routine mapping. */
   workshop = inject(WorkshopService);
+  
+  /** Navigation service. */
   router = inject(Router);
 
-  contracts = this.missionService.availableContracts;
+  /** Signal exposing the current list of available contracts from the store. */
+  availableContracts = this.missionStore.availableContracts;
+  
+  /** Internal tracking for the contract currently clicked by the user. */
   selectedContract = signal<MissionContract | null>(null);
 
-  // Compute flight readiness for all owned shurikens
+  /**
+   * Computed flight readiness for all owned shurikens.
+   * Logic: A drone is 'fit' if it has at least one valid routine assigned (trigger + action).
+   */
   swarmStatus = computed(() => {
     const shurikens = this.workshop.availableShurikens();
     const routinesMap = this.workshop.routinesMap();
     
     return shurikens.map(shuriken => {
       const routines = routinesMap[shuriken.id] || [];
-      // A routine is valid if both trigger and action are assigned
-      const validRoutines = routines.filter(r => r.trigger && r.action).length;
+      const validRoutines = routines.filter(routine => routine.trigger && routine.action).length;
       
-      // In Phase 1, only requirement is > 0 valid routines
+      // Hardware integrity check: Requires active logic routines for autonomous flight.
       const isFit = validRoutines > 0;
       
       return { shuriken, validRoutines, isFit };
     });
   });
 
+  /** Computed flag indicating if the swarm contains at least one combat-ready unit. */
   isLaunchReady = computed(() => {
-    return this.swarmStatus().some(s => s.isFit);
+    return this.swarmStatus().some(status => status.isFit);
   });
 
+  /**
+   * Selects a contract for potential deployment.
+   * @param contract The mission contract object.
+   */
   selectContract(contract: MissionContract) {
     this.selectedContract.set(contract);
   }
 
+  /**
+   * Clears selection and requests fresh intelligence data from the store.
+   */
   refreshContracts() {
     this.selectedContract.set(null);
-    this.missionService.refreshContracts();
+    this.missionStore.refreshContracts();
   }
 
-  configureShuriken(id: string) {
-    this.workshop.setActiveShuriken(id);
+  /**
+   * Navigates to the routine editor for a specific shuriken.
+   * @param shurikenId The unique ID of the drone.
+   */
+  configureShuriken(shurikenId: string) {
+    this.workshop.setActiveShuriken(shurikenId);
     this.router.navigate(['/routine']);
   }
 
+  /**
+   * Finalizes mission selection and transitions to the live combat arena.
+   * Logic: Commits the active mission to the store before navigation.
+   */
   deploySwarm() {
-    if (this.isLaunchReady() && this.selectedContract()) {
-      this.missionService.startStrike(this.selectedContract()!);
+    const chosenContract = this.selectedContract();
+    if (this.isLaunchReady() && chosenContract) {
+      this.missionStore.startStrike(chosenContract);
       this.router.navigate(['/strike-report']);
     }
   }
