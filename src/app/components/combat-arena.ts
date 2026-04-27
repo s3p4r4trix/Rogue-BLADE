@@ -26,7 +26,7 @@ const EFFECTIVENESS_MATRIX: Record<string, Record<string, number>> = {
   'SLASHING': { 'UNARMORED': 1.5, 'HEAVY_ARMOR': 0.2, 'ENERGY_SHIELD': 0.8 },
   'KINETIC': { 'UNARMORED': 1.0, 'HEAVY_ARMOR': 1.5, 'ENERGY_SHIELD': 0.5 },
   'ENERGY': { 'UNARMORED': 1.0, 'HEAVY_ARMOR': 1.0, 'ENERGY_SHIELD': 2.0 },
-  'EMP': { 'UNARMORED': 0.0, 'HEAVY_ARMOR': 0.0, 'ENERGY_SHIELD': 100.0 } 
+  'EMP': { 'UNARMORED': 0.0, 'HEAVY_ARMOR': 0.0, 'ENERGY_SHIELD': 100.0 }
 };
 
 @Component({
@@ -136,10 +136,10 @@ export class CombatArena implements OnDestroy {
       const reactor = s.reactor;
       const sensor = s.sensor;
 
-      const baseWeight = ((h?.weight || 20) * (f?.weightMult || 1.0)) + 
-                         (e?.weight || 0) + (cell?.weight || 0) + (sensor?.weight || 0) + 
-                         (b?.weight || 0) + (p?.weight || 0) + (s.semiAI?.weight || 0) + 
-                         (s.shield?.weight || 0) + (reactor?.weight || 0);
+      const baseWeight = ((h?.weight || 20) * (f?.weightMult || 1.0)) +
+        (e?.weight || 0) + (cell?.weight || 0) + (sensor?.weight || 0) +
+        (b?.weight || 0) + (p?.weight || 0) + (s.semiAI?.weight || 0) +
+        (s.shield?.weight || 0) + (reactor?.weight || 0);
 
       this.drones.push({
         id: s.id,
@@ -157,7 +157,7 @@ export class CombatArena implements OnDestroy {
         isEnemy: false,
         hp: h?.maxHp || 100,
         maxHp: h?.maxHp || 100,
-        
+
         // Energy
         energy: cell?.maxEnergy || 100,
         maxEnergy: cell?.maxEnergy || 100,
@@ -296,7 +296,7 @@ export class CombatArena implements OnDestroy {
         drone.energy = Math.min(drone.maxEnergy, drone.energy + ((drone.energyRegen * energyEfficiency) - drone.energyDrain) * dt);
         if (drone.energy <= 0) {
           drone.energy = 0;
-          drone.rebootTimer = 3.0; 
+          drone.rebootTimer = 3.0;
           this.emitLog(`${drone.name}: [CRITICAL] Energy Depleted. Initiating Emergency Reboot.`);
         }
       }
@@ -311,7 +311,7 @@ export class CombatArena implements OnDestroy {
 
       if (drone.strikeCooldown > 0) drone.strikeCooldown -= dt;
       if (drone.hitFlashTimer > 0) drone.hitFlashTimer -= dt;
-      
+
       const isExhausted = drone.energy < (drone.maxEnergy * 0.05);
       const strikeSpeedMult = isExhausted ? 0.6 : MIN_STRIKE_SPEED;
       drone.canStrike = drone.speed >= (drone.topSpeed * strikeSpeedMult) && !isRebooting;
@@ -324,7 +324,7 @@ export class CombatArena implements OnDestroy {
         const a = allEntities[i];
         const b = allEntities[j];
         if (a.hp <= 0 || b.hp <= 0 || a.state === 'WITHDRAWN' || b.state === 'WITHDRAWN') continue;
-        
+
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -344,7 +344,7 @@ export class CombatArena implements OnDestroy {
 
     if (this.enemy.hp > 0) {
       const enemy = this.enemy;
-      
+
       // Enemy Energy Logic (Simplified)
       if (enemy.rebootTimer > 0) {
         enemy.rebootTimer -= dt;
@@ -487,13 +487,13 @@ export class CombatArena implements OnDestroy {
       // Armor Mitigation (Matches Service Balancing)
       const mitigation = defender.isEnemy ? defender.armorValue : (defender.armorValue / 5);
       let netDamage = Math.max(1, grossDamage - mitigation);
-      
+
       // Reboot vulnerability
       if (defender.rebootTimer > 0) netDamage *= 1.5;
 
       defender.hp = Math.max(0, defender.hp - netDamage);
       defender.hitFlashTimer = 0.2;
-      
+
       const dmgLabel = isCrit ? 'CRITICAL HIT' : 'Hit';
       this.emitLog(`${attacker.name} ${dmgLabel} -> ${defender.name} (-${Math.ceil(netDamage)} H) [REM: ${Math.max(0, Math.ceil(defender.hp))} HP]`);
     }
@@ -595,7 +595,7 @@ export class CombatArena implements OnDestroy {
   private fireProjectile(attacker: ArenaEntity, target: ArenaEntity) {
     const id = `proj_${this.arenaTime}_${Math.random().toString(36).substr(2, 4)}`;
     const dir = this.normalize({ x: target.x - attacker.x, y: target.y - attacker.y });
-    
+
     // Rotate attacker towards target
     attacker.rotation = Math.atan2(dir.y, dir.x);
 
@@ -631,8 +631,8 @@ export class CombatArena implements OnDestroy {
       }
 
       // Wall collision
-      if (p.x < WALL_THICKNESS || p.x > ARENA_W - WALL_THICKNESS || 
-          p.y < WALL_THICKNESS || p.y > ARENA_H - WALL_THICKNESS) {
+      if (p.x < WALL_THICKNESS || p.x > ARENA_W - WALL_THICKNESS ||
+        p.y < WALL_THICKNESS || p.y > ARENA_H - WALL_THICKNESS) {
         this.projectiles.splice(i, 1);
         continue;
       }
@@ -663,11 +663,11 @@ export class CombatArena implements OnDestroy {
               drone.hp -= netDmg;
               drone.hitFlashTimer = 0.2;
               this.emitLog(`Impact -> ${drone.name} (Hull: -${Math.ceil(netDmg)}) [REM: ${Math.max(0, Math.ceil(drone.hp))} HP]`);
-              
+
               // Reactive Awareness: Drone becomes aware of the enemy's position
               drone.lastSeenPos = { x: this.enemy.x, y: this.enemy.y };
               drone.searchTimer = 0;
-              
+
               hitDrone = true;
               break;
             }
@@ -686,14 +686,14 @@ export class CombatArena implements OnDestroy {
           this.enemy.hp -= netDmg;
           this.enemy.hitFlashTimer = 0.2;
           this.emitLog(`${this.enemy.name}: Hull Hit (-${Math.ceil(netDmg)} H) [REM: ${Math.max(0, Math.ceil(this.enemy.hp))}]`);
-          
+
           // Reactive Awareness: Enemy becomes aware of the attacker's position
           const attacker = this.drones.find(d => d.id === p.ownerId);
           if (attacker) {
             this.enemy.lastSeenPos = { x: attacker.x, y: attacker.y };
             this.enemy.searchTimer = 0;
           }
-          
+
           this.projectiles.splice(i, 1);
           continue;
         }
@@ -798,12 +798,12 @@ export class CombatArena implements OnDestroy {
     // Weighted feelers: [AngleOffset, Weight]
     const sensors = [
       { angle: 0, weight: 1.0 },              // Front
-      { angle: -Math.PI / 4, weight: 0.5 },    // Diagonal Left
-      { angle: Math.PI / 4, weight: 0.5 },     // Diagonal Right
-      { angle: -Math.PI / 2, weight: 0.3 },    // Side Left
-      { angle: Math.PI / 2, weight: 0.3 }      // Side Right
+      { angle: -Math.PI / 4, weight: 0.4 },    // Diagonal Left
+      { angle: Math.PI / 4, weight: 0.4 },     // Diagonal Right
+      { angle: -Math.PI / 2, weight: 0.2 },    // Side Left
+      { angle: Math.PI / 2, weight: 0.2 }      // Side Right
     ];
-    
+
     let bestSteer: Vec2 = { x: 0, y: 0 };
     let totalWeight = 0;
 
@@ -820,7 +820,7 @@ export class CombatArena implements OnDestroy {
           bestSteer.x += steer.x * s.weight;
           bestSteer.y += steer.y * s.weight;
           totalWeight += s.weight;
-          break; 
+          break;
         }
       }
     }
@@ -828,7 +828,7 @@ export class CombatArena implements OnDestroy {
     if (totalWeight > 0) {
       const finalSteer = this.normalize({ x: bestSteer.x, y: bestSteer.y });
       // Lower strength for smoother transitions
-      const strength = 0.8; 
+      const strength = 0.8;
       return { x: finalSteer.x * entity.topSpeed * strength, y: finalSteer.y * entity.topSpeed * strength };
     }
     return { x: 0, y: 0 };

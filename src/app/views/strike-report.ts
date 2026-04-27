@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MissionService } from '../services/mission.service';
 import { WorkshopService } from '../services/workshop.service';
 import { PlayerService } from '../services/player.service';
@@ -13,30 +13,46 @@ import { CombatArena } from '../components/combat-arena';
 @Component({
   selector: 'app-strike-report',
   standalone: true,
-  imports: [CommonModule, CombatArena],
+  imports: [CommonModule, CombatArena, RouterLink],
   template: `
     <div class="h-screen bg-black text-green-500 font-mono p-8 flex flex-col overflow-hidden">
       <!-- War Room Header -->
-      <div class="border-b-2 border-green-900 pb-4 mb-6 flex justify-between items-center">
+      <div class="border-b-2 border-green-900 pb-4 mb-6 flex justify-between items-end">
         <div class="flex items-center gap-6">
+          <!-- Hub Navigation -->
+          <a routerLink="/hub" class="text-green-500 border border-green-800 hover:bg-green-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors">
+              < BACK_TO_HUB
+          </a>
+
+          <div class="flex flex-col">
+            <h1 class="text-xl font-black tracking-tighter uppercase italic text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
+              Liberation_Strike // {{ activeView() === 'LIVE_FEED' ? 'LIVE_FEED' : 'TACTICAL_MAP' }}
+            </h1>
+            <p class="text-[10px] text-green-800 uppercase tracking-widest">Target: {{ mission()?.targetName }} | Status: [ACTIVE_ENGAGEMENT]</p>
+          </div>
+
+          <!-- Divider -->
+          <div class="w-[1px] h-10 bg-green-900/50 mx-2"></div>
+
+          <!-- Elapsed Time (Moved from right/left-edge to here) -->
           <div class="flex flex-col">
             <span class="text-[8px] text-green-800 uppercase font-bold tracking-widest mb-1">Elapsed_Time</span>
-            <div class="text-3xl font-black bg-green-900/20 px-4 py-1 border border-green-800 animate-pulse text-green-400">
+            <div class="text-xl font-black bg-green-900/20 px-3 py-0.5 border border-green-800 animate-pulse text-green-400">
               {{ formatTime(Math.floor(timeElapsed())) }}
             </div>
           </div>
-          <div>
-            <h1 class="text-xl font-black tracking-tighter uppercase italic text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">Liberation_Strike // {{ activeView() === 'LIVE_FEED' ? 'LIVE_FEED' : 'TACTICAL_MAP' }}</h1>
-            <p class="text-[10px] text-green-800 uppercase tracking-widest">Target: {{ mission()?.targetName }} | Status: [ACTIVE_ENGAGEMENT]</p>
-          </div>
+
+          <!-- View Toggle Button (Moved from right edge to here) -->
+          <button (click)="toggleView()" class="px-4 py-2 border text-[10px] uppercase font-black tracking-widest transition-all cursor-pointer h-fit"
+                  [ngClass]="activeView() === 'LIVE_FEED'
+                    ? 'border-cyan-700 text-cyan-400 hover:bg-cyan-900/30'
+                    : 'border-green-700 text-green-400 hover:bg-green-900/30'">
+            {{ activeView() === 'LIVE_FEED' ? '[ TACTICAL_MAP ]' : '[ LIVE_FEED ]' }}
+          </button>
         </div>
-        <!-- View Toggle Button -->
-        <button (click)="toggleView()" class="px-4 py-2 border text-[10px] uppercase font-black tracking-widest transition-all cursor-pointer"
-                [ngClass]="activeView() === 'LIVE_FEED'
-                  ? 'border-cyan-700 text-cyan-400 hover:bg-cyan-900/30'
-                  : 'border-green-700 text-green-400 hover:bg-green-900/30'">
-          {{ activeView() === 'LIVE_FEED' ? '[ TACTICAL_MAP ]' : '[ LIVE_FEED ]' }}
-        </button>
+
+        <!-- Right Side: Empty to avoid TopBar overlap -->
+        <div class="hidden lg:block w-96"></div>
       </div>
 
       <!-- Main Feed -->
