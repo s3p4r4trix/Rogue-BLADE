@@ -1,7 +1,7 @@
 import { Injectable, signal, inject, effect } from '@angular/core';
 import { ResearchProject } from '../models/research.model';
 import { PlayerStore } from './player.store';
-import { WorkshopService } from './workshop.service';
+import { WorkshopStore } from './workshop.store';
 
 @Injectable({ providedIn: 'root' })
 export class ResearchService {
@@ -9,7 +9,7 @@ export class ResearchService {
   private playerStore = inject(PlayerStore);
   
   /** Workshop for unlocking hardware components. */
-  private workshop = inject(WorkshopService);
+  private workshopStore = inject(WorkshopStore);
 
   /** Signal containing the list of all potential and active research project states. */
   readonly projects = signal<ResearchProject[]>(this.loadProjects());
@@ -67,12 +67,12 @@ export class ResearchService {
   }
 
   /**
-   * Logic: Permanently unlocks the project's component ID in the WorkshopService.
+   * Logic: Permanently unlocks the project's component ID in the WorkshopStore.
    * @param project The completed project.
    */
   private completeProject(project: ResearchProject) {
     if (project.unlockedComponentId) {
-      this.workshop.unlockedComponentIds.update(ids => Array.from(new Set([...ids, project.unlockedComponentId!])));
+      this.workshopStore.unlockComponent(project.unlockedComponentId);
     }
     console.log(`[RESEARCH] Project Completed: ${project.name}`);
   }

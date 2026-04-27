@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { WorkshopService, HARDWARE_INVENTORY } from '../services/workshop.service';
+import { WorkshopStore } from '../services/workshop.store';
+import { HARDWARE_INVENTORY } from '../data/hardware-inventory.data';
 import { CommonModule } from '@angular/common';
 import { Shuriken, CyberOption } from '../models/hardware.model';
 
@@ -88,16 +89,16 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                   </button>
 
                   <button (click)="deploy()" 
-                          [disabled]="!workshop.isFleetValid()"
+                          [disabled]="!workshopStore.isFleetValid()"
                           class="bg-red-900/30 border border-red-600 text-red-500 hover:bg-red-800/50 px-4 py-2 uppercase font-bold tracking-wider transition-colors shadow-[0_0_10px_rgba(239,68,68,0.2)] neuro-border-draw"
-                          [ngClass]="{'opacity-30 cursor-not-allowed grayscale': !workshop.isFleetValid()}">
+                          [ngClass]="{'opacity-30 cursor-not-allowed grayscale': !workshopStore.isFleetValid()}">
                      <div class="border-anim before:bg-red-500 after:bg-red-500"></div><div class="border-anim-v before:bg-red-500 after:bg-red-500"></div>
-                     <span class="relative z-10">{{ workshop.isFleetValid() ? '[>] COMBAT DEPLOY' : '[!] HW_INCOMPLETE' }}</span>
+                     <span class="relative z-10">{{ workshopStore.isFleetValid() ? '[>] COMBAT DEPLOY' : '[!] HW_INCOMPLETE' }}</span>
                   </button>
                 </div>
              </div>
 
-             @if (!workshop.isFleetValid()) {
+             @if (!workshopStore.isFleetValid()) {
                <div class="bg-red-900/20 border border-red-900/50 p-2 text-[10px] text-red-500 uppercase tracking-widest animate-pulse text-center">
                  Critical Error: Mandatory hardware slots detected as NULL. Deployment inhibited.
                </div>
@@ -418,13 +419,13 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HardwareWorkshop {
-  workshop = inject(WorkshopService);
+  workshopStore = inject(WorkshopStore);
   router = inject(Router);
 
   inventory = HARDWARE_INVENTORY;
-  shurikens = this.workshop.availableShurikens;
-  activeShuriken = this.workshop.activeShuriken;
-  unlocked = this.workshop.unlockedComponentIds;
+  shurikens = this.workshopStore.availableShurikens;
+  activeShuriken = this.workshopStore.activeShuriken;
+  unlocked = this.workshopStore.unlockedComponentIds;
 
   activeShurikenStats = computed(() => {
     const s = this.activeShuriken();
@@ -479,12 +480,12 @@ export class HardwareWorkshop {
   });
 
   selectShuriken(id: string) {
-    this.workshop.setActiveShuriken(id);
+    this.workshopStore.setActiveShuriken(id);
   }
 
   rename(id: string, newName: string) {
     if (newName.trim()) {
-      this.workshop.renameShuriken(id, newName.trim());
+      this.workshopStore.renameShuriken(id, newName.trim());
     }
   }
 
@@ -497,7 +498,7 @@ export class HardwareWorkshop {
   }
 
   getUnlocked<T extends { id: string }>(items: T[]): T[] {
-    return items.filter(item => this.workshop.unlockedComponentIds().includes(item.id));
+    return items.filter(item => this.workshopStore.unlockedComponentIds().includes(item.id));
   }
 
   formatTime(seconds: number): string {
@@ -510,19 +511,19 @@ export class HardwareWorkshop {
   onNativeSwap(shurikenId: string, slot: keyof Shuriken, event: Event, category: any[]) {
     const componentId = (event.target as HTMLSelectElement).value;
     if (componentId === '') {
-      this.workshop.equipComponent(shurikenId, slot, null);
+      this.workshopStore.equipComponent(shurikenId, slot, null);
       return;
     }
     const comp = category.find(c => c.id === componentId);
     if (comp) {
-      this.workshop.equipComponent(shurikenId, slot, comp);
+      this.workshopStore.equipComponent(shurikenId, slot, comp);
     }
   }
 
   onNativeMaster(event: Event) {
     const masterId = (event.target as HTMLSelectElement).value;
     if (masterId) {
-      this.workshop.setCoordination(this.activeShuriken().id, 'SLAVE', masterId);
+      this.workshopStore.setCoordination(this.activeShuriken().id, 'SLAVE', masterId);
     }
   }
 
@@ -561,22 +562,22 @@ export class HardwareWorkshop {
   }
 
   hasAvailableMasters(): boolean {
-    return this.workshop.availableShurikens().some(s => s.semiAI && s.id !== this.activeShuriken().id);
+    return this.workshopStore.availableShurikens().some(s => s.semiAI && s.id !== this.activeShuriken().id);
   }
 
   getMasterOptions(): CyberOption[] {
-    return this.workshop.availableShurikens()
+    return this.workshopStore.availableShurikens()
       .filter(s => s.semiAI && s.id !== this.activeShuriken().id)
       .map(s => ({ value: s.id, label: `${s.name} [MASTER]` }));
   }
 
   setCoordMode(mode: 'SOLO' | 'MASTER' | 'SLAVE') {
-    this.workshop.setCoordination(this.activeShuriken().id, mode);
+    this.workshopStore.setCoordination(this.activeShuriken().id, mode);
   }
 
   setMaster(masterId: string | undefined) {
     if (masterId) {
-      this.workshop.setCoordination(this.activeShuriken().id, 'SLAVE', masterId);
+      this.workshopStore.setCoordination(this.activeShuriken().id, 'SLAVE', masterId);
     }
   }
 }

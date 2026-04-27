@@ -1,7 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withComputed, withMethods, patchState, withHooks } from '@ngrx/signals';
 import { MissionContract, MissionDifficulty } from '../models/mission.model';
-import { WorkshopService } from './workshop.service';
+import { WorkshopStore } from './workshop.store';
 import { PlayerStore } from './player.store';
 import { ArmorType } from '../models/hardware.model';
 
@@ -68,14 +68,14 @@ export const MissionStore = signalStore(
   })),
 
   /** ─── Methods (Actions) ─────────────────────────────────────────────── */
-  withMethods((store, workshop = inject(WorkshopService), playerStore = inject(PlayerStore)) => {
+  withMethods((store, workshopStore = inject(WorkshopStore), playerStore = inject(PlayerStore)) => {
 
     /**
      * Internal: Calculates the average combat power of the current drone squad.
      * Logic: Combines processor routines, blade damage, and hull durability.
      */
     const calculateSquadPower = (): number => {
-      const shurikens = workshop.availableShurikens();
+      const shurikens = workshopStore.availableShurikens();
       if (shurikens.length === 0) return 100;
 
       const totalPower = shurikens.reduce((accumulator, shuriken) => {

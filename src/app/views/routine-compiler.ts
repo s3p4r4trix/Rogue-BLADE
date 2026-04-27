@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { Inventory } from '../components/inventory';
 import { GambitSlot } from '../components/gambit-slot';
 import { CompilerConsole } from '../components/compiler-console';
-import { WorkshopService } from '../services/workshop.service';
+import { WorkshopStore } from '../services/workshop.store';
 import { PlayerStore } from '../services/player.store';
 
 @Component({
@@ -112,22 +112,22 @@ import { PlayerStore } from '../services/player.store';
 })
 export class RoutineCompiler {
   /** Reference to the workshop for shuriken and routine management. */
-  workshop = inject(WorkshopService);
+  workshopStore = inject(WorkshopStore);
   
   /** Centralized player state store. */
   playerStore = inject(PlayerStore);
 
   /** Signal containing the routines for the currently active shuriken. */
-  routines = this.workshop.routines;
+  routines = this.workshopStore.routines;
   
   /** Fallback logic action when no routine triggers match. */
-  fallbackAction = this.workshop.fallbackAction;
+  fallbackAction = this.workshopStore.fallbackAction;
   
   /** List of all shurikens available in the user's hangar. */
-  availableShurikens = this.workshop.availableShurikens;
+  availableShurikens = this.workshopStore.availableShurikens;
   
   /** The specific shuriken currently being modified. */
-  activeShuriken = this.workshop.activeShuriken;
+  activeShuriken = this.workshopStore.activeShuriken;
 
   /**
    * Logic: Checks if the current routine count matches the hardware limit of the processor.
@@ -154,7 +154,7 @@ export class RoutineCompiler {
   onNativeShurikenChange(event: Event) {
     const shurikenId = (event.target as HTMLSelectElement).value;
     if (shurikenId) {
-      this.workshop.setActiveShuriken(shurikenId);
+      this.workshopStore.setActiveShuriken(shurikenId);
     }
   }
 
@@ -162,6 +162,6 @@ export class RoutineCompiler {
    * Allocates a new priority routine slot via the workshop.
    */
   addRoutine() {
-    this.workshop.addRoutine();
+    this.workshopStore.addRoutine();
   }
 }

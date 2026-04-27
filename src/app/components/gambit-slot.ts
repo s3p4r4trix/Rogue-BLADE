@@ -1,6 +1,6 @@
 import { Component, input, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { WorkshopService } from '../services/workshop.service';
+import { WorkshopStore } from '../services/workshop.store';
 import { GambitRoutine, Trigger, Action } from '../models/gambit.model';
 import { CyberOption } from '../models/hardware.model';
 
@@ -103,18 +103,18 @@ export class GambitSlot {
   routine = input.required<GambitRoutine>();
   index = input.required<number>();
 
-  workshop = inject(WorkshopService);
+  workshopStore = inject(WorkshopStore);
 
-  isInvalid = computed(() => !this.workshop.isRoutineValid(this.routine()));
+  isInvalid = computed(() => !this.workshopStore.isRoutineValid(this.routine()));
 
   triggerOptions = computed(() => {
-    const routines = this.workshop.routines();
+    const routines = this.workshopStore.routines();
     const usedTriggerIds = routines
       .filter((_, i) => i !== this.index())
       .map(r => r.trigger?.id)
       .filter(id => !!id);
 
-    return this.workshop.unlockedTriggers().map(t => ({
+    return this.workshopStore.unlockedTriggers().map(t => ({
       value: t.value,
       label: t.name,
       disabled: t.disabled || usedTriggerIds.includes(t.id)
@@ -122,57 +122,57 @@ export class GambitSlot {
   });
 
   get actionOptions(): CyberOption[] {
-    return this.workshop.unlockedActions().map(a => ({
+    return this.workshopStore.unlockedActions().map(a => ({
       value: a.value,
       label: a.name
     }));
   }
 
   isLast() {
-    return this.index() === this.workshop.routines().length - 1;
+    return this.index() === this.workshopStore.routines().length - 1;
   }
 
   onNativeTriggerChange(event: Event) {
     const value = (event.target as HTMLSelectElement).value;
     if (!value) return;
-    const trigger = this.workshop.availableTriggers().find(t => t.value === value);
+    const trigger = this.workshopStore.availableTriggers().find(t => t.value === value);
     if (trigger) {
-      this.workshop.setTrigger(this.index(), trigger);
-      this.workshop.setInfoItem(trigger);
+      this.workshopStore.setTrigger(this.index(), trigger);
+      this.workshopStore.setInfoItem(trigger);
     }
   }
 
   onNativeActionChange(event: Event) {
     const value = (event.target as HTMLSelectElement).value;
     if (!value) return;
-    const action = this.workshop.availableActions().find(a => a.value === value);
+    const action = this.workshopStore.availableActions().find(a => a.value === value);
     if (action) {
-      this.workshop.setAction(this.index(), action);
-      this.workshop.setInfoItem(action);
+      this.workshopStore.setAction(this.index(), action);
+      this.workshopStore.setInfoItem(action);
     }
   }
 
   moveUp() {
-    this.workshop.moveRoutineUp(this.index());
+    this.workshopStore.moveRoutineUp(this.index());
   }
 
   moveDown() {
-    this.workshop.moveRoutineDown(this.index());
+    this.workshopStore.moveRoutineDown(this.index());
   }
 
   showTriggerInfo() {
-    this.workshop.setInfoItem(this.routine().trigger);
+    this.workshopStore.setInfoItem(this.routine().trigger);
   }
 
   showActionInfo() {
-    this.workshop.setInfoItem(this.routine().action);
+    this.workshopStore.setInfoItem(this.routine().action);
   }
 
   clearSlot() {
-    this.workshop.clearSlot(this.index());
+    this.workshopStore.clearSlot(this.index());
   }
 
   removeSlot() {
-    this.workshop.removeRoutine(this.index());
+    this.workshopStore.removeRoutine(this.index());
   }
 }

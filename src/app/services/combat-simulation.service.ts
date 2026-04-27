@@ -3,11 +3,11 @@ import { MissionContract } from '../models/mission.model';
 import { Shuriken, DamageType, ArmorType } from '../models/hardware.model';
 import { GambitRoutine } from '../models/gambit.model';
 import { StrikeResult, ShurikenSimulationState, SimulationContext } from '../models/combat.model';
-import { WorkshopService } from './workshop.service';
+import { WorkshopStore } from './workshop.store';
 
 @Injectable({ providedIn: 'root' })
 export class CombatSimulationService {
-   private workshop = inject(WorkshopService);
+   private workshopStore = inject(WorkshopStore);
 
    /**
     * Official Effectiveness Matrix (Table 4.0)
@@ -29,7 +29,7 @@ export class CombatSimulationService {
     */
    simulateStrike(mission: MissionContract, shurikens: Shuriken[]): StrikeResult {
       const combatLogs: string[] = [];
-      const routinesMap = this.workshop.routinesMap();
+      const routinesMap = this.workshopStore.routinesMap();
 
       // 1. Initial State Mapping: Convert shuriken data into simulation-friendly state objects.
       const shurikenStates: ShurikenSimulationState[] = shurikens.map(shuriken => {
@@ -168,7 +168,7 @@ export class CombatSimulationService {
                   for (const routine of routines) {
                      if (!routine.trigger || !routine.action) continue;
                      if (this.evaluateTrigger(routine.trigger.id, shuriken, { enemyHull, enemyShields, mission, tick: currentSecond, logs: combatLogs })) {
-                        const energyCost = this.workshop.availableActions().find(action => action.id === routine.action?.id)?.energyCost || 0;
+                        const energyCost = this.workshopStore.availableActions().find(action => action.id === routine.action?.id)?.energyCost || 0;
                         if (shuriken.energy >= energyCost) {
                            actionIdToTake = routine.action.id;
                            break; 
@@ -297,7 +297,7 @@ export class CombatSimulationService {
       if (!enemyRef || (enemyRef.hull + enemyRef.shields) <= 0) return;
 
       // Logic: Energy cost verification and deduction.
-      const energyCost = this.workshop.availableActions().find(action => action.id === id)?.energyCost || 0;
+      const energyCost = this.workshopStore.availableActions().find(action => action.id === id)?.energyCost || 0;
       if (state.energy < energyCost) {
          // Logic: Fallback to basic strike if energy reserves are insufficient.
          id = 'actionStandardStrike';

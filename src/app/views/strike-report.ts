@@ -2,7 +2,7 @@ import { Component, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy, 
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MissionStore } from '../services/mission.store';
-import { WorkshopService } from '../services/workshop.service';
+import { WorkshopStore } from '../services/workshop.store';
 import { PlayerStore } from '../services/player.store';
 import { CombatSimulationService } from '../services/combat-simulation.service';
 import { StrikeResult } from '../models/combat.model';
@@ -236,7 +236,7 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   private missionStore = inject(MissionStore);
   
   /** Drone hardware and routine mapping. */
-  private workshop = inject(WorkshopService);
+  private workshopStore = inject(WorkshopStore);
   
   /** Centralized player state store. */
   private playerStore = inject(PlayerStore);
@@ -257,7 +257,7 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   mission = this.missionStore.activeStrikeMission;
   
   /** Signal containing the list of shurikens available for the strike. */
-  shurikens = this.workshop.availableShurikens;
+  shurikens = this.workshopStore.availableShurikens;
 
   /** Internal signal to store the simulation result for loot calculation. */
   strikeResult = signal<StrikeResult | null>(null);

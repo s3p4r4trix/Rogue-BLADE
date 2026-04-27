@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, inject, computed, signal } from '@a
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { MissionStore } from '../services/mission.store';
-import { WorkshopService } from '../services/workshop.service';
+import { WorkshopStore } from '../services/workshop.store';
 import { MissionContract } from '../models/mission.model';
 
 @Component({
@@ -208,7 +208,7 @@ export class LiberationStrike {
   missionStore = inject(MissionStore);
   
   /** Reference to the workshop for squad state and routine mapping. */
-  workshop = inject(WorkshopService);
+  workshopStore = inject(WorkshopStore);
   
   /** Navigation service. */
   router = inject(Router);
@@ -224,8 +224,8 @@ export class LiberationStrike {
    * Logic: A drone is 'fit' if it has at least one valid routine assigned (trigger + action).
    */
   swarmStatus = computed(() => {
-    const shurikens = this.workshop.availableShurikens();
-    const routinesMap = this.workshop.routinesMap();
+    const shurikens = this.workshopStore.availableShurikens();
+    const routinesMap = this.workshopStore.routinesMap();
     
     return shurikens.map(shuriken => {
       const routines = routinesMap[shuriken.id] || [];
@@ -264,7 +264,7 @@ export class LiberationStrike {
    * @param shurikenId The unique ID of the drone.
    */
   configureShuriken(shurikenId: string) {
-    this.workshop.setActiveShuriken(shurikenId);
+    this.workshopStore.setActiveShuriken(shurikenId);
     this.router.navigate(['/routine']);
   }
 

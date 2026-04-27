@@ -1,6 +1,6 @@
 import { Component, inject, ChangeDetectionStrategy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { WorkshopService } from '../services/workshop.service';
+import { WorkshopStore } from '../services/workshop.store';
 import { Trigger, Action } from '../models/gambit.model';
 
 @Component({
@@ -78,7 +78,7 @@ import { Trigger, Action } from '../models/gambit.model';
                 </section>
               }
               
-              <button (click)="workshop.setInfoItem(null)" class="text-[9px] text-green-900 hover:text-green-500 uppercase font-bold transition-colors">
+              <button (click)="workshopStore.setInfoItem(null)" class="text-[9px] text-green-900 hover:text-green-500 uppercase font-bold transition-colors">
                 [X] CLOSE_DIAGNOSTICS
               </button>
             </div>
@@ -95,7 +95,7 @@ import { Trigger, Action } from '../models/gambit.model';
               </h4>
               <div class="grid grid-cols-1 gap-1">
                 @for (trig of filteredTriggers(); track trig.id) {
-                  <button (click)="workshop.setInfoItem(trig)"
+                  <button (click)="workshopStore.setInfoItem(trig)"
                           [ngClass]="{
                             'bg-cyan-500/20 border-cyan-500/50 text-cyan-200': selectedItem()?.id === trig.id,
                             'bg-black/40 border-cyan-900/20 text-cyan-700 hover:border-cyan-500/30 hover:text-cyan-500': selectedItem()?.id !== trig.id && hasRequiredSensor(trig),
@@ -130,7 +130,7 @@ import { Trigger, Action } from '../models/gambit.model';
               </h4>
               <div class="grid grid-cols-1 gap-1">
                 @for (act of filteredActions(); track act.id) {
-                  <button (click)="workshop.setInfoItem(act)"
+                  <button (click)="workshopStore.setInfoItem(act)"
                           [ngClass]="selectedItem()?.id === act.id ? 'bg-orange-500/20 border-orange-500/50 text-orange-200' : 'bg-black/40 border-orange-900/20 text-orange-700 hover:border-orange-500/30 hover:text-orange-500'"
                           class="text-left px-3 py-2 border transition-all duration-200 text-xs font-bold uppercase tracking-wider flex justify-between items-center group">
                     <span>{{ act.name }}</span>
@@ -165,14 +165,14 @@ import { Trigger, Action } from '../models/gambit.model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Inventory {
-  workshop = inject(WorkshopService);
-  selectedItem = this.workshop.selectedInfoItem;
+  workshopStore = inject(WorkshopStore);
+  selectedItem = this.workshopStore.selectedInfoItem;
   
   searchQuery = signal('');
 
   filteredTriggers = computed(() => {
     const query = this.searchQuery().toLowerCase();
-    return this.workshop.availableTriggers().filter(t => 
+    return this.workshopStore.availableTriggers().filter(t => 
       t.name.toLowerCase().includes(query) || 
       t.description?.toLowerCase().includes(query)
     );
@@ -180,7 +180,7 @@ export class Inventory {
 
   filteredActions = computed(() => {
     const query = this.searchQuery().toLowerCase();
-    return this.workshop.availableActions().filter(a => 
+    return this.workshopStore.availableActions().filter(a => 
       a.name.toLowerCase().includes(query) || 
       a.description?.toLowerCase().includes(query)
     );
@@ -191,11 +191,11 @@ export class Inventory {
   }
 
   hasRequiredSensor(trigger: Trigger): boolean {
-    const sensor = this.workshop.activeShuriken().sensor;
+    const sensor = this.workshopStore.activeShuriken().sensor;
     return !trigger.requiredSensor || sensor?.name === trigger.requiredSensor;
   }
 
   isTriggerUsed(trigger: Trigger): boolean {
-    return this.workshop.routines().some(r => r.trigger?.id === trigger.id);
+    return this.workshopStore.routines().some(r => r.trigger?.id === trigger.id);
   }
 }
