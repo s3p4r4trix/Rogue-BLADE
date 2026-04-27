@@ -181,6 +181,14 @@ The Zenith Collective and their assimilated troops demand specific programming:
 * **Corrupted Netrunners:** Human traitors who invert or scramble your priority lists.
 * **Illusion Constructs:** Drop chaff and fog to blind Radar and Lidar.
 * **Snipers:** Glass canons with high-damage, long-range attacks.
+
+### 7.1 Enemy AI Behavior & Combat Protocols
+Zenith forces utilize advanced tactical protocols when engaging human resistance drones:
+*   **Target Acquisition:** Upon detecting a drone (Sensor Range + LOS), the unit immediately halts all movement to stabilize weapon systems.
+*   **Ranged Engagement:** Hostiles fire high-velocity energy projectiles at the target. This stationary posture maximizes accuracy but makes them vulnerable to high-speed kinetic strikes.
+*   **Suppression:** Projectiles deal flat damage upon impact. Drones must utilize speed, evasion, or cover to survive the incoming fire.
+*   **Reactive Awareness:** All entities (Drones and Zenith) immediately register the direction and position of any attacker upon taking damage, preventing stealth-kill loops without consequences.
+
 **Specific Counters to Sensors:**
 * **Necro-Cyborgs / Drones:** Invisible to **Biosensors**.
 * **Stealth-Mechs:** Zero-emission tech; invisible to **EM-Sensors**.

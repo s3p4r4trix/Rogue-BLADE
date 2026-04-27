@@ -28,7 +28,26 @@ export type AIState =
   | 'SEARCHING' 
   | 'WITHDRAWN' 
   | 'PATROLLING' 
-  | 'FIGHTING';
+  | 'FIGHTING'
+  | 'SHOOTING';
+
+/**
+ * Projectile entity fired by combatants
+ */
+export interface Projectile {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  damage: number;
+  ownerId: string;
+  isEnemy: boolean;
+  color: string;
+  lifeTime: number; // Time in seconds before it despawns if it doesn't hit anything
+}
+
 
 /**
  * Runtime entity representing a combatant (Drone or Hostile) in the arena

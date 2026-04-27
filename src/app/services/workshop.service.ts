@@ -5,10 +5,10 @@ import { moveItemInArray } from '@angular/cdk/drag-drop';
 
 export const HARDWARE_INVENTORY = {
   engines: [
-    { id: 'eng-drifter', name: 'Drifter (Basic)', description: 'Salvaged industrial mag-lev.', topSpeed: 50, acceleration: 10, evasionRate: 0.05, energyDrain: 5, stealthValue: 10, weight: 10 } as AntiGravEngine,
-    { id: 'eng-hauler', name: 'Hauler (Tank)', description: 'Slow but high weight capacity.', topSpeed: 30, acceleration: 5, evasionRate: 0.0, energyDrain: 8, stealthValue: 0, weight: 25 } as AntiGravEngine,
-    { id: 'eng-screamer', name: 'Screamer (Speed)', description: 'High-performance racing engine.', topSpeed: 120, acceleration: 30, evasionRate: 0.15, energyDrain: 15, stealthValue: -20, weight: 8 } as AntiGravEngine,
-    { id: 'eng-ghost', name: 'Ghost (Stealth)', description: 'Silenced baffles and low profile.', topSpeed: 60, acceleration: 15, evasionRate: 0.10, energyDrain: 8, stealthValue: 50, weight: 12 } as AntiGravEngine
+    { id: 'eng-drifter', name: 'Drifter (Basic)', description: 'Salvaged industrial mag-lev.', topSpeed: 150, acceleration: 50, evasionRate: 0.05, energyDrain: 5, stealthValue: 10, weight: 10 } as AntiGravEngine,
+    { id: 'eng-hauler', name: 'Hauler (Tank)', description: 'Slow but high weight capacity.', topSpeed: 120, acceleration: 40, evasionRate: 0.0, energyDrain: 8, stealthValue: 0, weight: 25 } as AntiGravEngine,
+    { id: 'eng-screamer', name: 'Screamer (Speed)', description: 'High-performance racing engine.', topSpeed: 300, acceleration: 100, evasionRate: 0.15, energyDrain: 15, stealthValue: -20, weight: 8 } as AntiGravEngine,
+    { id: 'eng-ghost', name: 'Ghost (Stealth)', description: 'Silenced baffles and low profile.', topSpeed: 200, acceleration: 133, evasionRate: 0.10, energyDrain: 8, stealthValue: 50, weight: 12 } as AntiGravEngine
   ],
   energyCells: [
     { id: 'cell-scrap', name: 'Scrap Dynamo', description: 'Recovered from a junked hover-car.', maxEnergy: 100, maxOutput: 10, weight: 15 } as EnergyCell,
@@ -183,30 +183,65 @@ export class WorkshopService {
     this.unlockedComponentIds.update(ids => Array.from(new Set([...ids, ...baseIds])));
 
     this.availableShurikens.update(list => list.map(s => {
-      const repaired = { ...s };
+      const r = { ...s };
 
-      // Enforce lowest tier hardware if missing or mismatched
-      if (!repaired.hull || !repaired.hull.maxHp || repaired.hull.id === 'hull-plasteel' || repaired.hull.id === 'hull-sinter') repaired.hull = HARDWARE_INVENTORY.hulls[0];
-      if (!repaired.sensor || !repaired.sensor.range || repaired.sensor.id === 'sens-prox' || repaired.sensor.id === 'sens-vital') repaired.sensor = HARDWARE_INVENTORY.sensors[0];
-      if (!repaired.blade || !repaired.blade.baseDamage) repaired.blade = HARDWARE_INVENTORY.blades[0];
-      if (!repaired.processor || !repaired.processor.routineCapacity) repaired.processor = HARDWARE_INVENTORY.processors[0];
-      if (repaired.processor && !repaired.processor.processorSpeed) repaired.processor.processorSpeed = 5;
-      if (!repaired.engine || !repaired.engine.topSpeed) repaired.engine = HARDWARE_INVENTORY.engines[0];
-      if (!repaired.energyCell || !repaired.energyCell.maxEnergy) repaired.energyCell = HARDWARE_INVENTORY.energyCells[0];
-      if (!repaired.semiAI || !repaired.semiAI.iffAccuracy) {
-        // Only reset if it exists but is broken. If null, keep as null.
-        if (repaired.semiAI) repaired.semiAI = null;
+      // Refresh component stats from HARDWARE_INVENTORY by ID to ensure balance changes apply
+      if (r.engine) {
+        const cur = HARDWARE_INVENTORY.engines.find(e => e.id === r.engine?.id);
+        r.engine = cur ? { ...cur } : HARDWARE_INVENTORY.engines[0];
+      } else r.engine = HARDWARE_INVENTORY.engines[0];
+
+      if (r.hull) {
+        const cur = HARDWARE_INVENTORY.hulls.find(h => h.id === r.hull?.id);
+        r.hull = cur ? { ...cur } : HARDWARE_INVENTORY.hulls[0];
+      } else r.hull = HARDWARE_INVENTORY.hulls[0];
+
+      if (r.energyCell) {
+        const cur = HARDWARE_INVENTORY.energyCells.find(c => c.id === r.energyCell?.id);
+        r.energyCell = cur ? { ...cur } : HARDWARE_INVENTORY.energyCells[0];
+      } else r.energyCell = HARDWARE_INVENTORY.energyCells[0];
+
+      if (r.sensor) {
+        const cur = HARDWARE_INVENTORY.sensors.find(sn => sn.id === r.sensor?.id);
+        r.sensor = cur ? { ...cur } : HARDWARE_INVENTORY.sensors[0];
+      } else r.sensor = HARDWARE_INVENTORY.sensors[0];
+
+      if (r.blade) {
+        const cur = HARDWARE_INVENTORY.blades.find(b => b.id === r.blade?.id);
+        r.blade = cur ? { ...cur } : HARDWARE_INVENTORY.blades[0];
+      } else r.blade = HARDWARE_INVENTORY.blades[0];
+
+      if (r.formDesign) {
+        const cur = HARDWARE_INVENTORY.formDesigns.find(f => f.id === r.formDesign?.id);
+        r.formDesign = cur ? { ...cur } : HARDWARE_INVENTORY.formDesigns[0];
+      } else r.formDesign = HARDWARE_INVENTORY.formDesigns[0];
+
+      if (r.processor) {
+        const cur = HARDWARE_INVENTORY.processors.find(p => p.id === r.processor?.id);
+        r.processor = cur ? { ...cur } : HARDWARE_INVENTORY.processors[0];
+      } else r.processor = HARDWARE_INVENTORY.processors[0];
+
+      if (r.reactor) {
+        const cur = HARDWARE_INVENTORY.reactors.find(re => re.id === r.reactor?.id);
+        r.reactor = cur ? { ...cur } : HARDWARE_INVENTORY.reactors[0];
+      } else r.reactor = HARDWARE_INVENTORY.reactors[0];
+
+      if (r.shield) {
+        const cur = HARDWARE_INVENTORY.shields.find(sh => sh.id === r.shield?.id);
+        if (cur) r.shield = { ...cur };
       }
-      if (!repaired.formDesign || !repaired.formDesign.speedMult) repaired.formDesign = HARDWARE_INVENTORY.formDesigns[0];
-      if (!repaired.reactor || !repaired.reactor.energyRegen) repaired.reactor = HARDWARE_INVENTORY.reactors[0];
-      if (!repaired.shield) repaired.shield = null;
+
+      if (r.semiAI) {
+        const cur = HARDWARE_INVENTORY.semiAIs.find(ai => ai.id === r.semiAI?.id);
+        if (cur) r.semiAI = { ...cur };
+      }
 
       // Coordination Migration
-      if (!repaired.coordinationMode) repaired.coordinationMode = 'SOLO';
-      if (repaired.semiAI && repaired.coordinationMode === 'SOLO') repaired.coordinationMode = 'MASTER';
-      if (!repaired.semiAI && repaired.coordinationMode === 'MASTER') repaired.coordinationMode = 'SOLO';
+      if (!r.coordinationMode) r.coordinationMode = 'SOLO';
+      if (r.semiAI && r.coordinationMode === 'SOLO') r.coordinationMode = 'MASTER';
+      if (!r.semiAI && r.coordinationMode === 'MASTER') r.coordinationMode = 'SOLO';
 
-      return repaired;
+      return r;
     }));
   }
 

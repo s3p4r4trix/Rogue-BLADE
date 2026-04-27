@@ -402,6 +402,33 @@ Drones prioritize hardware preservation when critical damage is sustained.
    if (withdrawalTimer >= 2.0 seconds):
        state = WITHDRAWN
    ```
-4. **Hardware Preservation:**
-   * **`WITHDRAWN`:** Drone is safe. Repair cost is calculated based on remaining HP (standard repair).
-   * **`DESTROYED`:** Drone is lost. Requires full reconstruction (significantly higher `SCRAP` and `CREDITS` cost).
+### 6.10 Ranged Combat & Projectiles
+
+Zenith hostiles utilize ranged attacks to suppress drones.
+
+1.  **SHOOTING State**: Triggered when a hostile has a valid sensor lock (Range + LOS + FOV).
+    *   **Movement**: The entity halts all velocity (`targetVelocity = {0,0}`).
+    *   **Firing Rate**: `FIRE_RATE = 2.0s`.
+2.  **Projectile Physics**:
+    *   **Speed**: `PROJECTILE_SPEED = 300 units/s`.
+    *   **Collision**: Projectiles are destroyed upon hitting walls, obstacles, or entities.
+    *   **Damage**: Flat damage value (default: 15).
+3.  **Dodge Mechanics**: Drones do not automatically dodge projectiles via AI; they must rely on their `evasionRate` (simulated) or physical movement/speed to stay out of the projectile's path.
+
+### 6.11 Action Logging (Live Feed)
+
+The Tactical Map emits standardized log strings for every significant action to synchronize with the **Live Feed**:
+*   **State Transitions**: `[STATE] EntityName: NEW_STATE`
+*   **Firing**: `EntityName fired energy projectile at TargetName`
+*   **Strikes**: `AttackerName executed kinetic strike for DMG DMG!`
+*   **Hits**: `Projectile hit TargetName for DMG DMG!`
+*   **Withdrawal**: `EntityName successfully withdrew from combat.`
+*   **Destruction**: `[CRITICAL] EntityName destroyed.`
+
+### 6.12 Reactive Awareness (Damage Registry)
+
+Combatants (Drones and Hostiles) possess immediate sensor feedback upon sustaining damage, regardless of their current Line of Sight (LOS) or sensor range.
+
+1.  **Damage Lock-on**: When an entity is struck by a kinetic strike or a projectile, it immediately registers the attacker's current spatial coordinates.
+2.  **Memory Update**: The entity's `lastSeenPos` is updated to the attacker's position, and the `searchTimer` is reset to 0.
+3.  **Behavior Shift**: This allows the entity to immediately transition from **PATROLLING** or **SEARCHING** back to **PURSUING** or **SHOOTING**, effectively eliminating "blind-side" exploits where an entity could be destroyed without reacting.

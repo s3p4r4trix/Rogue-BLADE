@@ -5,7 +5,7 @@ import {
 } from '@angular/core';
 import { Shuriken } from '../models/hardware.model';
 import { MissionContract } from '../models/mission.model';
-import { Vec2, AABB, ArenaEntity } from '../models/arena.model';
+import { Vec2, AABB, ArenaEntity, Projectile } from '../models/arena.model';
 
 // ─── Arena Constants ───────────────────────────────────────────────
 const ARENA_W = 800;
@@ -13,11 +13,14 @@ const ARENA_H = 800;
 const WALL_THICKNESS = 16;
 const TILE_SIZE = 40;
 const PERSPECTIVE_SCALE_Y = 0.7;
-const MIN_STRIKE_SPEED = 0.4; // Fraction of topSpeed required to attempt a strike
-const STRIKE_COOLDOWN = 1.5; // Seconds between strike attempts
-const SEARCH_LINGER_TIME = 3; // Seconds to search at last-seen before expanding
+const MIN_STRIKE_SPEED = 0.4;
+const STRIKE_COOLDOWN = 1.5;
+const SEARCH_LINGER_TIME = 3;
 const ENEMY_STRIKE_COOLDOWN = 2.0;
 const ENEMY_DAMAGE = 15;
+const PROJECTILE_SPEED = 300;
+const PROJECTILE_RADIUS = 3;
+const FIRE_RATE = 2.0; // Seconds between shots
 
 @Component({
   selector: 'app-combat-arena',
@@ -34,7 +37,7 @@ export class CombatArena implements OnDestroy {
   // ─── Angular Architecture ───────────────────────────────────────────────
   mission = input<MissionContract | null>(null);
   shurikens = input<Shuriken[]>([]);
-  
+
   arenaLog = output<string>();
   missionComplete = output<{ success: boolean }>();
 
@@ -50,12 +53,11 @@ export class CombatArena implements OnDestroy {
   private enemy!: ArenaEntity;
   private arenaTime = 0;
   private isGameOver = false;
-  
-  // Pre-allocated array to prevent Garbage Collection spikes during render
+  private projectiles: Projectile[] = [];
+
   private renderList: ArenaEntity[] = [];
 
   constructor() {
-    // 1. Setup Canvas natively outside of lifecycle hooks using afterNextRender
     afterNextRender(() => {
       const el = this.canvas().nativeElement;
       el.width = ARENA_W;
@@ -63,16 +65,15 @@ export class CombatArena implements OnDestroy {
       this.ctx = el.getContext('2d')!;
 
       this.initObstacles();
-      
+
       const m = this.mission();
       const s = this.shurikens();
       if (m && s.length > 0) {
         this.initEntities(s, m);
       } else {
-        // Mock data if running standalone for preview
-        const mockDrone = { 
-          id: 'mock-1', name: 'Alpha-Blade', 
-          engine: { topSpeed: 180, acceleration: 60 } as any, 
+        const mockDrone = {
+          id: 'mock-1', name: 'Alpha-Blade',
+          engine: { topSpeed: 180, acceleration: 60 } as any,
           hull: { maxHp: 100 } as any,
           sensor: { range: 200 } as any
         } as Shuriken;
@@ -80,18 +81,13 @@ export class CombatArena implements OnDestroy {
       }
 
       this.lastTime = performance.now();
-      
-      // In a zoneless app, requestAnimationFrame natively skips change detection
       this.tick(this.lastTime);
     });
 
-    // 2. React to Input changes (Shurikens or Mission)
     effect(() => {
       const m = this.mission();
       const s = this.shurikens();
-      
-      // We wrap the side-effect in untracked so the effect ONLY fires
-      // when `mission` or `shurikens` change, completely isolating it.
+
       untracked(() => {
         if (this.ctx && m && s.length > 0) {
           this.initEntities(s, m);
@@ -121,20 +117,20 @@ export class CombatArena implements OnDestroy {
     this.isGameOver = false;
     this.arenaTime = 0;
     this.drones = [];
+    this.projectiles = [];
 
-    // Initialize Drones
     shurikens.forEach((s, idx) => {
       this.drones.push({
         id: s.id,
         name: s.name,
-        x: 100 + (idx * 50), y: 700, z: 20, // Elevated
+        x: 100 + (idx * 50), y: 700, z: 20,
         vx: 0, vy: 0,
         speed: 0,
         topSpeed: s.engine?.topSpeed || 150,
         acceleration: s.engine?.acceleration || 50,
         radius: 12,
         color: '#00f0ff',
-        sensorRange: s.sensor?.range || 180,
+        sensorRange: s.sensor?.range || 200,
         state: 'PATROLLING',
         orbitAngle: 0,
         isEnemy: false,
@@ -151,11 +147,10 @@ export class CombatArena implements OnDestroy {
       });
     });
 
-    // Initialize Hostile
     this.enemy = {
       id: 'enemy_1',
       name: 'Zenith Warden',
-      x: 400, y: 100, z: 0, // Ground unit
+      x: 400, y: 100, z: 0,
       vx: 0, vy: 0,
       speed: 0,
       topSpeed: 80,
@@ -177,7 +172,7 @@ export class CombatArena implements OnDestroy {
       rotation: Math.PI / 2,
       patrolPos: this.getRandomPatrolPos()
     };
-    
+
     this.emitLog(`Mission Initiated. Entities deployed.`);
   }
 
@@ -191,71 +186,65 @@ export class CombatArena implements OnDestroy {
   // ═══════════════════════════════════════════════════════════════
   // GAME LOOP
   // ═══════════════════════════════════════════════════════════════
-  
+
   private tick = (now: number) => {
-    // Cap dt at 50ms to prevent massive jumps on tab out
     const dt = Math.max(0, Math.min((now - this.lastTime) / 1000, 0.05));
     this.lastTime = now;
     this.arenaTime += dt;
-    
+
     this.update(dt);
     this.render();
-    
+
     this.animFrameId = requestAnimationFrame(this.tick);
   };
 
   private emitLog(msg: string) {
-    // In zoneless Angular, emit directly. The parent component will handle local change detection natively.
     this.arenaLog.emit(`[${this.arenaTime.toFixed(1)}s] ${msg}`);
   }
 
   // ═══════════════════════════════════════════════════════════════
   // UPDATE (Physics + AI)
   // ═══════════════════════════════════════════════════════════════
-  
+
   private update(dt: number) {
     if (this.isGameOver) return;
 
-    // --- Update Drones ---
     this.drones.forEach(drone => {
       this.updateEntityAI(drone, this.enemy, dt);
-      
-      // Calculate Target Velocity based on State
       const targetV = this.getBehaviorVelocity(drone, this.enemy, dt);
-      
-      // Update physics (apply steering and collision)
       this.updateEntityPhysics(drone, targetV, dt, 0.6);
-      
-      // Cooldowns
+
       if (drone.strikeCooldown > 0) drone.strikeCooldown -= dt;
       if (drone.hitFlashTimer > 0) drone.hitFlashTimer -= dt;
-      
-      // Strike Gating
       drone.canStrike = drone.speed >= (drone.topSpeed * MIN_STRIKE_SPEED);
     });
 
-    // --- Update Enemy ---
     if (this.enemy.hp > 0) {
-       // Find closest drone for simple enemy AI
-       let closestDrone = null;
-       let minDist = Infinity;
-       this.drones.forEach(d => {
-         const dist = this.dist(this.enemy, d);
-         if (dist < minDist) { minDist = dist; closestDrone = d; }
-       });
+      let closestDrone = null;
+      let minDist = Infinity;
+      this.drones.forEach(d => {
+        const dist = this.dist(this.enemy, d);
+        if (dist < minDist && d.state !== 'WITHDRAWN' && d.hp > 0) { minDist = dist; closestDrone = d; }
+      });
 
-       if (closestDrone) {
-          this.updateEntityAI(this.enemy, closestDrone, dt);
-          const enemyV = this.getBehaviorVelocity(this.enemy, closestDrone, dt);
-          this.updateEntityPhysics(this.enemy, enemyV, dt, 0.4);
-       }
-       if (this.enemy.strikeCooldown > 0) this.enemy.strikeCooldown -= dt;
-       if (this.enemy.hitFlashTimer > 0) this.enemy.hitFlashTimer -= dt;
-       this.enemy.canStrike = true; // Enemy can always strike if in range
+      if (closestDrone) {
+        this.updateEntityAI(this.enemy, closestDrone, dt);
+        const enemyV = this.getBehaviorVelocity(this.enemy, closestDrone, dt);
+        this.updateEntityPhysics(this.enemy, enemyV, dt, 0.4);
+      } else {
+        // If no targets, patrol
+        const patrolV = this.getBehaviorVelocity(this.enemy, this.enemy, dt);
+        this.updateEntityPhysics(this.enemy, patrolV, dt, 0.4);
+      }
+      if (this.enemy.strikeCooldown > 0) this.enemy.strikeCooldown -= dt;
+      if (this.enemy.hitFlashTimer > 0) this.enemy.hitFlashTimer -= dt;
+      this.enemy.canStrike = true;
     }
 
-    // --- Check Win/Loss Condition ---
+    this.updateProjectiles(dt);
+
     const livingDrones = this.drones.filter(d => d.hp > 0 && d.state !== 'WITHDRAWN');
+
     if (livingDrones.length === 0) {
       this.isGameOver = true;
       this.missionComplete.emit({ success: false });
@@ -266,71 +255,89 @@ export class CombatArena implements OnDestroy {
   }
 
   private updateEntityAI(entity: ArenaEntity, target: ArenaEntity, dt: number) {
-     if (entity.hp <= 0) {
-       entity.state = 'WITHDRAWN';
-       return;
-     }
+    if (entity.hp <= 0) {
+      entity.state = 'WITHDRAWN';
+      return;
+    }
 
-     const dist = this.dist(entity, target);
-     const hasLOS = !this.isLOSBlocked(entity, target);
-     const canSeeTarget = dist <= entity.sensorRange && hasLOS && target.hp > 0;
+    const dist = this.dist(entity, target);
 
-     // Emergency Flee overrides
-     if (entity.hp < entity.maxHp * 0.2 && entity.state !== 'FLEEING') {
-        entity.state = 'FLEEING';
-        this.emitLog(`${entity.name} sustained critical damage. Initiating Emergency Withdrawal.`);
-     }
+    // Enemies have a limited 120-degree FOV cone, drones have 360-degree radar
+    let isWithinFOV = true;
+    if (entity.isEnemy) {
+      const angleToTarget = Math.atan2(target.y - entity.y, target.x - entity.x);
+      const angleDiff = Math.abs(this.normalizeAngle(entity.rotation - angleToTarget));
+      isWithinFOV = angleDiff <= Math.PI / 3; // 60 degrees left/right
+    }
 
-     if (entity.state === 'FLEEING') return;
+    const hasLOS = !this.isLOSBlocked(entity, target);
+    const canSeeTarget = dist <= entity.sensorRange && hasLOS && target.hp > 0 && isWithinFOV;
 
-     // State Transitions
-     if (canSeeTarget) {
-       entity.lastSeenPos = { x: target.x, y: target.y };
-       entity.searchTimer = 0;
-       
-       if (dist <= (entity.radius + target.radius) && entity.canStrike && entity.strikeCooldown <= 0) {
+    if (entity.hp < entity.maxHp * 0.2 && entity.state !== 'FLEEING') {
+      entity.state = 'FLEEING';
+      this.emitLog(`${entity.name} sustained critical damage. Initiating Emergency Withdrawal.`);
+    }
+
+    if (entity.state === 'FLEEING') return;
+
+    if (canSeeTarget) {
+      entity.lastSeenPos = { x: target.x, y: target.y };
+      entity.searchTimer = 0;
+
+      if (entity.isEnemy) {
+        if (entity.strikeCooldown <= 0) {
+          entity.state = 'SHOOTING';
+          this.fireProjectile(entity, target);
+        } else {
+          entity.state = 'IDLE'; // Stop and wait for cooldown
+        }
+      } else {
+        // Strike threshold requires strict physical collision (overlapping radii)
+        if (dist <= (entity.radius + target.radius) && entity.canStrike && entity.strikeCooldown <= 0) {
           entity.state = 'FIGHTING';
           this.executeStrike(entity, target);
-       } else if (entity.strikeCooldown > 0) {
+        } else if (entity.strikeCooldown > 0) {
           entity.state = 'ORBITING';
-       } else {
-          entity.state = 'PURSUING';
-       }
-     } else {
-        // Lost LOS
-        if (entity.lastSeenPos) {
-           entity.state = 'SEARCHING';
-           entity.searchTimer += dt;
-           if (entity.searchTimer >= SEARCH_LINGER_TIME) {
-              entity.lastSeenPos = null; // Memory expires
-              entity.state = 'PATROLLING';
-           }
         } else {
-           entity.state = 'PATROLLING';
+          entity.state = 'PURSUING';
         }
-     }
+      }
+    } else {
+      if (entity.lastSeenPos) {
+        entity.state = 'SEARCHING';
+        entity.searchTimer += dt;
+        if (entity.searchTimer >= SEARCH_LINGER_TIME) {
+          entity.lastSeenPos = null;
+          entity.state = 'PATROLLING';
+        }
+      } else {
+        entity.state = 'PATROLLING';
+      }
+    }
   }
 
   private executeStrike(attacker: ArenaEntity, defender: ArenaEntity) {
-     if (attacker.isEnemy) {
-       defender.hp -= ENEMY_DAMAGE;
-       defender.hitFlashTimer = 0.2;
-       this.emitLog(`Hostile struck ${defender.name} for ${ENEMY_DAMAGE} DMG!`);
-     } else {
-       // Damage scales with speed as per GDD 3.2 (simplified)
-       const speedMult = attacker.speed / attacker.topSpeed;
-       const damage = Math.max(5, Math.floor(20 * (1 + speedMult)));
-       defender.hp -= damage;
-       defender.hitFlashTimer = 0.2;
-       this.emitLog(`${attacker.name} executed kinetic strike for ${damage} DMG!`);
-     }
+    if (attacker.isEnemy) {
+      defender.hp -= ENEMY_DAMAGE;
+      defender.hitFlashTimer = 0.2;
+      this.emitLog(`Hostile struck ${defender.name} for ${ENEMY_DAMAGE} DMG!`);
+    } else {
+      const speedMult = attacker.speed / attacker.topSpeed;
+      const damage = Math.max(5, Math.floor(20 * (1 + speedMult)));
+      defender.hp -= damage;
+      defender.hitFlashTimer = 0.2;
+      this.emitLog(`${attacker.name} executed kinetic strike for ${damage} DMG!`);
+    }
 
-     attacker.strikeCooldown = attacker.isEnemy ? ENEMY_STRIKE_COOLDOWN : STRIKE_COOLDOWN;
-     
-     // Post-strike bounce (GDD 6.6)
-     const bounceVec = this.normalize({ x: attacker.x - defender.x, y: attacker.y - defender.y });
-     attacker.vx = bounceVec.x * (attacker.topSpeed * 0.7);
-     attacker.vy = bounceVec.y * (attacker.topSpeed * 0.7);
+    // Reactive Awareness: Defender becomes immediately aware of the attacker's position
+    defender.lastSeenPos = { x: attacker.x, y: attacker.y };
+    defender.searchTimer = 0;
+
+    attacker.strikeCooldown = attacker.isEnemy ? ENEMY_STRIKE_COOLDOWN : STRIKE_COOLDOWN;
+
+    const bounceVec = this.normalize({ x: attacker.x - defender.x, y: attacker.y - defender.y });
+    attacker.vx = bounceVec.x * (attacker.topSpeed * 0.7);
+    attacker.vy = bounceVec.y * (attacker.topSpeed * 0.7);
   }
 
   private getBehaviorVelocity(entity: ArenaEntity, target: ArenaEntity, dt: number): Vec2 {
@@ -345,39 +352,35 @@ export class CombatArena implements OnDestroy {
         break;
 
       case 'ORBITING':
-        // Move to orbit radius then circle
         const toTarget = { x: entity.x - target.x, y: entity.y - target.y };
-        const dist = Math.max(1, Math.sqrt(toTarget.x**2 + toTarget.y**2));
+        const dist = Math.max(1, Math.sqrt(toTarget.x ** 2 + toTarget.y ** 2));
         const orbitRadius = entity.sensorRange * 0.6;
-        
-        // Push in/out to maintain radius
-        const radialPull = (orbitRadius - dist) * 2; 
-        
-        // Tangent velocity for circular motion
+
+        const radialPull = (orbitRadius - dist) * 2;
+
         const tangentX = -toTarget.y / dist;
         const tangentY = toTarget.x / dist;
 
-        targetVx = (tangentX * entity.topSpeed) + ((toTarget.x/dist) * radialPull);
-        targetVy = (tangentY * entity.topSpeed) + ((toTarget.y/dist) * radialPull);
+        targetVx = (tangentX * entity.topSpeed) + ((toTarget.x / dist) * radialPull);
+        targetVy = (tangentY * entity.topSpeed) + ((toTarget.y / dist) * radialPull);
         break;
 
       case 'SEARCHING':
         if (entity.lastSeenPos) {
-           const sDist = this.dist(entity, entity.lastSeenPos);
-           if (sDist > 30) {
-              const sDir = this.normalize({ x: entity.lastSeenPos.x - entity.x, y: entity.lastSeenPos.y - entity.y });
-              targetVx = sDir.x * entity.topSpeed;
-              targetVy = sDir.y * entity.topSpeed;
-           } else {
-              // Expanding spiral search
-              entity.orbitAngle += dt * 2;
-              const radius = 30 + (entity.searchTimer * 20);
-              const tx = entity.lastSeenPos.x + Math.cos(entity.orbitAngle) * radius;
-              const ty = entity.lastSeenPos.y + Math.sin(entity.orbitAngle) * radius;
-              const sDir = this.normalize({ x: tx - entity.x, y: ty - entity.y });
-              targetVx = sDir.x * (entity.topSpeed * 0.6);
-              targetVy = sDir.y * (entity.topSpeed * 0.6);
-           }
+          const sDist = this.dist(entity, entity.lastSeenPos);
+          if (sDist > 30) {
+            const sDir = this.normalize({ x: entity.lastSeenPos.x - entity.x, y: entity.lastSeenPos.y - entity.y });
+            targetVx = sDir.x * entity.topSpeed;
+            targetVy = sDir.y * entity.topSpeed;
+          } else {
+            entity.orbitAngle += dt * 2;
+            const radius = 30 + (entity.searchTimer * 20);
+            const tx = entity.lastSeenPos.x + Math.cos(entity.orbitAngle) * radius;
+            const ty = entity.lastSeenPos.y + Math.sin(entity.orbitAngle) * radius;
+            const sDir = this.normalize({ x: tx - entity.x, y: ty - entity.y });
+            targetVx = sDir.x * (entity.topSpeed * 0.6);
+            targetVy = sDir.y * (entity.topSpeed * 0.6);
+          }
         }
         break;
 
@@ -385,11 +388,11 @@ export class CombatArena implements OnDestroy {
         if (!entity.patrolPos) entity.patrolPos = this.getRandomPatrolPos();
         const pDist = this.dist(entity, entity.patrolPos);
         if (pDist < 20) {
-           entity.patrolPos = this.getRandomPatrolPos();
+          entity.patrolPos = this.getRandomPatrolPos();
         } else {
-           const pDir = this.normalize({ x: entity.patrolPos.x - entity.x, y: entity.patrolPos.y - entity.y });
-           targetVx = pDir.x * (entity.topSpeed * 0.8);
-           targetVy = pDir.y * (entity.topSpeed * 0.8);
+          const pDir = this.normalize({ x: entity.patrolPos.x - entity.x, y: entity.patrolPos.y - entity.y });
+          targetVx = pDir.x * (entity.topSpeed * 0.8);
+          targetVy = pDir.y * (entity.topSpeed * 0.8);
         }
         break;
 
@@ -397,68 +400,172 @@ export class CombatArena implements OnDestroy {
         const fleeDir = this.normalize({ x: entity.x - target.x, y: entity.y - target.y });
         targetVx = fleeDir.x * entity.topSpeed;
         targetVy = fleeDir.y * entity.topSpeed;
-        
-        // Disengagement logic
-        if (entity.x < WALL_THICKNESS*2 || entity.x > ARENA_W - WALL_THICKNESS*2 ||
-            entity.y < WALL_THICKNESS*2 || entity.y > ARENA_H - WALL_THICKNESS*2) {
-            entity.withdrawalTimer += dt;
-            if (entity.withdrawalTimer >= 2.0) {
-                entity.state = 'WITHDRAWN';
-                this.emitLog(`${entity.name} successfully withdrew from combat.`);
-            }
+
+        if (entity.x < WALL_THICKNESS * 2 || entity.x > ARENA_W - WALL_THICKNESS * 2 ||
+          entity.y < WALL_THICKNESS * 2 || entity.y > ARENA_H - WALL_THICKNESS * 2) {
+          entity.withdrawalTimer += dt;
+          if (entity.withdrawalTimer >= 2.0) {
+            entity.state = 'WITHDRAWN';
+            this.emitLog(`${entity.name} successfully withdrew from combat.`);
+          }
         }
         break;
-      
+
       case 'FIGHTING':
-        // In dash
+      case 'SHOOTING':
+      case 'IDLE':
+        // Stationary behavior
+        targetVx = 0;
+        targetVy = 0;
         break;
     }
 
     return { x: targetVx, y: targetVy };
   }
 
+  private fireProjectile(attacker: ArenaEntity, target: ArenaEntity) {
+    const id = `proj_${this.arenaTime}_${Math.random().toString(36).substr(2, 4)}`;
+    const dir = this.normalize({ x: target.x - attacker.x, y: target.y - attacker.y });
+    
+    // Rotate attacker towards target
+    attacker.rotation = Math.atan2(dir.y, dir.x);
+
+    this.projectiles.push({
+      id,
+      x: attacker.x + dir.x * attacker.radius,
+      y: attacker.y + dir.y * attacker.radius,
+      vx: dir.x * PROJECTILE_SPEED,
+      vy: dir.y * PROJECTILE_SPEED,
+      radius: PROJECTILE_RADIUS,
+      damage: ENEMY_DAMAGE,
+      ownerId: attacker.id,
+      isEnemy: attacker.isEnemy,
+      color: attacker.color,
+      lifeTime: 3.0
+    });
+
+    attacker.strikeCooldown = FIRE_RATE;
+    this.emitLog(`${attacker.name} fired energy projectile at ${target.name}`);
+  }
+
+  private updateProjectiles(dt: number) {
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.lifeTime -= dt;
+
+      if (p.lifeTime <= 0) {
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // Wall collision
+      if (p.x < WALL_THICKNESS || p.x > ARENA_W - WALL_THICKNESS || 
+          p.y < WALL_THICKNESS || p.y > ARENA_H - WALL_THICKNESS) {
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // Obstacle collision
+      let hitObstacle = false;
+      for (const obs of this.obstacles) {
+        if (p.x >= obs.x && p.x <= obs.x + obs.w && p.y >= obs.y && p.y <= obs.y + obs.h) {
+          hitObstacle = true;
+          break;
+        }
+      }
+      if (hitObstacle) {
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // Entity collision
+      if (p.isEnemy) {
+        // Check drones
+        let hitDrone = false;
+        for (const drone of this.drones) {
+          if (drone.hp > 0 && drone.state !== 'WITHDRAWN') {
+            const dist = Math.sqrt((p.x - drone.x) ** 2 + (p.y - drone.y) ** 2);
+            if (dist < drone.radius + p.radius) {
+              drone.hp -= p.damage;
+              drone.hitFlashTimer = 0.2;
+              this.emitLog(`Projectile hit ${drone.name} for ${p.damage} DMG!`);
+              
+              // Reactive Awareness: Drone becomes aware of the enemy's position
+              drone.lastSeenPos = { x: this.enemy.x, y: this.enemy.y };
+              drone.searchTimer = 0;
+              
+              hitDrone = true;
+              break;
+            }
+          }
+        }
+        if (hitDrone) {
+          this.projectiles.splice(i, 1);
+          continue;
+        }
+      } else {
+        // Check enemy
+        const dist = Math.sqrt((p.x - this.enemy.x) ** 2 + (p.y - this.enemy.y) ** 2);
+        if (dist < this.enemy.radius + p.radius) {
+          this.enemy.hp -= p.damage;
+          this.enemy.hitFlashTimer = 0.2;
+          this.emitLog(`Projectile hit ${this.enemy.name} for ${p.damage} DMG!`);
+          
+          // Reactive Awareness: Enemy becomes aware of the attacker's position
+          const attacker = this.drones.find(d => d.id === p.ownerId);
+          if (attacker) {
+            this.enemy.lastSeenPos = { x: attacker.x, y: attacker.y };
+            this.enemy.searchTimer = 0;
+          }
+          
+          this.projectiles.splice(i, 1);
+          continue;
+        }
+      }
+    }
+  }
+
   private updateEntityPhysics(entity: ArenaEntity, targetV: Vec2, dt: number, avoidanceWeight: number) {
-     // 1. Calculate steering avoidance to steer around AABBs
-     const avoidance = this.getSteeringAvoidance(entity);
-     
-     // 2. Blend desired velocity with avoidance
-     let finalTargetVx = targetV.x;
-     let finalTargetVy = targetV.y;
+    const avoidance = this.getSteeringAvoidance(entity);
 
-     if (avoidance.x !== 0 || avoidance.y !== 0) {
-        finalTargetVx = (targetV.x * (1 - avoidanceWeight)) + (avoidance.x * avoidanceWeight);
-        finalTargetVy = (targetV.y * (1 - avoidanceWeight)) + (avoidance.y * avoidanceWeight);
-     }
+    let finalTargetVx = targetV.x;
+    let finalTargetVy = targetV.y;
 
-     // 3. Smooth Acceleration
-     const accelStep = entity.acceleration * dt * 10; 
-     
-     if (entity.vx < finalTargetVx) entity.vx = Math.min(finalTargetVx, entity.vx + accelStep);
-     if (entity.vx > finalTargetVx) entity.vx = Math.max(finalTargetVx, entity.vx - accelStep);
-     if (entity.vy < finalTargetVy) entity.vy = Math.min(finalTargetVy, entity.vy + accelStep);
-     if (entity.vy > finalTargetVy) entity.vy = Math.max(finalTargetVy, entity.vy - accelStep);
+    if (avoidance.x !== 0 || avoidance.y !== 0) {
+      finalTargetVx = (targetV.x * (1 - avoidanceWeight)) + (avoidance.x * avoidanceWeight);
+      finalTargetVy = (targetV.y * (1 - avoidanceWeight)) + (avoidance.y * avoidanceWeight);
+    }
 
-     entity.speed = Math.sqrt(entity.vx**2 + entity.vy**2);
+    const accelStep = entity.acceleration * dt * 10;
 
-     // 4. Update Rotation
-     if (entity.speed > 5) {
-       entity.rotation = Math.atan2(entity.vy, entity.vx);
-     }
+    if (entity.vx < finalTargetVx) entity.vx = Math.min(finalTargetVx, entity.vx + accelStep);
+    if (entity.vx > finalTargetVx) entity.vx = Math.max(finalTargetVx, entity.vx - accelStep);
+    if (entity.vy < finalTargetVy) entity.vy = Math.min(finalTargetVy, entity.vy + accelStep);
+    if (entity.vy > finalTargetVy) entity.vy = Math.max(finalTargetVy, entity.vy - accelStep);
 
-     // 5. Apply Movement
-     let nextX = entity.x + entity.vx * dt;
-     let nextY = entity.y + entity.vy * dt;
+    entity.speed = Math.sqrt(entity.vx ** 2 + entity.vy ** 2);
 
-     // 6. Hard Boundary Collisions
-     if (nextX < WALL_THICKNESS + entity.radius) { nextX = WALL_THICKNESS + entity.radius; entity.vx *= -0.2; }
-     if (nextX > ARENA_W - WALL_THICKNESS - entity.radius) { nextX = ARENA_W - WALL_THICKNESS - entity.radius; entity.vx *= -0.2; }
-     if (nextY < WALL_THICKNESS + entity.radius) { nextY = WALL_THICKNESS + entity.radius; entity.vy *= -0.2; }
-     if (nextY > ARENA_H - WALL_THICKNESS - entity.radius) { nextY = ARENA_H - WALL_THICKNESS - entity.radius; entity.vy *= -0.2; }
+    if (entity.speed > 5) {
+      // Smooth rotation interpolation
+      const targetRotation = Math.atan2(entity.vy, entity.vx);
+      const rotDiff = this.normalizeAngle(targetRotation - entity.rotation);
+      entity.rotation += rotDiff * (dt * 10);
+    }
 
-     // 7. Resolve Cover Collisions
-     const resolved = this.resolveCollisions(entity, nextX, nextY);
-     entity.x = resolved.x;
-     entity.y = resolved.y;
+    let nextX = entity.x + entity.vx * dt;
+    let nextY = entity.y + entity.vy * dt;
+
+    // Hard Boundary Bounce
+    if (nextX < WALL_THICKNESS + entity.radius) { nextX = WALL_THICKNESS + entity.radius; entity.vx *= -0.2; }
+    if (nextX > ARENA_W - WALL_THICKNESS - entity.radius) { nextX = ARENA_W - WALL_THICKNESS - entity.radius; entity.vx *= -0.2; }
+    if (nextY < WALL_THICKNESS + entity.radius) { nextY = WALL_THICKNESS + entity.radius; entity.vy *= -0.2; }
+    if (nextY > ARENA_H - WALL_THICKNESS - entity.radius) { nextY = ARENA_H - WALL_THICKNESS - entity.radius; entity.vy *= -0.2; }
+
+    const resolved = this.resolveCollisions(entity, nextX, nextY);
+    entity.x = resolved.x;
+    entity.y = resolved.y;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -475,6 +582,12 @@ export class CombatArena implements OnDestroy {
     return { x: v.x / len, y: v.y / len };
   }
 
+  private normalizeAngle(angle: number): number {
+    while (angle > Math.PI) angle -= Math.PI * 2;
+    while (angle < -Math.PI) angle += Math.PI * 2;
+    return angle;
+  }
+
   private getSteeringAvoidance(entity: ArenaEntity): Vec2 {
     const feelerDist = 60;
     const fx = entity.x + Math.cos(entity.rotation) * feelerDist;
@@ -482,11 +595,10 @@ export class CombatArena implements OnDestroy {
 
     for (const obs of this.obstacles) {
       if (fx >= obs.x && fx <= obs.x + obs.w && fy >= obs.y && fy <= obs.y + obs.h) {
-         // Feeler inside box. Steer away from center
-         const cx = obs.x + obs.w/2;
-         const cy = obs.y + obs.h/2;
-         const steer = this.normalize({ x: entity.x - cx, y: entity.y - cy });
-         return { x: steer.x * entity.topSpeed, y: steer.y * entity.topSpeed };
+        const cx = obs.x + obs.w / 2;
+        const cy = obs.y + obs.h / 2;
+        const steer = this.normalize({ x: entity.x - cx, y: entity.y - cy });
+        return { x: steer.x * entity.topSpeed, y: steer.y * entity.topSpeed };
       }
     }
     return { x: 0, y: 0 };
@@ -495,32 +607,42 @@ export class CombatArena implements OnDestroy {
   private resolveCollisions(entity: ArenaEntity, x: number, y: number): Vec2 {
     let currentX = x;
     let currentY = y;
-    
+
     // 2 iterations for stability
-    for(let i=0; i<2; i++) {
-        for (const obs of this.obstacles) {
-            const res = this.resolveCircleAABB(currentX, currentY, entity.radius, obs);
-            if (res.x !== currentX || res.y !== currentY) {
-               // Dampen velocity on hit
-               if (res.x !== currentX) entity.vx *= -0.2;
-               if (res.y !== currentY) entity.vy *= -0.2;
-            }
-            currentX = res.x;
-            currentY = res.y;
-        }
+    for (let i = 0; i < 2; i++) {
+      for (const obs of this.obstacles) {
+        const res = this.resolveCircleAABB(currentX, currentY, entity.radius, obs);
+        // By NOT dampening vx/vy here, entities will slide beautifully along the walls
+        currentX = res.x;
+        currentY = res.y;
+      }
     }
     return { x: currentX, y: currentY };
   }
 
   private resolveCircleAABB(cx: number, cy: number, r: number, box: AABB): Vec2 {
-    const closestX = Math.max(box.x, Math.min(cx, box.x + box.w));
-    const closestY = Math.max(box.y, Math.min(cy, box.y + box.h));
-    
-    const dx = cx - closestX;
-    const dy = cy - closestY;
+    let closestX = Math.max(box.x, Math.min(cx, box.x + box.w));
+    let closestY = Math.max(box.y, Math.min(cy, box.y + box.h));
+
+    let dx = cx - closestX;
+    let dy = cy - closestY;
+
+    // Fallback: If center is completely inside the box (dx=0, dy=0), force it to the nearest edge
+    if (dx === 0 && dy === 0) {
+      const distLeft = cx - box.x;
+      const distRight = (box.x + box.w) - cx;
+      const distTop = cy - box.y;
+      const distBottom = (box.y + box.h) - cy;
+      const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+      if (minDist === distLeft) { dx = -1; dy = 0; closestX = box.x; }
+      else if (minDist === distRight) { dx = 1; dy = 0; closestX = box.x + box.w; }
+      else if (minDist === distTop) { dx = 0; dy = -1; closestY = box.y; }
+      else { dx = 0; dy = 1; closestY = box.y + box.h; }
+    }
+
     const distSq = dx * dx + dy * dy;
 
-    if (distSq < r * r && distSq > 0) {
+    if (distSq < r * r) {
       const dist = Math.sqrt(distSq);
       const overlap = r - dist;
       const nx = dx / dist;
@@ -540,51 +662,78 @@ export class CombatArena implements OnDestroy {
   }
 
   private rayIntersectsAABB(x1: number, y1: number, x2: number, y2: number, box: AABB): boolean {
-     // Min/Max X and Y bounds
-     const minX = box.x;
-     const maxX = box.x + box.w;
-     const minY = box.y;
-     const maxY = box.y + box.h;
+    const minX = box.x;
+    const maxX = box.x + box.w;
+    const minY = box.y;
+    const maxY = box.y + box.h;
 
-     // Simple AABB vs Segment bounding box check first
-     if (Math.max(x1, x2) < minX || Math.min(x1, x2) > maxX ||
-         Math.max(y1, y2) < minY || Math.min(y1, y2) > maxY) {
-         return false;
-     }
+    if (Math.max(x1, x2) < minX || Math.min(x1, x2) > maxX ||
+      Math.max(y1, y2) < minY || Math.min(y1, y2) > maxY) {
+      return false;
+    }
 
-     // Cross product line test
-     const lineIntersects = (a_x: number, a_y: number, b_x: number, b_y: number, c_x: number, c_y: number, d_x: number, d_y: number) => {
-         const denominator = ((b_x - a_x) * (d_y - c_y)) - ((b_y - a_y) * (d_x - c_x));
-         if (denominator === 0) return false;
-         const numerator1 = ((a_y - c_y) * (d_x - c_x)) - ((a_x - c_x) * (d_y - c_y));
-         const numerator2 = ((a_y - c_y) * (b_x - a_x)) - ((a_x - c_x) * (b_y - a_y));
-         const r = numerator1 / denominator;
-         const s = numerator2 / denominator;
-         return (r >= 0 && r <= 1) && (s >= 0 && s <= 1);
-     };
+    const lineIntersects = (a_x: number, a_y: number, b_x: number, b_y: number, c_x: number, c_y: number, d_x: number, d_y: number) => {
+      const denominator = ((b_x - a_x) * (d_y - c_y)) - ((b_y - a_y) * (d_x - c_x));
+      if (denominator === 0) return false;
+      const numerator1 = ((a_y - c_y) * (d_x - c_x)) - ((a_x - c_x) * (d_y - c_y));
+      const numerator2 = ((a_y - c_y) * (b_x - a_x)) - ((a_x - c_x) * (b_y - a_y));
+      const r = numerator1 / denominator;
+      const s = numerator2 / denominator;
+      return (r >= 0 && r <= 1) && (s >= 0 && s <= 1);
+    };
 
-     // Check all 4 edges
-     if (lineIntersects(x1, y1, x2, y2, minX, minY, maxX, minY)) return true; // Top
-     if (lineIntersects(x1, y1, x2, y2, minX, maxY, maxX, maxY)) return true; // Bottom
-     if (lineIntersects(x1, y1, x2, y2, minX, minY, minX, maxY)) return true; // Left
-     if (lineIntersects(x1, y1, x2, y2, maxX, minY, maxX, maxY)) return true; // Right
-     
-     return false;
+    if (lineIntersects(x1, y1, x2, y2, minX, minY, maxX, minY)) return true; // Top
+    if (lineIntersects(x1, y1, x2, y2, minX, maxY, maxX, maxY)) return true; // Bottom
+    if (lineIntersects(x1, y1, x2, y2, minX, minY, minX, maxY)) return true; // Left
+    if (lineIntersects(x1, y1, x2, y2, maxX, minY, maxX, maxY)) return true; // Right
+
+    return false;
+  }
+
+  // Uses Liang-Barsky method to find the exact intersection distance (0 to 1 fraction) along the ray
+  private getRayIntersectionDist(x1: number, y1: number, x2: number, y2: number, box: AABB): number {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    let tmin = 0;
+    let tmax = 1;
+
+    // X-axis intersections
+    if (dx !== 0) {
+      const tx1 = (box.x - x1) / dx;
+      const tx2 = ((box.x + box.w) - x1) / dx;
+      tmin = Math.max(tmin, Math.min(tx1, tx2));
+      tmax = Math.min(tmax, Math.max(tx1, tx2));
+    } else if (x1 < box.x || x1 > box.x + box.w) {
+      return Infinity; // Ray is parallel and outside
+    }
+
+    // Y-axis intersections
+    if (dy !== 0) {
+      const ty1 = (box.y - y1) / dy;
+      const ty2 = ((box.y + box.h) - y1) / dy;
+      tmin = Math.max(tmin, Math.min(ty1, ty2));
+      tmax = Math.min(tmax, Math.max(ty1, ty2));
+    } else if (y1 < box.y || y1 > box.y + box.h) {
+      return Infinity; // Ray is parallel and outside
+    }
+
+    if (tmax >= tmin && tmin >= 0 && tmin <= 1) {
+      return tmin; // Returns fraction of distance to intersection
+    }
+    return Infinity;
   }
 
   // ═══════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════
-  
+
   private render() {
     const ctx = this.ctx;
     if (!ctx) return;
-    
-    // Clear and draw background
+
     ctx.fillStyle = '#0a0a1a';
     ctx.fillRect(0, 0, ARENA_W, ARENA_H);
 
-    // Draw Grid (Floor)
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -592,81 +741,128 @@ export class CombatArena implements OnDestroy {
     for (let y = 0; y < ARENA_H; y += TILE_SIZE) { ctx.moveTo(0, y); ctx.lineTo(ARENA_W, y); }
     ctx.stroke();
 
-    // Draw Outer Bounds
     ctx.strokeStyle = '#333';
     ctx.lineWidth = WALL_THICKNESS;
-    ctx.strokeRect(WALL_THICKNESS/2, WALL_THICKNESS/2, ARENA_W - WALL_THICKNESS, ARENA_H - WALL_THICKNESS);
+    ctx.strokeRect(WALL_THICKNESS / 2, WALL_THICKNESS / 2, ARENA_W - WALL_THICKNESS, ARENA_H - WALL_THICKNESS);
 
     this.drawObstacles(ctx);
 
-    // Depth Sorting: GDD 6.2 (Y-Sort with Z-Axis Elevation)
-    // Optimization: Reuse pre-allocated array instead of recreating and filtering it 60 times a second
     this.renderList.length = 0;
     for (let i = 0; i < this.drones.length; i++) {
-       if (this.drones[i].state !== 'WITHDRAWN') this.renderList.push(this.drones[i]);
+      if (this.drones[i].state !== 'WITHDRAWN') this.renderList.push(this.drones[i]);
     }
-    if (this.enemy.state !== 'WITHDRAWN') this.renderList.push(this.enemy);
+    if (this.enemy && this.enemy.state !== 'WITHDRAWN') this.renderList.push(this.enemy);
 
     this.renderList.sort((a, b) => {
-       const sortA = a.y - (a.z * PERSPECTIVE_SCALE_Y);
-       const sortB = b.y - (b.z * PERSPECTIVE_SCALE_Y);
-       return sortA - sortB;
+      const sortA = a.y - (a.z * PERSPECTIVE_SCALE_Y);
+      const sortB = b.y - (b.z * PERSPECTIVE_SCALE_Y);
+      return sortA - sortB;
     });
 
-    // Render pass 1: Shadows
     for (let i = 0; i < this.renderList.length; i++) {
-        const e = this.renderList[i];
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.beginPath();
-        // Squashed shadow based on perspective
-        ctx.ellipse(e.x, e.y, e.radius, e.radius * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
-        ctx.fill();
+      const e = this.renderList[i];
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.beginPath();
+      ctx.ellipse(e.x, e.y, e.radius, e.radius * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // Render pass 2: Entity Overlays (Lines/Sensors)
+    // Draw Enemy Vision Cone
+    if (this.enemy && this.enemy.hp > 0 && this.enemy.state !== 'WITHDRAWN') {
+      this.drawEnemyFOV(ctx, this.enemy);
+    }
+
     for (let i = 0; i < this.drones.length; i++) {
-       const d = this.drones[i];
-       if (d.state !== 'WITHDRAWN') {
-           this.drawSensorLink(ctx, d);
-           this.drawDebugOverlay(ctx, d);
-       }
+      const d = this.drones[i];
+      if (d.state !== 'WITHDRAWN') {
+        this.drawSensorLink(ctx, d);
+        this.drawDebugOverlay(ctx, d);
+      }
     }
 
-    // Render pass 3: Entity Bodies
     for (let i = 0; i < this.renderList.length; i++) {
-       const e = this.renderList[i];
-       if (e.isEnemy) {
-          this.drawEnemy(ctx, e);
-       } else {
-          this.drawDrone(ctx, e);
-       }
+      const e = this.renderList[i];
+      if (e.isEnemy) {
+        this.drawEnemy(ctx, e);
+      } else {
+        this.drawDrone(ctx, e);
+      }
+    }
+
+    // Draw Projectiles
+    ctx.lineWidth = 2;
+    for (const p of this.projectiles) {
+      ctx.strokeStyle = p.color;
+      ctx.beginPath();
+      // Draw as a small trail
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - p.vx * 0.05, p.y - p.vy * 0.05);
+      ctx.stroke();
+
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
   private drawObstacles(ctx: CanvasRenderingContext2D) {
     for (const obs of this.obstacles) {
-      // Body
       ctx.fillStyle = '#111520';
       ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-      
-      // Top face (Perspective 3D illusion)
+
       ctx.fillStyle = '#1c2333';
       ctx.fillRect(obs.x, obs.y - 15, obs.w, 15);
-      
-      // Borders
+
       ctx.strokeStyle = '#2d3748';
       ctx.lineWidth = 2;
       ctx.strokeRect(obs.x, obs.y - 15, obs.w, obs.h + 15);
     }
   }
 
+  private drawEnemyFOV(ctx: CanvasRenderingContext2D, enemy: ArenaEntity) {
+    const drawY = enemy.y - enemy.z * PERSPECTIVE_SCALE_Y;
+    const fovRad = Math.PI * 2 / 3; // 120 degrees total
+    const halfFov = fovRad / 2;
+    const steps = 30; // Resolution of the raycast polygon
+
+    ctx.fillStyle = 'rgba(255, 50, 50, 0.15)';
+    ctx.beginPath();
+    ctx.moveTo(enemy.x, drawY);
+
+    for (let i = 0; i <= steps; i++) {
+      const angle = enemy.rotation - halfFov + (fovRad * i / steps);
+      const targetX = enemy.x + Math.cos(angle) * enemy.sensorRange;
+      const targetY = enemy.y + Math.sin(angle) * enemy.sensorRange;
+
+      let minT = 1.0; // Max ray distance is 1.0 (sensorRange)
+      for (const obs of this.obstacles) {
+        const t = this.getRayIntersectionDist(enemy.x, enemy.y, targetX, targetY, obs);
+        if (t < minT) minT = t;
+      }
+
+      const hitGroundX = enemy.x + Math.cos(angle) * (enemy.sensorRange * minT);
+      const hitGroundY = enemy.y + Math.sin(angle) * (enemy.sensorRange * minT);
+      const hitDrawY = hitGroundY - enemy.z * PERSPECTIVE_SCALE_Y; // Keep polygon flush with ground level
+
+      ctx.lineTo(hitGroundX, hitDrawY);
+    }
+
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw the bordering line
+    ctx.strokeStyle = 'rgba(255, 50, 50, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
   private drawDrone(ctx: CanvasRenderingContext2D, drone: ArenaEntity) {
     ctx.save();
-    const drawY = drone.y - drone.z * PERSPECTIVE_SCALE_Y; 
-    
+    const drawY = drone.y - drone.z * PERSPECTIVE_SCALE_Y;
+
     ctx.translate(drone.x, drawY);
 
-    // Hit Flash
     if (drone.hitFlashTimer > 0) {
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
@@ -676,33 +872,28 @@ export class CombatArena implements OnDestroy {
 
     ctx.rotate(drone.rotation);
 
-    // Core Body
     ctx.fillStyle = drone.color;
     ctx.beginPath();
-    ctx.moveTo(drone.radius, 0); // Nose
-    ctx.lineTo(-drone.radius, drone.radius * 0.8); // Back Right
-    ctx.lineTo(-drone.radius * 0.5, 0); // Engine indent
-    ctx.lineTo(-drone.radius, -drone.radius * 0.8); // Back Left
+    ctx.moveTo(drone.radius, 0);
+    ctx.lineTo(-drone.radius, drone.radius * 0.8);
+    ctx.lineTo(-drone.radius * 0.5, 0);
+    ctx.lineTo(-drone.radius, -drone.radius * 0.8);
     ctx.closePath();
     ctx.fill();
-    
-    // Glowing edge
+
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
     ctx.stroke();
 
     ctx.restore();
-
-    // HP Bar
     this.drawHPBar(ctx, drone.x, drawY - drone.radius - 10, drone.hp, drone.maxHp);
   }
 
   private drawEnemy(ctx: CanvasRenderingContext2D, enemy: ArenaEntity) {
     ctx.save();
-    const drawY = enemy.y - enemy.z * PERSPECTIVE_SCALE_Y; 
+    const drawY = enemy.y - enemy.z * PERSPECTIVE_SCALE_Y;
     ctx.translate(enemy.x, drawY);
 
-    // Hit Flash
     if (enemy.hitFlashTimer > 0) {
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
@@ -712,75 +903,75 @@ export class CombatArena implements OnDestroy {
 
     ctx.rotate(enemy.rotation);
 
-    // Alien Hexagon Body
     ctx.fillStyle = enemy.color;
     ctx.beginPath();
-    for(let i=0; i<6; i++) {
-       const angle = (Math.PI / 3) * i;
-       const px = Math.cos(angle) * enemy.radius;
-       const py = Math.sin(angle) * enemy.radius;
-       if (i===0) ctx.moveTo(px, py);
-       else ctx.lineTo(px, py);
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i;
+      const px = Math.cos(angle) * enemy.radius;
+      const py = Math.sin(angle) * enemy.radius;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
     ctx.closePath();
     ctx.fill();
-    
-    // Front eye/sensor
+
     ctx.fillStyle = '#fff';
     ctx.beginPath();
     ctx.arc(enemy.radius * 0.6, 0, 4, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
-
-    // HP Bar
     this.drawHPBar(ctx, enemy.x, drawY - enemy.radius - 15, enemy.hp, enemy.maxHp);
   }
 
   private drawHPBar(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, maxHp: number) {
-     const w = 30;
-     const h = 4;
-     ctx.fillStyle = '#333';
-     ctx.fillRect(x - w/2, y, w, h);
-     ctx.fillStyle = hp > maxHp * 0.2 ? '#00ffaa' : '#ff3333';
-     ctx.fillRect(x - w/2, y, w * Math.max(0, hp / maxHp), h);
+    const w = 30;
+    const h = 4;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x - w / 2, y, w, h);
+    ctx.fillStyle = hp > maxHp * 0.2 ? '#00ffaa' : '#ff3333';
+    ctx.fillRect(x - w / 2, y, w * Math.max(0, hp / maxHp), h);
   }
 
   private drawSensorLink(ctx: CanvasRenderingContext2D, drone: ArenaEntity) {
     if (this.enemy.hp <= 0 || drone.state === 'WITHDRAWN') return;
-    
+
     const dist = this.dist(drone, this.enemy);
     if (dist > drone.sensorRange) return;
 
     const blocked = this.isLOSBlocked(drone, this.enemy);
-    
+
     ctx.beginPath();
     ctx.moveTo(drone.x, drone.y - drone.z * PERSPECTIVE_SCALE_Y);
     ctx.lineTo(this.enemy.x, this.enemy.y - this.enemy.z * PERSPECTIVE_SCALE_Y);
-    
+
     if (blocked) {
-       ctx.strokeStyle = 'rgba(255, 50, 50, 0.4)';
-       ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(255, 50, 50, 0.4)';
+      ctx.setLineDash([4, 4]);
     } else {
-       ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
-       ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
+      ctx.setLineDash([]);
     }
-    
+
     ctx.lineWidth = 1;
     ctx.stroke();
-    ctx.setLineDash([]); // Reset
+    ctx.setLineDash([]);
   }
 
   private drawDebugOverlay(ctx: CanvasRenderingContext2D, drone: ArenaEntity) {
     const drawY = drone.y - drone.z * PERSPECTIVE_SCALE_Y;
 
-    // Sensor Wireframe
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+    ctx.setLineDash([5, 5]);
     ctx.beginPath();
-    ctx.ellipse(drone.x, drone.y, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI*2);
+    ctx.ellipse(drone.x, drone.y, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.setLineDash([]);
 
-    // State Label
+    // Add a very faint fill to make it more "solid"
+    ctx.fillStyle = 'rgba(0, 255, 255, 0.03)';
+    ctx.fill();
+
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
@@ -788,23 +979,21 @@ export class CombatArena implements OnDestroy {
     if (drone.canStrike) label += ' ⚡';
     ctx.fillText(label, drone.x, drawY - drone.radius - 20);
 
-    // Last Seen Marker (Searching)
     if (drone.state === 'SEARCHING' && drone.lastSeenPos) {
-       ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
-       ctx.beginPath();
-       const sX = drone.lastSeenPos.x;
-       const sY = drone.lastSeenPos.y;
-       ctx.moveTo(sX - 5, sY); ctx.lineTo(sX + 5, sY);
-       ctx.moveTo(sX, sY - 5); ctx.lineTo(sX, sY + 5);
-       ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
+      ctx.beginPath();
+      const sX = drone.lastSeenPos.x;
+      const sY = drone.lastSeenPos.y;
+      ctx.moveTo(sX - 5, sY); ctx.lineTo(sX + 5, sY);
+      ctx.moveTo(sX, sY - 5); ctx.lineTo(sX, sY + 5);
+      ctx.stroke();
 
-       // Dashed line to search location
-       ctx.beginPath();
-       ctx.setLineDash([2, 4]);
-       ctx.moveTo(drone.x, drone.y);
-       ctx.lineTo(sX, sY);
-       ctx.stroke();
-       ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.setLineDash([2, 4]);
+      ctx.moveTo(drone.x, drone.y);
+      ctx.lineTo(sX, sY);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
   }
 }
