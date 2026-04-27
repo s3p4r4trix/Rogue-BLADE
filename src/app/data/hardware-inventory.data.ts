@@ -15,9 +15,9 @@ export const HARDWARE_INVENTORY = {
     { id: 'cell-voltiac', name: 'Voltiac Cell', description: 'Standard corporate power supply.', maxEnergy: 300, maxOutput: 30, weight: 10 } as EnergyCell
   ],
   reactors: [
-    { id: 'react-fusion', name: 'Fusion Core', description: 'Basic hydrogen reactor.', energyRegen: 2, weight: 5 } as Reactor,
-    { id: 'react-plasma', name: 'Plasma Injector', description: 'High-yield ion source.', energyRegen: 5, weight: 8 } as Reactor,
-    { id: 'react-quantum', name: 'Quantum Singularity', description: 'Infinite-loop gravity-well.', energyRegen: 12, weight: 15 } as Reactor
+    { id: 'react-atomic', name: 'Atomic Reactor', description: 'Basic nuclear fission reactor.', energyRegen: 2, weight: 5 } as Reactor,
+    { id: 'react-fusion', name: 'Fusion Reactor', description: 'High-yield fusion reactor.', energyRegen: 5, weight: 8 } as Reactor,
+    { id: 'react-antimatter', name: 'Antimatter Reactor', description: 'High-yield antimatter reactor.', energyRegen: 12, weight: 15 } as Reactor
   ],
   sensors: [
     { id: 'sens-optical', name: 'Optical Sensors', description: 'Short-range camera array.', range: 300, accuracy: 0.7, unlocksTriggerIds: ['ifEnemyInMeleeRange'], weight: 1 } as Sensor,
@@ -53,8 +53,8 @@ export const HARDWARE_INVENTORY = {
     { id: 'proc-omni', name: 'Omni-Node Core', description: 'Quantum logic core.', routineCapacity: 5, reactionTime: 0.05, processorSpeed: 40, weight: 2 } as Processor
   ],
   semiAIs: [
-    { id: 'semi-feral', name: 'Scrap-Code "Feral"', description: 'Aggressive instinct paths.', iffAccuracy: 70, behaviorBuff: 'aggressive', weight: 1 } as SemiAI,
-    { id: 'semi-guardian', name: 'Aegis "Guardian"', description: 'Protective sub-routines.', iffAccuracy: 95, behaviorBuff: 'defensive', weight: 1 } as SemiAI
+    { id: 'semi-feral', name: 'Scrap-Code "Feral"', description: 'Aggressive instinct paths. Optimizes strike reaction.', iffAccuracy: 70, behaviorBuff: 'aggressive', reactionTimeMult: 0.85, weight: 1 } as SemiAI,
+    { id: 'semi-guardian', name: 'Aegis "Guardian"', description: 'Protective sub-routines. Enhanced threat assessment.', iffAccuracy: 95, behaviorBuff: 'defensive', reactionTimeMult: 0.90, weight: 1 } as SemiAI
   ],
   shields: [
     { id: 'shield-basic', name: 'Scrap-Capacitor', description: 'Crude static field generator.', shieldCapacity: 50, regenRate: 2, energyCostPerRegen: 5, weight: 10 } as ShieldGenerator
@@ -107,7 +107,29 @@ export function loadUnlockedComponents(): string[] {
     try { return JSON.parse(saved); } catch (error) { }
   }
   return [
-    'eng-drifter', 'cell-scrap', 'react-fusion', 'sens-optical', 'blade-edge', 'form-shuriken', 'hull-scrap', 'proc-abacus', 'sens-terahertz'
+    // Starter Hardware - DELETE THIS LINE LATER AND THE ONE BELOW WHEN NOT IN PROTOTYPE PHASE
+    //'eng-drifter', 'cell-scrap', 'react-fusion', 'sens-optical', 'blade-edge', 'form-shuriken', 'hull-scrap', 'proc-abacus', 'sens-terahertz'
+
+    // Engines
+    'eng-drifter', 'eng-hauler', 'eng-screamer', 'eng-ghost',
+    // Energy Cells
+    'cell-scrap', 'cell-voltiac',
+    // Reactors
+    'react-atomic', 'react-fusion', 'react-antimatter',
+    // Sensors
+    'sens-optical', 'sens-bio', 'sens-thermal', 'sens-em', 'sens-radar', 'sens-lidar', 'sens-terahertz',
+    // Blades
+    'blade-edge', 'blade-hammer', 'blade-vibro', 'blade-energy',
+    // Form Designs
+    'form-shuriken', 'form-disc', 'form-dagger', 'form-sphere', 'form-ion',
+    // Hulls
+    'hull-scrap', 'hull-carbon', 'hull-durasteel', 'hull-neutronium',
+    // Processors
+    'proc-abacus', 'proc-cortex', 'proc-omni',
+    // Semi-AI
+    'semi-feral', 'semi-guardian',
+    // Shields
+    'shield-basic'
   ];
 }
 

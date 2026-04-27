@@ -148,6 +148,7 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
 *   **Master Status:** Equipping a Semi-AI makes the Shuriken a **Swarm Master**.
 *   **Slave Management:** Masters can be linked to other "Dumb" Shurikens (Slaves).
 *   **IFF & Reactions:** Slaves utilize the Master's advanced IFF accuracy and receive coordination buffs.
+*   **Processor Boost:** Semi-AI hardware features dedicated neural pathways that boost the Processor's reaction time (latency reduction).
 *   **Swarm Communication:** Coordination requires a Master.
 
 ### 6.5 Sensors (Unlocking Triggers)

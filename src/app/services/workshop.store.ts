@@ -47,7 +47,7 @@ const initialState: WorkshopState = {
   ],
   availableShurikens: loadShurikens(),
   unlockedComponentIds: loadUnlockedComponents(),
-  activeShurikenId: localStorage.getItem('rogueBlade_activeShuriken') || 'shuriken-01',
+  activeShurikenId: localStorage.getItem('rogueBlade_activeShuriken') || loadShurikens()[0].id,
   routinesMap: loadSavedRoutinesMap(),
   systemLogs: ['> System ready.', '> Waiting for input...'],
   selectedInfoItem: null,
@@ -118,19 +118,37 @@ export const WorkshopStore = signalStore(
         
         const migratedShurikens = store.availableShurikens().map(shuriken => {
           const drone = { ...shuriken };
+          console.log(`[WorkshopStore] Migrating Drone: ${drone.name} (${drone.id})`);
           
-          // Logic: Refresh component stats from master inventory to ensure balance consistency.
-          if (drone.engine) drone.engine = HARDWARE_INVENTORY.engines.find(e => e.id === drone.engine?.id) || HARDWARE_INVENTORY.engines[0];
-          if (drone.hull) drone.hull = HARDWARE_INVENTORY.hulls.find(h => h.id === drone.hull?.id) || HARDWARE_INVENTORY.hulls[0];
-          if (drone.energyCell) drone.energyCell = HARDWARE_INVENTORY.energyCells.find(c => c.id === drone.energyCell?.id) || HARDWARE_INVENTORY.energyCells[0];
-          if (drone.sensor) drone.sensor = HARDWARE_INVENTORY.sensors.find(s => s.id === drone.sensor?.id) || HARDWARE_INVENTORY.sensors[0];
-          if (drone.blade) drone.blade = HARDWARE_INVENTORY.blades.find(b => b.id === drone.blade?.id) || HARDWARE_INVENTORY.blades[0];
-          if (drone.formDesign) drone.formDesign = HARDWARE_INVENTORY.formDesigns.find(f => f.id === drone.formDesign?.id) || HARDWARE_INVENTORY.formDesigns[0];
-          if (drone.processor) drone.processor = HARDWARE_INVENTORY.processors.find(p => p.id === drone.processor?.id) || HARDWARE_INVENTORY.processors[0];
-          if (drone.reactor) drone.reactor = HARDWARE_INVENTORY.reactors.find(r => r.id === drone.reactor?.id) || HARDWARE_INVENTORY.reactors[0];
+          // Logic: Refresh component stats from master inventory. 
+          const refresh = (slot: string, category: any[]) => {
+            const component = (drone as any)[slot];
+            if (!component) return category[0];
+            
+            const currentId = component.id;
+            const updated = category.find(c => c.id === currentId);
+            
+            if (updated) {
+              return updated;
+            } else {
+              console.warn(`[WorkshopStore] Migration Warning: Component '${currentId}' not found in inventory for slot '${slot}'. Keeping existing or falling back.`);
+              // If we have the object but just can't find it in inventory, keep the object to avoid reset
+              return component || category[0];
+            }
+          };
+
+          drone.engine = refresh('engine', HARDWARE_INVENTORY.engines);
+          drone.hull = refresh('hull', HARDWARE_INVENTORY.hulls);
+          drone.energyCell = refresh('energyCell', HARDWARE_INVENTORY.energyCells);
+          drone.sensor = refresh('sensor', HARDWARE_INVENTORY.sensors);
+          drone.blade = refresh('blade', HARDWARE_INVENTORY.blades);
+          drone.formDesign = refresh('formDesign', HARDWARE_INVENTORY.formDesigns);
+          drone.processor = refresh('processor', HARDWARE_INVENTORY.processors);
+          drone.reactor = refresh('reactor', HARDWARE_INVENTORY.reactors);
           
-          if (drone.shield) drone.shield = HARDWARE_INVENTORY.shields.find(s => s.id === drone.shield?.id) || null;
-          if (drone.semiAI) drone.semiAI = HARDWARE_INVENTORY.semiAIs.find(a => a.id === drone.semiAI?.id) || null;
+          // Optional slots preserve null if empty
+          drone.shield = drone.shield ? (HARDWARE_INVENTORY.shields.find(s => s.id === drone.shield?.id) || null) : null;
+          drone.semiAI = drone.semiAI ? (HARDWARE_INVENTORY.semiAIs.find(a => a.id === drone.semiAI?.id) || null) : null;
 
           // Logic: Handle coordination mode inheritance.
           if (!drone.coordinationMode) drone.coordinationMode = 'SOLO';
@@ -141,9 +159,10 @@ export const WorkshopStore = signalStore(
         });
 
         patchState(store, { 
-          unlockedComponentIds: updatedUnlocked,
-          availableShurikens: migratedShurikens
+          availableShurikens: migratedShurikens,
+          unlockedComponentIds: updatedUnlocked 
         });
+        console.log('[WorkshopStore] Hardware migration complete.', migratedShurikens);
       },
 
       /** Switches the active drone context in the workshop. */
@@ -159,6 +178,7 @@ export const WorkshopStore = signalStore(
 
       /** Logic: Swaps a hardware component in the specified slot. */
       equipComponent(shurikenId: string, slot: any, component: any): void {
+        console.log(`[WorkshopStore] Equipping ${slot}:`, component?.id || 'null', `on ${shurikenId}`);
         const updated = store.availableShurikens().map(shuriken => {
           if (shuriken.id !== shurikenId) return shuriken;
           const updatedDrone = { ...shuriken, [slot]: component };
@@ -292,10 +312,17 @@ export const WorkshopStore = signalStore(
 
       // Logic: Setup reactive synchronization with local storage.
       effect(() => {
-        localStorage.setItem('rogueBlade_shurikens', JSON.stringify(store.availableShurikens()));
-        localStorage.setItem('rogueBlade_unlockedComponents', JSON.stringify(store.unlockedComponentIds()));
-        localStorage.setItem('rogueBlade_routinesMap', JSON.stringify(store.routinesMap()));
-        localStorage.setItem('rogueBlade_activeShuriken', store.activeShurikenId());
+        const shurikens = store.availableShurikens();
+        const unlocked = store.unlockedComponentIds();
+        const routines = store.routinesMap();
+        const activeId = store.activeShurikenId();
+
+        console.log('[WorkshopStore] Flushing state to LocalStorage...', { shurikens, activeId });
+        
+        localStorage.setItem('rogueBlade_shurikens', JSON.stringify(shurikens));
+        localStorage.setItem('rogueBlade_unlockedComponents', JSON.stringify(unlocked));
+        localStorage.setItem('rogueBlade_routinesMap', JSON.stringify(routines));
+        localStorage.setItem('rogueBlade_activeShuriken', activeId);
       });
     }
   })

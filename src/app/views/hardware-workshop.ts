@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { WorkshopStore } from '../services/workshop.store';
 import { HARDWARE_INVENTORY } from '../data/hardware-inventory.data';
@@ -235,83 +235,155 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
                 </div>
 
                 <!-- Performance Telemetry -->
-                <div class="mt-8 bg-blue-900/10 border border-blue-900/50 p-4 neuro-panel">
-                   <h3 class="text-blue-500 font-bold mb-4 uppercase border-b border-blue-900/50 pb-2 flex justify-between items-center">
-                       <span>// PERFORMANCE TELEMETRY</span>
-                       <span class="text-[10px] text-blue-700 animate-pulse">LIVE_SYNC: ACTIVE</span>
+                <div class="mt-8 bg-black/60 border border-blue-900/30 p-6 neuro-panel relative overflow-hidden group/telemetry">
+                   <!-- Decorative scanning line -->
+                   <div class="absolute inset-x-0 top-0 h-[1px] bg-blue-500/20 animate-[scan_4s_linear_infinite] pointer-events-none"></div>
+
+                   <h3 class="text-blue-400 font-black mb-6 uppercase tracking-[0.3em] flex justify-between items-center border-b border-blue-900/30 pb-3">
+                       <span class="flex items-center gap-2">
+                         <span class="w-1.5 h-4 bg-blue-500 shadow-[0_0_10px_#3b82f6]"></span>
+                         SYSTEM_DIAGNOSTICS
+                       </span>
+                       <span class="text-[9px] text-blue-600 font-mono animate-pulse">TERMINAL_LINK: STABLE</span>
                    </h3>
                    
                    @if (activeShurikenStats(); as stats) {
-                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                       <!-- Survival Group -->
-                       <div class="space-y-2 border-r border-blue-900/30 pr-4">
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Hull Integrity</span>
-                             <span class="text-blue-300">{{ stats.hp }} HP</span>
-                          </div>
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Armor Plate</span>
-                             <span class="text-blue-300">{{ stats.armor | number:'1.0-1' }}</span>
-                          </div>
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Shield Cap</span>
-                             <span class="text-blue-300">{{ stats.shields }} S</span>
-                          </div>
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Evasion Rate</span>
-                             <span class="text-green-400">{{ stats.evasion | number:'1.1-1' }}%</span>
-                          </div>
-                       </div>
-
-                       <!-- Mobility Group -->
-                       <div class="space-y-2 border-r border-blue-900/30 px-4">
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Top Speed</span>
-                             <span class="text-blue-300">{{ stats.speed | number:'1.0-0' }} px/s</span>
-                          </div>
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Acceleration</span>
-                             <span class="text-blue-300">{{ stats.acceleration }}</span>
-                          </div>
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Total Weight</span>
-                             <span class="text-orange-400">{{ stats.weight | number:'1.0-0' }} kg</span>
-                          </div>
-                       </div>
-
-                       <!-- Offense Group -->
-                       <div class="space-y-2 border-r border-blue-900/30 px-4">
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Base Damage</span>
-                             <span class="text-red-400 font-bold">{{ stats.baseDamage | number:'1.0-1' }}</span>
-                          </div>
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Damage Type</span>
-                             <span class="text-blue-300">{{ stats.damageType }}</span>
-                          </div>
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Crit Chance</span>
-                             <span class="text-yellow-400">{{ stats.critChance | number:'1.1-1' }}%</span>
+                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                       
+                       <!-- Survival Analysis -->
+                       <div class="space-y-4">
+                          <h4 class="text-[10px] text-blue-700 font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <span class="w-1 h-1 bg-blue-700"></span> SURVIVABILITY
+                          </h4>
+                          <div class="space-y-3">
+                            <div class="flex flex-col gap-1">
+                               <div class="flex justify-between text-[10px] uppercase font-bold">
+                                 <span class="text-blue-500/60">Hull Integrity</span>
+                                 <span class="text-blue-300 font-mono">{{ stats.hp }} HP</span>
+                               </div>
+                               <div class="h-1 bg-blue-950/30 rounded-full overflow-hidden">
+                                 <div class="h-full bg-blue-500/40 shadow-[0_0_5px_rgba(59,130,246,0.3)]" [style.width.%]="Math.min(100, (stats.hp / 500) * 100)"></div>
+                               </div>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                               <div class="flex justify-between text-[10px] uppercase font-bold">
+                                 <span class="text-blue-500/60">Armor Plating</span>
+                                 <span class="text-blue-300 font-mono">{{ stats.armor | number:'1.0-1' }}</span>
+                               </div>
+                               <div class="h-1 bg-blue-950/30 rounded-full overflow-hidden">
+                                 <div class="h-full bg-cyan-500/40 shadow-[0_0_5px_rgba(6,182,212,0.3)]" [style.width.%]="Math.min(100, (stats.armor / 50) * 100)"></div>
+                               </div>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                               <div class="flex justify-between text-[10px] uppercase font-bold">
+                                 <span class="text-blue-500/60">Shield Capacity</span>
+                                 <span class="text-blue-300 font-mono">{{ stats.shields }}</span>
+                               </div>
+                               <div class="h-1 bg-blue-950/30 rounded-full overflow-hidden">
+                                 <div class="h-full bg-indigo-500/40 shadow-[0_0_5px_rgba(99,102,241,0.3)]" [style.width.%]="Math.min(100, (stats.shields / 500) * 100)"></div>
+                               </div>
+                            </div>
+                            <div class="flex justify-between text-[10px] uppercase font-bold pt-1 border-t border-blue-900/20">
+                               <span class="text-blue-500/60">Evasion Rate</span>
+                               <span class="text-green-400 font-mono">{{ stats.evasion | number:'1.1-1' }}%</span>
+                            </div>
                           </div>
                        </div>
 
-                       <!-- Energy & AI Group -->
-                       <div class="space-y-2 pl-4">
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Max Energy</span>
-                             <span class="text-blue-300">{{ stats.maxEnergy }}</span>
+                       <!-- Mobility Metrics -->
+                       <div class="space-y-4">
+                          <h4 class="text-[10px] text-blue-700 font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <span class="w-1 h-1 bg-blue-700"></span> MOBILITY
+                          </h4>
+                          <div class="space-y-3">
+                            <div class="flex flex-col gap-1">
+                               <div class="flex justify-between text-[10px] uppercase font-bold">
+                                 <span class="text-blue-500/60">Top Velocity</span>
+                                 <span class="text-blue-300 font-mono">{{ stats.speed | number:'1.0-0' }} px/s</span>
+                               </div>
+                               <div class="h-1 bg-blue-950/30 rounded-full overflow-hidden">
+                                 <div class="h-full bg-blue-400/40" [style.width.%]="Math.min(100, (stats.speed / 600) * 100)"></div>
+                               </div>
+                            </div>
+                            <div class="flex justify-between text-[10px] uppercase font-bold">
+                               <span class="text-blue-500/60">Acceleration</span>
+                               <span class="text-blue-300 font-mono">{{ stats.acceleration }}</span>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                               <div class="flex justify-between text-[10px] uppercase font-bold">
+                                 <span class="text-blue-500/60">Gross Weight</span>
+                                 <span class="text-orange-400 font-mono font-black">{{ stats.weight | number:'1.0-0' }} kg</span>
+                               </div>
+                               <div class="h-1 bg-blue-950/30 rounded-full overflow-hidden">
+                                 <div class="h-full bg-orange-500/40" [style.width.%]="Math.min(100, (stats.weight / 400) * 100)"></div>
+                               </div>
+                            </div>
                           </div>
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Energy Regen</span>
-                             <span class="text-green-500">+{{ stats.energyRegen }}/s</span>
+                       </div>
+
+                       <!-- Combat Efficiency -->
+                       <div class="space-y-4">
+                          <h4 class="text-[10px] text-blue-700 font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <span class="w-1 h-1 bg-blue-700"></span> OFFENSE
+                          </h4>
+                          <div class="space-y-3">
+                            <div class="flex flex-col gap-1">
+                               <div class="flex justify-between text-[10px] uppercase font-bold">
+                                 <span class="text-blue-500/60">Base Damage</span>
+                                 <span class="text-red-400 font-mono font-black">{{ stats.baseDamage | number:'1.0-1' }}</span>
+                               </div>
+                               <div class="h-1 bg-blue-950/30 rounded-full overflow-hidden">
+                                 <div class="h-full bg-red-500/40 shadow-[0_0_5px_rgba(239,68,68,0.3)]" [style.width.%]="Math.min(100, (stats.baseDamage / 150) * 100)"></div>
+                               </div>
+                            </div>
+                            <div class="flex justify-between text-[10px] uppercase font-bold">
+                               <span class="text-blue-500/60">Damage Type</span>
+                               <span class="text-blue-300 px-2 py-0.5 bg-blue-900/30 border border-blue-800 rounded">{{ stats.damageType }}</span>
+                            </div>
+                            <div class="flex flex-col gap-1 pt-1">
+                               <div class="flex justify-between text-[10px] uppercase font-bold">
+                                 <span class="text-blue-500/60">Crit Probability</span>
+                                 <span class="text-yellow-400 font-mono">{{ stats.critChance | number:'1.1-1' }}%</span>
+                               </div>
+                               <div class="h-1 bg-blue-950/30 rounded-full overflow-hidden">
+                                 <div class="h-full bg-yellow-500/40" [style.width.%]="Math.min(100, (stats.critChance / 30) * 100)"></div>
+                               </div>
+                            </div>
                           </div>
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Passive Drain</span>
-                             <span class="text-red-500">-{{ stats.passiveDrain }}/s</span>
-                          </div>
-                          <div class="flex justify-between items-center text-[10px]">
-                             <span class="text-blue-700 uppercase">Reaction Time</span>
-                             <span class="text-purple-400 font-bold">{{ stats.effectiveRX | number:'1.2-3' }}s</span>
+                       </div>
+
+                       <!-- Neural Engine -->
+                       <div class="space-y-4">
+                          <h4 class="text-[10px] text-blue-700 font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <span class="w-1 h-1 bg-blue-700"></span> ENERGY & AI
+                          </h4>
+                          <div class="space-y-3">
+                            <div class="flex flex-col gap-1">
+                               <div class="flex justify-between text-[10px] uppercase font-bold">
+                                 <span class="text-blue-500/60">Core Capacitor</span>
+                                 <span class="text-blue-300 font-mono">{{ stats.maxEnergy }} EU</span>
+                               </div>
+                               <div class="h-1 bg-blue-950/30 rounded-full overflow-hidden">
+                                 <div class="h-full bg-blue-500/40" [style.width.%]="Math.min(100, (stats.maxEnergy / 500) * 100)"></div>
+                               </div>
+                            </div>
+                            <div class="flex justify-between text-[10px] uppercase font-bold">
+                               <span class="text-blue-500/60">Regen Rate</span>
+                               <span class="text-green-500 font-mono">+{{ stats.energyRegen }}/s</span>
+                            </div>
+                            <div class="flex justify-between text-[10px] uppercase font-bold">
+                               <span class="text-blue-500/60">System Drain</span>
+                               <span class="text-red-500 font-mono">-{{ stats.passiveDrain }}/s</span>
+                            </div>
+                            <div class="flex flex-col gap-1 pt-2 border-t border-blue-900/20">
+                               <div class="flex justify-between text-[10px] uppercase font-bold">
+                                 <span class="text-blue-400 font-black">Reaction Time</span>
+                                 <span class="text-purple-400 font-black font-mono">{{ stats.effectiveRX | number:'1.2-3' }}s</span>
+                               </div>
+                               <div class="h-1.5 bg-purple-950/30 rounded-full overflow-hidden">
+                                 <div class="h-full bg-purple-500/40 shadow-[0_0_8px_rgba(168,85,247,0.4)]" [style.width.%]="Math.max(10, 100 - (stats.effectiveRX / 0.5) * 100)"></div>
+                               </div>
+                            </div>
                           </div>
                        </div>
                      </div>
@@ -421,6 +493,13 @@ import { Shuriken, CyberOption } from '../models/hardware.model';
 export class HardwareWorkshop {
   workshopStore = inject(WorkshopStore);
   router = inject(Router);
+  Math = Math;
+
+  constructor() {
+    effect(() => {
+      console.log('[HardwareWorkshop] Active Shuriken:', this.workshopStore.activeShuriken());
+    });
+  }
 
   inventory = HARDWARE_INVENTORY;
   shurikens = this.workshopStore.availableShurikens;
@@ -465,9 +544,11 @@ export class HardwareWorkshop {
     // effectiveReactionTime = baseReactionTime * (1.0 + (baseWeight / 250) - (acceleration / 25) - (processorSpeed / 25))
     const baseRX = p?.reactionTime || 0.2;
     const procSpeed = p?.processorSpeed || 5;
+    const aiMult = s.semiAI?.reactionTimeMult || 1.0;
+    
     let rxMult = 1.0 + (weight / 250) - (acceleration / 25) - (procSpeed / 25);
     rxMult = Math.max(0.2, rxMult);
-    const effectiveRX = baseRX * rxMult;
+    const effectiveRX = baseRX * rxMult * aiMult;
 
     return {
       hp, armor, shields, evasion, stealth,
@@ -497,8 +578,10 @@ export class HardwareWorkshop {
     this.router.navigate(['/liberation']);
   }
 
-  getUnlocked<T extends { id: string }>(items: T[]): T[] {
-    return items.filter(item => this.workshopStore.unlockedComponentIds().includes(item.id));
+  getUnlocked<T extends { id: string }>(items: T[], currentId?: string): T[] {
+    return items.filter(item => 
+      this.workshopStore.unlockedComponentIds().includes(item.id) || item.id === currentId
+    );
   }
 
   formatTime(seconds: number): string {
@@ -529,36 +612,36 @@ export class HardwareWorkshop {
 
   // --- Map Options for Native Selects ---
   getEngineOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.engines).map((c: any) => ({ value: c.id, label: c.name }));
+    return this.getUnlocked(this.inventory.engines, this.activeShuriken().engine?.id).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getHullOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.hulls).map((c: any) => ({ value: c.id, label: `${c.name}` }));
+    return this.getUnlocked(this.inventory.hulls, this.activeShuriken().hull?.id).map((c: any) => ({ value: c.id, label: `${c.name}` }));
   }
   getEnergyCellOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.energyCells).map((c: any) => ({ value: c.id, label: c.name }));
+    return this.getUnlocked(this.inventory.energyCells, this.activeShuriken().energyCell?.id).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getReactorOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.reactors).map((c: any) => ({ value: c.id, label: c.name }));
+    return this.getUnlocked(this.inventory.reactors, this.activeShuriken().reactor?.id).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getProcessorOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.processors).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.routineCapacity} | RX: ${c.reactionTime}s)` }));
+    return this.getUnlocked(this.inventory.processors, this.activeShuriken().processor?.id).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.routineCapacity} | RX: ${c.reactionTime}s)` }));
   }
   getSemiAIOptions(): CyberOption[] {
-    const options = this.getUnlocked(this.inventory.semiAIs).map((c: any) => ({ value: c.id, label: c.name }));
+    const options = this.getUnlocked(this.inventory.semiAIs, this.activeShuriken().semiAI?.id).map((c: any) => ({ value: c.id, label: c.name }));
     return [{ value: '', label: 'NONE [SOLO_MODE]' }, ...options];
   }
   getShieldOptions(): CyberOption[] {
-    const options = this.getUnlocked(this.inventory.shields).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.shieldCapacity})` }));
+    const options = this.getUnlocked(this.inventory.shields, this.activeShuriken().shield?.id).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.shieldCapacity})` }));
     return [{ value: '', label: 'NONE [OFFLINE]' }, ...options];
   }
   getBladeOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.blades).map((c: any) => ({ value: c.id, label: c.name }));
+    return this.getUnlocked(this.inventory.blades, this.activeShuriken().blade?.id).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getSensorOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.sensors).map((c: any) => ({ value: c.id, label: c.name }));
+    return this.getUnlocked(this.inventory.sensors, this.activeShuriken().sensor?.id).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getFormDesignOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.formDesigns).map((c: any) => ({ value: c.id, label: `${c.name}` }));
+    return this.getUnlocked(this.inventory.formDesigns, this.activeShuriken().formDesign?.id).map((c: any) => ({ value: c.id, label: `${c.name}` }));
   }
 
   hasAvailableMasters(): boolean {

@@ -71,6 +71,7 @@ Forms apply a global multiplier to the final stats.
 ### F. Semi-AI (The Brain - OPTIONAL)
 A Shuriken with an equipped Semi-AI is designated as a **MASTER**. A Shuriken without a Semi-AI is designated as **SOLO** unless slaved to a Master.
 *   **Swarm Coordination:** Masters manage **SLAVE** units. Slaves receive the Master's `iffAccuracy` and a 15% Latency reduction.
+*   **Processor Synergy:** Equipping a Semi-AI on a Shuriken provides a direct performance boost to the internal Processor, reducing its base reaction time.
 *   **Operational Risk (Grace Period):** If a Master is destroyed, Slaves do NOT suffer an immediate permanent penalty. Instead, they enter a 5-second "Chaos Mode" (erratic movement, basic attacks only) before reverting to their internal base reaction time without the Master's buffs.
 
 ## 3. Deployment Constraints
@@ -130,8 +131,8 @@ When a Shuriken attacks an enemy, the damageType is checked against the enemy's 
 ### 4.2 Combat Frequency & Cooldowns 
  Combat is not purely turn-based but uses a high-frequency simulation (0.1s increments).
  
-* **Shuriken Attack Speed (Reaction Time Scaling):** A Shuriken's `baseReactionTime` is affected by its physical inertia (Weight), acceleration (Acceleration) and its processing power (Processor Speed).
-    * **Formula:** `effectiveReactionTime = baseReactionTime * (1.0 + (baseWeight / 250) - (acceleration / 25) - (processorSpeed / 25))`
+* **Shuriken Attack Speed (Reaction Time Scaling):** A Shuriken's `baseReactionTime` is affected by its physical inertia (Weight), acceleration (Acceleration), processing power (Processor Speed), and AI integration (Semi-AI).
+    * **Formula:** `effectiveReactionTime = baseReactionTime * (1.0 + (baseWeight / 250) - (acceleration / 25) - (processorSpeed / 25)) * semiAiMultiplier`
     * **Minimum Floor:** `effectiveReactionTime` cannot drop below `0.2x` of `baseReactionTime`.
     * **Result:** Heavy, low-acceleration drones attack slowly but hit with more momentum. Light, high-acceleration drones strike with high frequency but less kinetic impact.
 

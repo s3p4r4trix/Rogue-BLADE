@@ -102,6 +102,7 @@ export interface Processor extends HardwareComponent {
 export interface SemiAI extends HardwareComponent {
   iffAccuracy: number;
   behaviorBuff: 'aggressive' | 'defensive' | 'coordinator' | 'adaptive';
+  reactionTimeMult: number; // Multiplier for the processor's reaction time (e.g., 0.8 = 20% faster)
 }
 
 /**
