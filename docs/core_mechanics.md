@@ -94,9 +94,9 @@ The `currentSpeed` of a Shuriken is updated every tick based on its `acceleratio
 Blunt/Kinetic weapons deal more damage the heavier and faster the Shuriken is.
 **Logic:** Calculate force: Rewards heavy objects that manage to build up speed.
 
-**Example:** A shuriken with `currentSpeed` of 100 and `baseWeight` of 50 will have its `momentumMultiplier` of 2.0. A shuriken with `currentSpeed` of 200 and `baseWeight` of 55 will have its `momentumMultiplier` of 3.2.
+**Example:** A shuriken with `currentSpeed` of 100 and `baseWeight` of 100 will have its `momentumMultiplier` of 2.0. A shuriken with `currentSpeed` of 200 and `baseWeight` of 55 will have its `momentumMultiplier` of 2.1.
 
-**Formula:** `momentumMultiplier = 1.0 + ((currentSpeed * baseWeight) / 5000)`
+**Formula:** `momentumMultiplier = 1.0 + ((currentSpeed * baseWeight) / 10000)`
 **Formula:** `finalKineticDamage = baseDamage * momentumMultiplier`
 
 ### 3.3 Energy Exhaustion (Emergency Reboot)
@@ -141,7 +141,28 @@ When a Shuriken attacks an enemy, the damageType is checked against the enemy's 
     * **Tier III:** 0.4s - 0.8s cooldown.
  * **Targeting:** Hostiles randomly target any allied Shuriken that is not currently **Stealthed**.
 
-### 5.0 Priority & Fallback Logic
+### 5.0 Mission Difficulty & Scaling
+
+Mission resistance and rewards scale dynamically based on the average power level of the player's current drone squad and their operational history.
+
+#### 5.1 Squad Power Calculation
+The tactical potential of a drone is condensed into a `squadPower` value used to benchmark mission difficulty.
+*   **Formula:** `squadPower = (routineCapacity * 25) + (baseDamage * 15) + (maxHP * 0.5)`
+*   **Averaging:** For missions, the average `squadPower` of all available shurikens is used.
+
+#### 5.2 Progression Multipliers (Tiers)
+Missions are categorized into Tiers, each applying a multiplier to the base loot and enemy stats. These multipliers scale slowly with the number of `successfulRuns`.
+*   **Tier I (Low):** `tierMultiplier = min(0.8, 0.4 + (successfulRuns * 0.01))`
+*   **Tier II (Moderate):** `tierMultiplier = min(2.0, 1.0 + (successfulRuns * 0.02))`
+*   **Tier III (High):** `tierMultiplier = min(5.0, 2.5 + (successfulRuns * 0.05))`
+
+#### 5.3 Enemy Health Scaling
+Enemy durability is directly linked to the expected reward tier of the mission.
+*   **Base Loot:** `baseLoot = squadPower * tierMultiplier`
+*   **Enemy Hull:** `hull = floor(baseLoot * 1.5)`
+*   **Note:** High-tier missions result in significantly more durable Zenith hostiles that require optimized routines and hardware to neutralize within the mission window.
+
+### 6.0 Movement & Physics Logic
 The AI checks Slots from 1 to N. 
 * **Action Fallbacks:** If an IF condition is met, but the THEN action cannot be executed (e.g., insufficient energy), the simulation skips the current routine and evaluates the next one in the list.
 * **Default Slot:** Every Shuriken has a hidden, uneditable final slot: `IF Enemy Detected -> THEN Standard Strike`. This ensures drones never idle if they have energy and a target, but they must first locate the target via sensors.

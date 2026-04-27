@@ -466,7 +466,7 @@ export class CombatArena implements OnDestroy {
 
     // Momentum Scaling
     if (attacker.damageType === 'KINETIC') {
-      const momentumMultiplier = 1.0 + ((attacker.speed * attacker.baseWeight) / 5000);
+      const momentumMultiplier = 1.0 + ((attacker.speed * attacker.baseWeight) / 10000);
       grossDamage *= momentumMultiplier;
     }
 

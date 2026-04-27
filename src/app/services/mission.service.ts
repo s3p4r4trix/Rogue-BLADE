@@ -76,7 +76,7 @@ export class MissionService {
       const proc = s.processor?.routineCapacity || 1;
       const blade = s.blade?.baseDamage || 5;
       const hull = s.hull?.maxHp || 50;
-      return acc + (proc * 30) + (blade * 5) + (hull * 0.5); 
+      return acc + (proc * 25) + (blade * 15) + (hull * 0.5);
     }, 0) / shurikens.length;
   }
 
@@ -105,9 +105,9 @@ export class MissionService {
     // Tier II starts at 1.0 and scales to 2.0
     // Tier III starts at 2.5 and scales to 5.0
     const tierMultiplier = [
-      Math.min(0.8, 0.4 + (successfulRuns * 0.04)),
-      Math.min(2.0, 1.0 + (successfulRuns * 0.1)),
-      Math.min(5.0, 2.5 + (successfulRuns * 0.25))
+      Math.min(0.8, 0.4 + (successfulRuns * 0.01)),
+      Math.min(2.0, 1.0 + (successfulRuns * 0.02)),
+      Math.min(5.0, 2.5 + (successfulRuns * 0.05))
     ][index];
 
     const baseLoot = squadPower * tierMultiplier;
@@ -130,7 +130,7 @@ export class MissionService {
     sMax = Math.floor(baseLoot * 1.2);
     cBonus = Math.floor(baseLoot * 1.5);
 
-    const hull = Math.floor(baseLoot * 0.45); // Significantly reduced hull multiplier from 0.8 to 0.45
+    const hull = Math.floor(baseLoot * 1.5); // Increased hull multiplier to provide meaningful challenge
     // Force 0 shields/armor for early game (onboarding)
     const shields = (successfulRuns < 10) ? 0 : (resProfile.type === 'ENERGY_SHIELD' ? Math.floor(baseLoot * 1.2) : Math.floor(baseLoot * 0.2));
     const armorValue = (successfulRuns < 10) ? 0 : (resProfile.type === 'HEAVY_ARMOR' ? Math.floor(baseLoot * 0.15) : 0);

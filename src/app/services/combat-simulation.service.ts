@@ -321,7 +321,7 @@ export class CombatSimulationService {
 
       // Momentum Scaling (Kinetic or Ram)
       if (s.damageType === 'KINETIC' || id === 'actionKineticRam') {
-         const momentumMultiplier = 1.0 + ((s.currentSpeed / 100) * (s.baseWeight / 100));
+         const momentumMultiplier = 1.0 + ((s.currentSpeed * s.baseWeight) / 10000);
          grossDamage *= momentumMultiplier;
          if (id === 'actionKineticRam') grossDamage *= 1.5;
       }
