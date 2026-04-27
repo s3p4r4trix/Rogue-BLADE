@@ -20,7 +20,7 @@ import { CombatArena } from '../components/combat-arena';
       <div class="border-b-2 border-green-900 pb-4 mb-6 flex justify-between items-end">
         <div class="flex items-center gap-6">
           <!-- Hub Navigation -->
-          <a routerLink="/hub" class="text-green-500 border border-green-800 hover:bg-green-900/50 px-3 py-1 font-mono text-sm uppercase transition-colors">
+          <a routerLink="/hub" class="h-[38px] flex items-center justify-center text-green-500 border border-green-800 hover:bg-green-900/50 px-3 font-mono text-sm uppercase transition-colors">
               < BACK_TO_HUB
           </a>
 
@@ -34,16 +34,16 @@ import { CombatArena } from '../components/combat-arena';
           <!-- Divider -->
           <div class="w-[1px] h-10 bg-green-900/50 mx-2"></div>
 
-          <!-- Elapsed Time (Moved from right/left-edge to here) -->
-          <div class="flex flex-col">
-            <span class="text-[8px] text-green-800 uppercase font-bold tracking-widest mb-1">Elapsed_Time</span>
-            <div class="text-xl font-black bg-green-900/20 px-3 py-0.5 border border-green-800 animate-pulse text-green-400">
+          <!-- Elapsed Time -->
+          <div class="flex flex-col items-center">
+            <span class="text-[9px] text-green-800 uppercase font-bold tracking-[0.2em] mt-1">Elapsed_Time</span>
+            <div class="h-[38px] flex items-center justify-center bg-green-900/20 px-4 border border-green-800 animate-pulse text-green-400 font-black text-lg">
               {{ formatTime(Math.floor(timeElapsed())) }}
             </div>
           </div>
 
           <!-- View Toggle Button (Moved from right edge to here) -->
-          <button (click)="toggleView()" class="px-4 py-2 border text-[10px] uppercase font-black tracking-widest transition-all cursor-pointer h-fit"
+          <button (click)="toggleView()" class="h-[38px] px-4 border text-[10px] uppercase font-black tracking-widest transition-all cursor-pointer flex items-center justify-center"
                   [ngClass]="activeView() === 'LIVE_FEED'
                     ? 'border-cyan-700 text-cyan-400 hover:bg-cyan-900/30'
                     : 'border-green-700 text-green-400 hover:bg-green-900/30'">
