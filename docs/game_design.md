@@ -120,6 +120,7 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
 * **Stealth (Acoustic/EM/IR):** Reduces engine noise and thermal radiation. High levels enable silent movement to evade alien sensors.
 * **Energy Consumption:** Power draw during operation.
 * **Flux Capacitor:** Enables rapid direction changes and high-speed parrying.
+* **Component Mass:** Every piece of hardware (Engines, Blades, Sensors, etc.) contributes to the overall weight of the Shuriken. Players must balance power vs. mobility.
 
 ### 6.2 Hull Materials (Lore-Integrated Tiered Progression)
 **Tier I: Remnants of Humanity (Weak & Common)**
@@ -138,10 +139,9 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
 * **Adamant-Quantum-Grid:** Atoms bound by quantum entanglement. Physically extremely hard to break or cut.
 * **Aetherium:** Exists partially out of phase. Attacks simply pass through or are diverted to a micro-dimension.
 
-### 6.3 Energy Cells
-* **Capacity:** Total energy stored.
-* **Regeneration:** Charging speed during combat.
-* **Max Output:** Required for burst maneuvers or cloaking devices.
+### 6.3 Energy Systems
+* **Energy Cell (The Battery):** Defines the **Capacity** (total energy stored) and **Max Output** (required for burst maneuvers).
+* **Reactor (The Engine):** Defines the **Regeneration** speed (charging speed during combat). Higher-tier reactors can sustain heavy energy blades and shields indefinitely.
 
 ### 6.4 Semi-AI (The Brain - OPTIONAL)
 *   **Unlocked Later:** This slot is optional. Early-game drones are "Dumb" (Solo).

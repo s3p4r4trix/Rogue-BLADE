@@ -1,56 +1,62 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
 import { Action, GambitRoutine, Trigger } from '../models/gambit.model';
-import { Shuriken, AntiGravEngine, EnergyCell, Sensor, Blade, FormDesign, HullMaterial, Processor, SemiAI, ShieldGenerator } from '../models/hardware.model';
+import { Shuriken, AntiGravEngine, EnergyCell, Reactor, Sensor, Blade, FormDesign, HullMaterial, Processor, SemiAI, ShieldGenerator } from '../models/hardware.model';
 import { moveItemInArray } from '@angular/cdk/drag-drop';
 
 export const HARDWARE_INVENTORY = {
   engines: [
-    { id: 'eng-drifter', name: 'Drifter (Basic)', description: 'Salvaged industrial mag-lev.', topSpeed: 50, acceleration: 10, evasionRate: 0.05, energyDrain: 5, stealthValue: 10 } as AntiGravEngine,
-    { id: 'eng-hauler', name: 'Hauler (Tank)', description: 'Slow but high weight capacity.', topSpeed: 30, acceleration: 5, evasionRate: 0.0, energyDrain: 8, stealthValue: 0 } as AntiGravEngine,
-    { id: 'eng-screamer', name: 'Screamer (Speed)', description: 'High-performance racing engine.', topSpeed: 120, acceleration: 30, evasionRate: 0.15, energyDrain: 15, stealthValue: -20 } as AntiGravEngine,
-    { id: 'eng-ghost', name: 'Ghost (Stealth)', description: 'Silenced baffles and low profile.', topSpeed: 60, acceleration: 15, evasionRate: 0.10, energyDrain: 8, stealthValue: 50 } as AntiGravEngine
+    { id: 'eng-drifter', name: 'Drifter (Basic)', description: 'Salvaged industrial mag-lev.', topSpeed: 50, acceleration: 10, evasionRate: 0.05, energyDrain: 5, stealthValue: 10, weight: 10 } as AntiGravEngine,
+    { id: 'eng-hauler', name: 'Hauler (Tank)', description: 'Slow but high weight capacity.', topSpeed: 30, acceleration: 5, evasionRate: 0.0, energyDrain: 8, stealthValue: 0, weight: 25 } as AntiGravEngine,
+    { id: 'eng-screamer', name: 'Screamer (Speed)', description: 'High-performance racing engine.', topSpeed: 120, acceleration: 30, evasionRate: 0.15, energyDrain: 15, stealthValue: -20, weight: 8 } as AntiGravEngine,
+    { id: 'eng-ghost', name: 'Ghost (Stealth)', description: 'Silenced baffles and low profile.', topSpeed: 60, acceleration: 15, evasionRate: 0.10, energyDrain: 8, stealthValue: 50, weight: 12 } as AntiGravEngine
   ],
   energyCells: [
-    { id: 'cell-scrap', name: 'Scrap Dynamo', description: 'Recovered from a junked hover-car.', maxEnergy: 100, energyRegen: 2, maxOutput: 10 } as EnergyCell,
-    { id: 'cell-voltiac', name: 'Voltiac Cell', description: 'Standard corporate power supply.', maxEnergy: 300, energyRegen: 5, maxOutput: 30 } as EnergyCell
+    { id: 'cell-scrap', name: 'Scrap Dynamo', description: 'Recovered from a junked hover-car.', maxEnergy: 100, maxOutput: 10, weight: 15 } as EnergyCell,
+    { id: 'cell-voltiac', name: 'Voltiac Cell', description: 'Standard corporate power supply.', maxEnergy: 300, maxOutput: 30, weight: 10 } as EnergyCell
+  ],
+  reactors: [
+    { id: 'react-fusion', name: 'Fusion Core', description: 'Basic hydrogen reactor.', energyRegen: 2, weight: 5 } as Reactor,
+    { id: 'react-plasma', name: 'Plasma Injector', description: 'High-yield ion source.', energyRegen: 5, weight: 8 } as Reactor,
+    { id: 'react-quantum', name: 'Quantum Singularity', description: 'Infinite-loop gravity-well.', energyRegen: 12, weight: 15 } as Reactor
   ],
   sensors: [
-    { id: 'sens-optical', name: 'Optical Sensors', description: 'Short-range camera array.', range: 20, accuracy: 0.7, unlocksTriggerIds: ['ifEnemyInMeleeRange'] } as Sensor,
-    { id: 'sens-bio', name: 'Biosensors', description: 'Organic signature tracking.', range: 40, accuracy: 0.85, unlocksTriggerIds: ['ifEnemyIsOrganic'] } as Sensor,
-    { id: 'sens-thermal', name: 'Thermal Sensors', description: 'Infrared heat detection.', range: 60, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyInSight'] } as Sensor,
-    { id: 'sens-em', name: 'EM-Sensors', description: 'Detects active energy fields.', range: 80, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyIsShielded'] } as Sensor,
-    { id: 'sens-radar', name: 'Radar Array', description: 'Long-range monitoring.', range: 120, accuracy: 0.8, unlocksTriggerIds: ['ifEnemyInSight'] } as Sensor,
-    { id: 'sens-lidar', name: 'Lidar Array', description: 'Precision optical targeting.', range: 160, accuracy: 0.98, unlocksTriggerIds: ['ifIncomingProjectile'] } as Sensor
+    { id: 'sens-optical', name: 'Optical Sensors', description: 'Short-range camera array.', range: 20, accuracy: 0.7, unlocksTriggerIds: ['ifEnemyInMeleeRange'], weight: 1 } as Sensor,
+    { id: 'sens-bio', name: 'Biosensors', description: 'Organic signature tracking.', range: 40, accuracy: 0.85, unlocksTriggerIds: ['ifEnemyIsOrganic'], weight: 2 } as Sensor,
+    { id: 'sens-thermal', name: 'Thermal Sensors', description: 'Infrared heat detection.', range: 60, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyInSight'], weight: 2 } as Sensor,
+    { id: 'sens-em', name: 'EM-Sensors', description: 'Detects active energy fields.', range: 80, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyIsShielded'], weight: 3 } as Sensor,
+    { id: 'sens-radar', name: 'Radar Array', description: 'Long-range monitoring.', range: 120, accuracy: 0.8, unlocksTriggerIds: ['ifEnemyInSight'], weight: 5 } as Sensor,
+    { id: 'sens-lidar', name: 'Lidar Array', description: 'Precision optical targeting.', range: 160, accuracy: 0.98, unlocksTriggerIds: ['ifIncomingProjectile'], weight: 4 } as Sensor
   ],
   blades: [
-    { id: 'blade-edge', name: 'Sharpened Edge', description: 'Simple metal rim.', damageType: 'SLASHING', baseDamage: 15, critChance: 0.05, critMultiplier: 1.5, energyDrain: 0, unlocksActionIds: ['actionStandardStrike'] } as Blade,
-    { id: 'blade-hammer', name: 'Hammer Profile', description: 'Heavy, blunt momentum edge.', damageType: 'KINETIC', baseDamage: 30, critChance: 0.02, critMultiplier: 2.0, energyDrain: 0, unlocksActionIds: ['actionKineticRam'] } as Blade,
-    { id: 'blade-vibro', name: 'Vibro-Blade', description: 'High-frequency oscillation.', damageType: 'SLASHING', baseDamage: 25, critChance: 0.12, critMultiplier: 1.5, energyDrain: 5, unlocksActionIds: ['actionStandardStrike'] } as Blade,
-    { id: 'blade-energy', name: 'Energy Blade', description: 'Superheated plasma field.', damageType: 'ENERGY', baseDamage: 35, critChance: 0.15, critMultiplier: 1.5, energyDrain: 25, unlocksActionIds: ['actionStandardStrike'] } as Blade
+    { id: 'blade-edge', name: 'Sharpened Edge', description: 'Simple metal rim.', damageType: 'SLASHING', baseDamage: 15, critChance: 0.05, critMultiplier: 1.5, energyDrain: 0, unlocksActionIds: ['actionStandardStrike'], weight: 5 } as Blade,
+    { id: 'blade-hammer', name: 'Hammer Profile', description: 'Heavy, blunt momentum edge.', damageType: 'KINETIC', baseDamage: 30, critChance: 0.02, critMultiplier: 2.0, energyDrain: 0, unlocksActionIds: ['actionKineticRam'], weight: 15 } as Blade,
+    { id: 'blade-vibro', name: 'Vibro-Blade', description: 'High-frequency oscillation.', damageType: 'SLASHING', baseDamage: 25, critChance: 0.12, critMultiplier: 1.5, energyDrain: 5, unlocksActionIds: ['actionStandardStrike'], weight: 8 } as Blade,
+    { id: 'blade-energy', name: 'Energy Blade', description: 'Superheated plasma field.', damageType: 'ENERGY', baseDamage: 35, critChance: 0.15, critMultiplier: 1.5, energyDrain: 25, unlocksActionIds: ['actionStandardStrike'], weight: 12 } as Blade
   ],
   formDesigns: [
-    { id: 'form-standard', name: 'Standard Disc', description: 'Basic well-rounded geometry.', shape: 'disc', speedMult: 1.0, weightMult: 1.0, damageMult: 1.0 } as FormDesign,
-    { id: 'form-dagger', name: 'Viper Dagger', description: 'Aerodynamic piercing needle.', shape: 'dagger', speedMult: 1.2, weightMult: 0.8, damageMult: 0.9, critChanceMult: 1.5 } as FormDesign,
-    { id: 'form-sphere', name: 'Juggernaut Sphere', description: 'Reinforced mass-driver.', shape: 'sphere', speedMult: 0.7, weightMult: 1.5, damageMult: 1.1, armorMult: 1.2 } as FormDesign,
-    { id: 'form-tron', name: 'Tron-Disc', description: 'Energy-focused chassis.', shape: 'tron-disc', speedMult: 1.1, weightMult: 0.9, damageMult: 1.0, critChanceMult: 1.2 } as FormDesign
+    { id: 'form-shuriken', name: 'Shuriken', description: 'Aerodynamic cutting geometry.', shape: 'shuriken', speedMult: 1.0, weightMult: 0.7, damageMult: 1.1, armorMult: 0.8, critChanceMult: 1.0, weight: 0 } as FormDesign,
+    { id: 'form-disc', name: 'Disc', description: 'Balanced kinetic geometry.', shape: 'disc', speedMult: 1.0, weightMult: 1.1, damageMult: 1.0, armorMult: 1.0, critChanceMult: 1.0, weight: 0 } as FormDesign,
+    { id: 'form-dagger', name: 'Dagger', description: 'Sleek piercing needle.', shape: 'dagger', speedMult: 1.2, weightMult: 0.8, damageMult: 0.3, armorMult: 0.5, critChanceMult: 1.5, weight: 0 } as FormDesign,
+    { id: 'form-sphere', name: 'Sphere', description: 'Reinforced mass-driver.', shape: 'sphere', speedMult: 0.7, weightMult: 1.5, damageMult: 2.0, armorMult: 1.7, critChanceMult: 0.3, weight: 0 } as FormDesign,
+    { id: 'form-ion', name: 'Ion-Edge', description: 'Plasma-infused perimeter.', shape: 'ion-edge', speedMult: 1.1, weightMult: 0.9, damageMult: 0.9, armorMult: 0.9, critChanceMult: 1.2, weight: 0 } as FormDesign
   ],
   hulls: [
-    { id: 'hull-scrap', name: 'Scrap-Metal (T-I)', description: 'Rusted appliance parts.', tier: 1, maxHp: 80, armorValue: 2, shieldCapacity: 0, weight: 25 } as HullMaterial,
-    { id: 'hull-carbon', name: 'Carbon-Composite (T-I)', description: 'Lightweight salvaged aircraft.', tier: 1, maxHp: 100, armorValue: 5, shieldCapacity: 0, weight: 15 } as HullMaterial,
-    { id: 'hull-durasteel', name: 'Durasteel (T-II)', description: 'Heavy industrial standard.', tier: 2, maxHp: 300, armorValue: 25, shieldCapacity: 100, weight: 60 } as HullMaterial,
-    { id: 'hull-neutronium', name: 'Neutronium-Cast (T-III)', description: 'Near-indestructible dead star matter.', tier: 3, maxHp: 1500, armorValue: 150, shieldCapacity: 500, weight: 300 } as HullMaterial
+    { id: 'hull-scrap', name: 'Scrap-Metal', description: 'Rusted appliance parts.', tier: 1, maxHp: 80, armorValue: 2, shieldCapacity: 0, weight: 25 } as HullMaterial,
+    { id: 'hull-carbon', name: 'Carbon-Composite', description: 'Lightweight salvaged aircraft.', tier: 1, maxHp: 100, armorValue: 5, shieldCapacity: 0, weight: 15 } as HullMaterial,
+    { id: 'hull-durasteel', name: 'Durasteel', description: 'Heavy industrial standard.', tier: 2, maxHp: 300, armorValue: 25, shieldCapacity: 100, weight: 60 } as HullMaterial,
+    { id: 'hull-neutronium', name: 'Neutronium-Cast', description: 'Near-indestructible dead star matter.', tier: 3, maxHp: 1500, armorValue: 150, shieldCapacity: 500, weight: 300 } as HullMaterial
   ],
   processors: [
-    { id: 'proc-abacus', name: 'Abacus Chip', description: 'Legacy clock-cycle board.', routineCapacity: 2, reactionTime: 0.5, processorSpeed: 5 } as Processor,
-    { id: 'proc-cortex', name: 'Cortex CPU', description: 'Standard neural processor.', routineCapacity: 3, reactionTime: 0.2, processorSpeed: 15 } as Processor,
-    { id: 'proc-omni', name: 'Omni-Node Core', description: 'Quantum logic core.', routineCapacity: 5, reactionTime: 0.05, processorSpeed: 40 } as Processor
+    { id: 'proc-abacus', name: 'Abacus Chip', description: 'Legacy clock-cycle board.', routineCapacity: 2, reactionTime: 0.5, processorSpeed: 5, weight: 1 } as Processor,
+    { id: 'proc-cortex', name: 'Cortex CPU', description: 'Standard neural processor.', routineCapacity: 3, reactionTime: 0.2, processorSpeed: 15, weight: 1 } as Processor,
+    { id: 'proc-omni', name: 'Omni-Node Core', description: 'Quantum logic core.', routineCapacity: 5, reactionTime: 0.05, processorSpeed: 40, weight: 2 } as Processor
   ],
   semiAIs: [
-    { id: 'semi-feral', name: 'Scrap-Code "Feral"', description: 'Aggressive instinct paths.', iffAccuracy: 70, behaviorBuff: 'aggressive' } as SemiAI,
-    { id: 'semi-guardian', name: 'Aegis "Guardian"', description: 'Protective sub-routines.', iffAccuracy: 95, behaviorBuff: 'defensive' } as SemiAI
+    { id: 'semi-feral', name: 'Scrap-Code "Feral"', description: 'Aggressive instinct paths.', iffAccuracy: 70, behaviorBuff: 'aggressive', weight: 1 } as SemiAI,
+    { id: 'semi-guardian', name: 'Aegis "Guardian"', description: 'Protective sub-routines.', iffAccuracy: 95, behaviorBuff: 'defensive', weight: 1 } as SemiAI
   ],
   shields: [
-    { id: 'shield-basic', name: 'Scrap-Capacitor', description: 'Crude static field generator.', shieldCapacity: 50, regenRate: 2, energyCostPerRegen: 5 } as ShieldGenerator
+    { id: 'shield-basic', name: 'Scrap-Capacitor', description: 'Crude static field generator.', shieldCapacity: 50, regenRate: 2, energyCostPerRegen: 5, weight: 10 } as ShieldGenerator
   ]
 };
 
@@ -62,6 +68,7 @@ const DEFAULT_SHURIKEN: Omit<Shuriken, 'id' | 'name'> = {
   formDesign: HARDWARE_INVENTORY.formDesigns[0],
   hull: HARDWARE_INVENTORY.hulls[0],
   processor: HARDWARE_INVENTORY.processors[0],
+  reactor: HARDWARE_INVENTORY.reactors[0],
   shield: null, // Locked until research
   semiAI: null, // Optional, unlocked later
   coordinationMode: 'SOLO',
@@ -70,8 +77,7 @@ const DEFAULT_SHURIKEN: Omit<Shuriken, 'id' | 'name'> = {
 
 function loadShurikens(): Shuriken[] {
   const defaults = [
-    { ...DEFAULT_SHURIKEN, id: 'shuriken-01', name: 'Rogue_Unit_01', creationDate: Date.now() },
-    { ...DEFAULT_SHURIKEN, id: 'shuriken-02', name: 'Rogue_Unit_02', creationDate: Date.now() }
+    { ...DEFAULT_SHURIKEN, id: 'shuriken-01', name: 'Rogue_Unit_01', creationDate: Date.now() }
   ];
   const saved = localStorage.getItem('rogueBlade_shurikens');
   if (saved) {
@@ -88,7 +94,7 @@ function loadUnlockedComponents(): string[] {
     try { return JSON.parse(saved); } catch (e) { }
   }
   return [
-    'eng-drifter', 'cell-scrap', 'sens-optical', 'blade-edge', 'form-standard', 'hull-scrap', 'proc-abacus'
+    'eng-drifter', 'cell-scrap', 'react-fusion', 'sens-optical', 'blade-edge', 'form-shuriken', 'hull-scrap', 'proc-abacus'
   ];
 }
 
@@ -113,8 +119,7 @@ function loadSavedRoutinesMap(): Record<string, GambitRoutine[]> {
   ];
 
   return {
-    'shuriken-01': [...defaultRoutines],
-    'shuriken-02': [...defaultRoutines]
+    'shuriken-01': [...defaultRoutines]
   };
 }
 
@@ -174,14 +179,11 @@ export class WorkshopService {
 
   private migrateHardware() {
     // Ensure "Lowest Tier" defaults exist in unlocked set
-    const baseIds = ['eng-drifter', 'cell-scrap', 'sens-optical', 'blade-edge', 'form-standard', 'hull-scrap', 'proc-abacus', 'semi-feral'];
+    const baseIds = ['eng-drifter', 'cell-scrap', 'react-fusion', 'sens-optical', 'blade-edge', 'form-shuriken', 'hull-scrap', 'proc-abacus', 'semi-feral'];
     this.unlockedComponentIds.update(ids => Array.from(new Set([...ids, ...baseIds])));
 
     this.availableShurikens.update(list => list.map(s => {
       const repaired = { ...s };
-      // Rename starting shurikens if they still use generic names
-      if (repaired.id === 'shuriken-01') repaired.name = 'Rachel';
-      if (repaired.id === 'shuriken-02') repaired.name = 'L1ttle Devil';
 
       // Enforce lowest tier hardware if missing or mismatched
       if (!repaired.hull || !repaired.hull.maxHp || repaired.hull.id === 'hull-plasteel' || repaired.hull.id === 'hull-sinter') repaired.hull = HARDWARE_INVENTORY.hulls[0];
@@ -196,6 +198,7 @@ export class WorkshopService {
         if (repaired.semiAI) repaired.semiAI = null;
       }
       if (!repaired.formDesign || !repaired.formDesign.speedMult) repaired.formDesign = HARDWARE_INVENTORY.formDesigns[0];
+      if (!repaired.reactor || !repaired.reactor.energyRegen) repaired.reactor = HARDWARE_INVENTORY.reactors[0];
       if (!repaired.shield) repaired.shield = null;
 
       // Coordination Migration

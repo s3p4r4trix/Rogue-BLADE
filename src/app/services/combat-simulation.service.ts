@@ -43,14 +43,17 @@ export class CombatSimulationService {
             maxShields: (s.shield?.shieldCapacity || 0) + (h?.shieldCapacity || 0),
             evasionRate: e?.evasionRate || 0.0,
             // Mobility
-            baseWeight: (h?.weight || 20) * (f?.weightMult || 1.0),
+            baseWeight: ((h?.weight || 20) * (f?.weightMult || 1.0)) + 
+                        (e?.weight || 0) + (s.energyCell?.weight || 0) + (s.sensor?.weight || 0) + 
+                        (b?.weight || 0) + (p?.weight || 0) + (s.semiAI?.weight || 0) + 
+                        (s.shield?.weight || 0) + (s.reactor?.weight || 0),
             topSpeed: (e?.topSpeed || 50) * (f?.speedMult || 1.0),
             acceleration: e?.acceleration || 10,
             currentSpeed: 0,
             // Energy
             energy: s.energyCell?.maxEnergy || 100,
             maxEnergy: s.energyCell?.maxEnergy || 100,
-            energyRegen: s.energyCell?.energyRegen || 2,
+            energyRegen: s.reactor?.energyRegen || 2,
             passiveDrain: (e?.energyDrain || 5) + (b?.energyDrain || 0),
             // Offense
             baseDamage: (b?.baseDamage || 10) * (f?.damageMult || 1.0),

@@ -15,6 +15,7 @@ export interface HardwareComponent {
   id: string;
   name: string;
   description: string;
+  weight: number;
 }
 
 /**
@@ -36,7 +37,6 @@ export interface HullMaterial extends HardwareComponent {
   maxHp: number;
   armorValue: number;
   shieldCapacity: number;
-  weight: number;
 }
 
 /**
@@ -44,8 +44,14 @@ export interface HullMaterial extends HardwareComponent {
  */
 export interface EnergyCell extends HardwareComponent {
   maxEnergy: number;
-  energyRegen: number;
   maxOutput: number;
+}
+
+/**
+ * Energy regeneration hardware.
+ */
+export interface Reactor extends HardwareComponent {
+  energyRegen: number;
 }
 
 /**
@@ -73,7 +79,7 @@ export interface Blade extends HardwareComponent {
  * Form / Chassis multipliers.
  */
 export interface FormDesign extends HardwareComponent {
-  shape: 'disc' | 'dagger' | 'sphere' | 'tron-disc';
+  shape: 'shuriken' | 'disc' | 'dagger' | 'sphere' | 'ion-edge';
   speedMult: number;
   weightMult: number;
   damageMult: number;
@@ -140,6 +146,7 @@ export interface Shuriken {
   formDesign: FormDesign | null;
   processor: Processor | null;
   shield: ShieldGenerator | null; // New slot
+  reactor: Reactor | null; // New slot
   semiAI: SemiAI | null; // Optional slot
   
   // Coordination Mode

@@ -1,8 +1,8 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { WorkshopService, HARDWARE_INVENTORY } from '../services/workshop.service';
 import { CommonModule } from '@angular/common';
-import { HardwareComponent, Shuriken, CyberOption } from '../models/hardware.model';
+import { Shuriken, CyberOption } from '../models/hardware.model';
 
 @Component({
   selector: 'app-hardware-workshop',
@@ -107,6 +107,21 @@ import { HardwareComponent, Shuriken, CyberOption } from '../models/hardware.mod
              <div class="p-4 md:p-6 overflow-y-auto flex-1">
                 <h3 class="text-blue-500 font-bold mb-4 uppercase border-b border-blue-900/50 pb-2">// HARDWARE LOADOUT</h3>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                   <!-- Form Design -->
+                   <div class="bg-blue-900/10 border border-blue-600/50 p-4 lg:col-span-2 transition-colors hover:border-blue-400 focus-within:border-blue-400 neuro-panel">
+                     <div class="text-xs text-blue-400 uppercase mb-2 font-bold tracking-widest flex justify-between">
+                       <span>// PRIMARY_CHASSIS_DESIGN</span>
+                       <span class="text-[10px] text-blue-700">CORE_GEOMETRY</span>
+                     </div>
+                     <select class="cyber-native-select !border-blue-600/50 !text-blue-200 text-lg py-3"
+                             [value]="shuriken.formDesign?.id" 
+                             (change)="onNativeSwap(shuriken.id, 'formDesign', $event, inventory.formDesigns)">
+                        @for (opt of getFormDesignOptions(); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                     </select>
+                     <p class="text-[10px] text-blue-800 mt-2 italic">Global geometric profile determines base multipliers for all physical and kinetic attributes.</p>
+                   </div>
                    <!-- Engine -->
                    <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
                      <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// ENGINE_UNIT</div>
@@ -133,11 +148,23 @@ import { HardwareComponent, Shuriken, CyberOption } from '../models/hardware.mod
                    
                    <!-- Energy Cell -->
                    <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
-                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// ENERGY_CORE</div>
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// ENERGY_CELL</div>
                      <select class="cyber-native-select"
                              [value]="shuriken.energyCell?.id" 
                              (change)="onNativeSwap(shuriken.id, 'energyCell', $event, inventory.energyCells)">
                         @for (opt of getEnergyCellOptions(); track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                     </select>
+                   </div>
+
+                   <!-- Reactor -->
+                   <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// ENERGY_REACTOR</div>
+                     <select class="cyber-native-select"
+                             [value]="shuriken.reactor?.id" 
+                             (change)="onNativeSwap(shuriken.id, 'reactor', $event, inventory.reactors)">
+                        @for (opt of getReactorOptions(); track opt.value) {
                           <option [value]="opt.value">{{ opt.label }}</option>
                         }
                      </select>
@@ -169,7 +196,7 @@ import { HardwareComponent, Shuriken, CyberOption } from '../models/hardware.mod
 
                    <!-- Semi-AI -->
                    <div class="bg-black/50 border border-blue-900/30 p-3 transition-colors hover:border-blue-600 focus-within:border-blue-500">
-                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// SEMI_AI_BRAIN</div>
+                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// SEMI_AI</div>
                      <select class="cyber-native-select"
                              [value]="shuriken.semiAI?.id || ''" 
                              (change)="onNativeSwap(shuriken.id, 'semiAI', $event, inventory.semiAIs)">
@@ -203,17 +230,91 @@ import { HardwareComponent, Shuriken, CyberOption } from '../models/hardware.mod
                      </select>
                    </div>
                    
-                   <!-- Form Design -->
-                   <div class="bg-black/50 border border-blue-900/30 p-3 lg:col-span-2 transition-colors hover:border-blue-600 focus-within:border-blue-500">
-                     <div class="text-xs text-blue-600 uppercase mb-1 font-bold tracking-tighter">// CHASSIS_DESIGN</div>
-                     <select class="cyber-native-select"
-                             [value]="shuriken.formDesign?.id" 
-                             (change)="onNativeSwap(shuriken.id, 'formDesign', $event, inventory.formDesigns)">
-                        @for (opt of getFormDesignOptions(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
-                        }
-                     </select>
-                   </div>
+
+                </div>
+
+                <!-- Performance Telemetry -->
+                <div class="mt-8 bg-blue-900/10 border border-blue-900/50 p-4 neuro-panel">
+                   <h3 class="text-blue-500 font-bold mb-4 uppercase border-b border-blue-900/50 pb-2 flex justify-between items-center">
+                       <span>// PERFORMANCE TELEMETRY</span>
+                       <span class="text-[10px] text-blue-700 animate-pulse">LIVE_SYNC: ACTIVE</span>
+                   </h3>
+                   
+                   @if (activeShurikenStats(); as stats) {
+                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                       <!-- Survival Group -->
+                       <div class="space-y-2 border-r border-blue-900/30 pr-4">
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Hull Integrity</span>
+                             <span class="text-blue-300">{{ stats.hp }} HP</span>
+                          </div>
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Armor Plate</span>
+                             <span class="text-blue-300">{{ stats.armor | number:'1.0-1' }}</span>
+                          </div>
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Shield Cap</span>
+                             <span class="text-blue-300">{{ stats.shields }} S</span>
+                          </div>
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Evasion Rate</span>
+                             <span class="text-green-400">{{ stats.evasion | number:'1.1-1' }}%</span>
+                          </div>
+                       </div>
+
+                       <!-- Mobility Group -->
+                       <div class="space-y-2 border-r border-blue-900/30 px-4">
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Top Speed</span>
+                             <span class="text-blue-300">{{ stats.speed | number:'1.0-0' }} px/s</span>
+                          </div>
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Acceleration</span>
+                             <span class="text-blue-300">{{ stats.acceleration }}</span>
+                          </div>
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Total Weight</span>
+                             <span class="text-orange-400">{{ stats.weight | number:'1.0-0' }} kg</span>
+                          </div>
+                       </div>
+
+                       <!-- Offense Group -->
+                       <div class="space-y-2 border-r border-blue-900/30 px-4">
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Base Damage</span>
+                             <span class="text-red-400 font-bold">{{ stats.baseDamage | number:'1.0-1' }}</span>
+                          </div>
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Damage Type</span>
+                             <span class="text-blue-300">{{ stats.damageType }}</span>
+                          </div>
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Crit Chance</span>
+                             <span class="text-yellow-400">{{ stats.critChance | number:'1.1-1' }}%</span>
+                          </div>
+                       </div>
+
+                       <!-- Energy & AI Group -->
+                       <div class="space-y-2 pl-4">
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Max Energy</span>
+                             <span class="text-blue-300">{{ stats.maxEnergy }}</span>
+                          </div>
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Energy Regen</span>
+                             <span class="text-green-500">+{{ stats.energyRegen }}/s</span>
+                          </div>
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Passive Drain</span>
+                             <span class="text-red-500">-{{ stats.passiveDrain }}/s</span>
+                          </div>
+                          <div class="flex justify-between items-center text-[10px]">
+                             <span class="text-blue-700 uppercase">Reaction Time</span>
+                             <span class="text-purple-400 font-bold">{{ stats.effectiveRX | number:'1.2-3' }}s</span>
+                          </div>
+                       </div>
+                     </div>
+                   }
                 </div>
 
                 <!-- Swarm Coordination -->
@@ -325,6 +426,58 @@ export class HardwareWorkshop {
   activeShuriken = this.workshop.activeShuriken;
   unlocked = this.workshop.unlockedComponentIds;
 
+  activeShurikenStats = computed(() => {
+    const s = this.activeShuriken();
+    if (!s) return null;
+
+    const f = s.formDesign;
+    const h = s.hull;
+    const e = s.engine;
+    const b = s.blade;
+    const p = s.processor;
+
+    // Base Calculations
+    const hp = h?.maxHp || 0;
+    const armor = (h?.armorValue || 0) * (f?.armorMult || 1.0);
+    const shields = (s.shield?.shieldCapacity || 0) + (h?.shieldCapacity || 0);
+    const evasion = (e?.evasionRate || 0) * 100; // Display as percentage
+    const stealth = e?.stealthValue || 0;
+
+    // Total Weight Calculation: (Hull * Form Mult) + Sum of all other component weights
+    const hullWeight = (h?.weight || 0) * (f?.weightMult || 1.0);
+    const otherWeight = (e?.weight || 0) + (s.energyCell?.weight || 0) + (s.sensor?.weight || 0) + 
+                        (b?.weight || 0) + (p?.weight || 0) + (s.semiAI?.weight || 0) + 
+                        (s.shield?.weight || 0) + (s.reactor?.weight || 0);
+    const weight = hullWeight + otherWeight;
+    
+    const speed = (e?.topSpeed || 0) * (f?.speedMult || 1.0);
+    const acceleration = e?.acceleration || 0;
+
+    const maxEnergy = s.energyCell?.maxEnergy || 0;
+    const energyRegen = s.reactor?.energyRegen || 0;
+    const passiveDrain = (e?.energyDrain || 0) + (b?.energyDrain || 0);
+
+    const baseDamage = (b?.baseDamage || 0) * (f?.damageMult || 1.0);
+    const critChance = (b?.critChance || 0) * (f?.critChanceMult || 1.0) * 100; // Display as percentage
+
+    // Effective Reaction Time Formula from Section 4.2
+    // effectiveReactionTime = baseReactionTime * (1.0 + (baseWeight / 250) - (acceleration / 25) - (processorSpeed / 25))
+    const baseRX = p?.reactionTime || 0.2;
+    const procSpeed = p?.processorSpeed || 5;
+    let rxMult = 1.0 + (weight / 250) - (acceleration / 25) - (procSpeed / 25);
+    rxMult = Math.max(0.2, rxMult);
+    const effectiveRX = baseRX * rxMult;
+
+    return {
+      hp, armor, shields, evasion, stealth,
+      weight, speed, acceleration,
+      maxEnergy, energyRegen, passiveDrain,
+      baseDamage, critChance,
+      effectiveRX,
+      damageType: b?.damageType || 'N/A'
+    };
+  });
+
   selectShuriken(id: string) {
     this.workshop.setActiveShuriken(id);
   }
@@ -378,10 +531,13 @@ export class HardwareWorkshop {
     return this.getUnlocked(this.inventory.engines).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getHullOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.hulls).map((c: any) => ({ value: c.id, label: `${c.name} (Tier ${c.tier})` }));
+    return this.getUnlocked(this.inventory.hulls).map((c: any) => ({ value: c.id, label: `${c.name}` }));
   }
   getEnergyCellOptions(): CyberOption[] {
     return this.getUnlocked(this.inventory.energyCells).map((c: any) => ({ value: c.id, label: c.name }));
+  }
+  getReactorOptions(): CyberOption[] {
+    return this.getUnlocked(this.inventory.reactors).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getProcessorOptions(): CyberOption[] {
     return this.getUnlocked(this.inventory.processors).map((c: any) => ({ value: c.id, label: `${c.name} (Cap: ${c.routineCapacity} | RX: ${c.reactionTime}s)` }));
@@ -401,7 +557,7 @@ export class HardwareWorkshop {
     return this.getUnlocked(this.inventory.sensors).map((c: any) => ({ value: c.id, label: c.name }));
   }
   getFormDesignOptions(): CyberOption[] {
-    return this.getUnlocked(this.inventory.formDesigns).map((c: any) => ({ value: c.id, label: `${c.name} (${c.shape})` }));
+    return this.getUnlocked(this.inventory.formDesigns).map((c: any) => ({ value: c.id, label: `${c.name}` }));
   }
 
   hasAvailableMasters(): boolean {

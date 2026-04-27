@@ -13,14 +13,15 @@ When a Shuriken is fully assembled, its components calculate these final attribu
 
 ### Mobility
 
-* **`baseWeight`** (Integer): Affects acceleration and kinetic damage.
+* **`baseWeight`** (Integer): Total combined mass of all equipped components. Affects acceleration and kinetic damage.
+    * **Formula:** `baseWeight = (hullWeight * formDesignWeightMult) + engineWeight + energyCellWeight + reactorWeight + sensorWeight + bladeWeight + processorWeight + aiWeight + shieldWeight`
 * **`topSpeed`** (Integer): Maximum pixels/units moved per second.
 * **`acceleration`** (Float): How quickly topSpeed is reached. Affected heavily by weight.
 
 ### Energy & Compute
 
-* **`maxEnergy`** (Integer): Maximum energy pool.
-* **`energyRegen`** (Integer): Energy recovered per second.
+* **`maxEnergy`** (Integer): Maximum energy pool. Provided by the **Energy Cell**.
+* **`energyRegen`** (Integer): Energy recovered per second. Provided by the **Reactor**.
 * **`energyDrain`** (Integer): Passive energy consumed per second while flying/attacking.
 * **`routineCapacity`** (Integer): Total IF/THEN routines available.
 * **`reactionTime`** (Float): Formerly "latency". Milliseconds of delay between a Trigger (IF) happening and the Action (THEN) executing. Lower is better.
@@ -74,6 +75,7 @@ A Shuriken with an equipped Semi-AI is designated as a **MASTER**. A Shuriken wi
 
 ## 3. Deployment Constraints
 *   **Mandatory Hardware:** All slots (Engine, Hull, Sensor, Blade, Processor, Energy Cell, Form Design) MUST be filled for deployment.
+*   **Mass Controllability:** All components contribute to the total `baseWeight`.
 *   **Optional Slot:** `semiAI` is the only slot that may remain empty. Units without an AI function as autonomous "Dumb-Drones" with base stats.
 
 ## 4. Combat Mechanics & Math Formulas
