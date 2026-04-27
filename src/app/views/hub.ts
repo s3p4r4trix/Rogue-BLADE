@@ -1,6 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { PlayerService } from '../services/player.service';
 
 @Component({
   selector: 'app-hub',
@@ -72,5 +71,4 @@ import { PlayerService } from '../services/player.service';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Hub {
-  player = inject(PlayerService);
 }

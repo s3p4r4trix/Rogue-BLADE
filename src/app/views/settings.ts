@@ -1,7 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { PlayerService } from '../services/player.service';
+import { PlayerStore } from '../services/player.store';
 
 @Component({
   selector: 'app-settings',
@@ -34,11 +34,11 @@ import { PlayerService } from '../services/player.service';
             <div class="space-y-4 text-sm">
               <div class="flex justify-between items-center bg-blue-950/30 p-2 border border-blue-900/30">
                 <span class="text-blue-600">ID Alias:</span>
-                <span class="text-blue-300 font-bold">{{ player.profile().username }}</span>
+                <span class="text-blue-300 font-bold">{{ playerStore.profile().username }}</span>
               </div>
               <div class="flex justify-between items-center bg-blue-950/30 p-2 border border-blue-900/30">
                 <span class="text-blue-600">Net Address:</span>
-                <span class="text-blue-300">{{ player.profile().email }}</span>
+                <span class="text-blue-300">{{ playerStore.profile().email }}</span>
               </div>
               <div class="text-xs text-blue-700 italic pt-2">
                 * Profiling locked by corporate mandate.
@@ -52,15 +52,15 @@ import { PlayerService } from '../services/player.service';
             <div class="space-y-4 text-sm">
               <div class="flex justify-between items-center bg-blue-950/30 p-2 border border-blue-900/30">
                 <span class="text-blue-600">Total Time Online:</span>
-                <span class="text-blue-300">{{ formatTime(player.stats().totalPlayTime) }}</span>
+                <span class="text-blue-300">{{ playerStore.formattedPlayTime() }}</span>
               </div>
               <div class="flex justify-between items-center bg-blue-950/30 p-2 border border-blue-900/30">
                 <span class="text-green-600/70">Successful Extractions:</span>
-                <span class="text-green-400 font-bold">{{ player.stats().successfulRuns }}</span>
+                <span class="text-green-400 font-bold">{{ playerStore.stats().successfulRuns }}</span>
               </div>
               <div class="flex justify-between items-center bg-blue-950/30 p-2 border border-blue-900/30">
                 <span class="text-red-600/70">Failed Uploads:</span>
-                <span class="text-red-400 font-bold">{{ player.stats().failedRuns }}</span>
+                <span class="text-red-400 font-bold">{{ playerStore.stats().failedRuns }}</span>
               </div>
             </div>
           </div>
@@ -71,45 +71,45 @@ import { PlayerService } from '../services/player.service';
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               
               <button (click)="setTheme('zenith')" 
-                      [class.border-blue-400]="player.theme() === 'zenith'"
-                      [class.bg-blue-900]="player.theme() === 'zenith'"
-                      [class.neuro-border-active]="player.theme() === 'zenith'"
+                      [class.border-blue-400]="playerStore.theme() === 'zenith'"
+                      [class.bg-blue-900]="playerStore.theme() === 'zenith'"
+                      [class.neuro-border-active]="playerStore.theme() === 'zenith'"
                       class="border border-blue-900/50 p-4 text-left hover:border-blue-700 transition-colors cursor-pointer group neuro-border-draw">
                 <div class="border-anim"></div><div class="border-anim-v"></div>
                 <div class="font-bold mb-1 transition-colors relative z-10"
-                     [class.text-white]="player.theme() === 'zenith'"
-                     [class.text-blue-400]="player.theme() !== 'zenith'">
+                     [class.text-white]="playerStore.theme() === 'zenith'"
+                     [class.text-blue-400]="playerStore.theme() !== 'zenith'">
                      ZENITH GLASS
                 </div>
-                <div class="text-xs relative z-10" [class.text-blue-300]="player.theme() === 'zenith'" [class.text-blue-600]="player.theme() !== 'zenith'">Sleek, ethereal, frosted effects.</div>
+                <div class="text-xs relative z-10" [class.text-blue-300]="playerStore.theme() === 'zenith'" [class.text-blue-600]="playerStore.theme() !== 'zenith'">Sleek, ethereal, frosted effects.</div>
               </button>
 
               <button (click)="setTheme('ripperdoc')" 
-                      [class.border-green-500]="player.theme() === 'ripperdoc'"
-                      [class.bg-green-900]="player.theme() === 'ripperdoc'"
-                      [class.neuro-border-active]="player.theme() === 'ripperdoc'"
+                      [class.border-green-500]="playerStore.theme() === 'ripperdoc'"
+                      [class.bg-green-900]="playerStore.theme() === 'ripperdoc'"
+                      [class.neuro-border-active]="playerStore.theme() === 'ripperdoc'"
                       class="border border-blue-900/50 p-4 text-left hover:border-green-700 transition-colors cursor-pointer group neuro-border-draw">
                 <div class="border-anim before:bg-green-500 after:bg-green-500"></div><div class="border-anim-v before:bg-green-500 after:bg-green-500"></div>
                 <div class="font-bold mb-1 transition-colors relative z-10"
-                     [class.text-white]="player.theme() === 'ripperdoc'"
-                     [class.text-green-500]="player.theme() !== 'ripperdoc'">
+                     [class.text-white]="playerStore.theme() === 'ripperdoc'"
+                     [class.text-green-500]="playerStore.theme() !== 'ripperdoc'">
                      RIPPERDOC TERMINAL
                 </div>
-                <div class="text-xs relative z-10" [class.text-green-300]="player.theme() === 'ripperdoc'" [class.text-blue-600]="player.theme() !== 'ripperdoc'">Gritty, high-contrast CRT styling.</div>
+                <div class="text-xs relative z-10" [class.text-green-300]="playerStore.theme() === 'ripperdoc'" [class.text-blue-600]="playerStore.theme() !== 'ripperdoc'">Gritty, high-contrast CRT styling.</div>
               </button>
 
               <button (click)="setTheme('neuromancer')" 
-                      [class.border-purple-500]="player.theme() === 'neuromancer'"
-                      [class.bg-purple-900]="player.theme() === 'neuromancer'"
-                      [class.neuro-border-active]="player.theme() === 'neuromancer'"
+                      [class.border-purple-500]="playerStore.theme() === 'neuromancer'"
+                      [class.bg-purple-900]="playerStore.theme() === 'neuromancer'"
+                      [class.neuro-border-active]="playerStore.theme() === 'neuromancer'"
                       class="border border-blue-900/50 p-4 text-left hover:border-purple-700 transition-colors cursor-pointer group neuro-border-draw">
                 <div class="border-anim before:bg-purple-500 after:bg-purple-500"></div><div class="border-anim-v before:bg-purple-500 after:bg-purple-500"></div>
                 <div class="font-bold mb-1 transition-colors relative z-10"
-                     [class.text-white]="player.theme() === 'neuromancer'"
-                     [class.text-purple-400]="player.theme() !== 'neuromancer'">
+                     [class.text-white]="playerStore.theme() === 'neuromancer'"
+                     [class.text-purple-400]="playerStore.theme() !== 'neuromancer'">
                      NEUROMANCER DECK
                 </div>
-                <div class="text-xs relative z-10" [class.text-purple-300]="player.theme() === 'neuromancer'" [class.text-blue-600]="player.theme() !== 'neuromancer'">Animated PCB circuitry & electrons.</div>
+                <div class="text-xs relative z-10" [class.text-purple-300]="playerStore.theme() === 'neuromancer'" [class.text-blue-600]="playerStore.theme() !== 'neuromancer'">Animated PCB circuitry & electrons.</div>
               </button>
 
             </div>
@@ -122,26 +122,26 @@ import { PlayerService } from '../services/player.service';
             
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                <button (click)="setAutoScrap(0)" 
-                       [class.bg-blue-600]="player.autoScrapTier() === 0"
-                       [class.text-black]="player.autoScrapTier() === 0"
+                       [class.bg-blue-600]="playerStore.autoScrapTier() === 0"
+                       [class.text-black]="playerStore.autoScrapTier() === 0"
                        class="border border-blue-900 p-3 text-xs font-black uppercase tracking-widest transition-all">
                  OFF
                </button>
                <button (click)="setAutoScrap(1)" 
-                       [class.bg-blue-600]="player.autoScrapTier() === 1"
-                       [class.text-black]="player.autoScrapTier() === 1"
+                       [class.bg-blue-600]="playerStore.autoScrapTier() === 1"
+                       [class.text-black]="playerStore.autoScrapTier() === 1"
                        class="border border-blue-900 p-3 text-xs font-black uppercase tracking-widest transition-all">
                  TIER I (25%)
                </button>
                <button (click)="setAutoScrap(2)" 
-                       [class.bg-blue-600]="player.autoScrapTier() === 2"
-                       [class.text-black]="player.autoScrapTier() === 2"
+                       [class.bg-blue-600]="playerStore.autoScrapTier() === 2"
+                       [class.text-black]="playerStore.autoScrapTier() === 2"
                        class="border border-blue-900 p-3 text-xs font-black uppercase tracking-widest transition-all">
                  TIER II (50%)
                </button>
                <button (click)="setAutoScrap(3)" 
-                       [class.bg-blue-600]="player.autoScrapTier() === 3"
-                       [class.text-black]="player.autoScrapTier() === 3"
+                       [class.bg-blue-600]="playerStore.autoScrapTier() === 3"
+                       [class.text-black]="playerStore.autoScrapTier() === 3"
                        class="border border-blue-900 p-3 text-xs font-black uppercase tracking-widest transition-all">
                  TIER III (75%)
                </button>
@@ -151,27 +151,36 @@ import { PlayerService } from '../services/player.service';
         </div>
       </div>
     </div>
-  `
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Settings {
-  router = inject(Router);
-  player = inject(PlayerService);
+  /** Navigation service. */
+  private router = inject(Router);
+  
+  /** Centralized player state store. */
+  playerStore = inject(PlayerStore);
 
+  /**
+   * Navigates back to the main hub.
+   */
   goBack() {
     this.router.navigate(['/hub']);
   }
 
+  /**
+   * Updates the global interface theme via the store.
+   * @param theme The selected theme name.
+   */
   setTheme(theme: 'zenith' | 'ripperdoc' | 'neuromancer') {
-    this.player.theme.set(theme);
+    this.playerStore.setTheme(theme);
   }
 
+  /**
+   * Updates the automatic item processing threshold.
+   * @param tier The tier level (0-3).
+   */
   setAutoScrap(tier: number) {
-    this.player.autoScrapTier.set(tier);
-  }
-
-  formatTime(seconds: number): string {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    return `${hrs}h ${mins}m`;
+    this.playerStore.setAutoScrapTier(tier);
   }
 }

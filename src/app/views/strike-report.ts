@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MissionStore } from '../services/mission.store';
 import { WorkshopService } from '../services/workshop.service';
-import { PlayerService } from '../services/player.service';
+import { PlayerStore } from '../services/player.store';
 import { CombatSimulationService } from '../services/combat-simulation.service';
 import { StrikeResult } from '../models/combat.model';
 import { ScrapFilterService } from '../services/scrap-filter.service';
@@ -238,8 +238,8 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   /** Drone hardware and routine mapping. */
   private workshop = inject(WorkshopService);
   
-  /** Player resources and stats. */
-  private player = inject(PlayerService);
+  /** Centralized player state store. */
+  private playerStore = inject(PlayerStore);
   
   /** High-fidelity offline combat simulation. */
   private combat = inject(CombatSimulationService);
@@ -423,7 +423,7 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
         credits: result.totalCredits
       });
 
-      this.player.addResources(filteredLoot);
+      this.playerStore.addResources(filteredLoot);
     }
     
     this.missionStore.refreshContracts();

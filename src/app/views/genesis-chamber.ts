@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, inject, computed } from '@angular/c
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ResearchService } from '../services/research.service';
-import { PlayerService } from '../services/player.service';
+import { PlayerStore } from '../services/player.store';
 import { ResearchProject } from '../models/research.model';
 
 @Component({
@@ -88,15 +88,15 @@ import { ResearchProject } from '../models/research.model';
                 <div class="mt-auto pt-4 border-t border-purple-900/20">
                    @if (!project.isCompleted && !project.isStarted) {
                      <div class="grid grid-cols-3 gap-2 mb-4">
-                       <div class="text-center" [ngClass]="player.resources().polymer >= project.costPolymer ? 'text-purple-400' : 'text-red-900'">
+                       <div class="text-center" [ngClass]="playerStore.resources().polymer >= project.costPolymer ? 'text-purple-400' : 'text-red-900'">
                          <div class="text-[7px] uppercase">Poly</div>
                          <div class="text-xs font-bold">{{ project.costPolymer }}</div>
                        </div>
-                       <div class="text-center" [ngClass]="player.resources().scrap >= project.costScrap ? 'text-purple-400' : 'text-red-900'">
+                       <div class="text-center" [ngClass]="playerStore.resources().scrap >= project.costScrap ? 'text-purple-400' : 'text-red-900'">
                          <div class="text-[7px] uppercase">Scrap</div>
                          <div class="text-xs font-bold">{{ project.costScrap }}</div>
                        </div>
-                       <div class="text-center" [ngClass]="player.resources().credits >= project.costCredits ? 'text-purple-400' : 'text-red-900'">
+                       <div class="text-center" [ngClass]="playerStore.resources().credits >= project.costCredits ? 'text-purple-400' : 'text-red-900'">
                          <div class="text-[7px] uppercase">Creds</div>
                          <div class="text-xs font-bold">{{ project.costCredits }}</div>
                        </div>
@@ -130,8 +130,8 @@ export class GenesisChamber {
   /** Reference to the research system managing project states. */
   research = inject(ResearchService);
   
-  /** Reference to the player service for resource validation. */
-  player = inject(PlayerService);
+  /** Centralized player state store. */
+  playerStore = inject(PlayerStore);
 
   /** Signal containing all available research projects. */
   projects = this.research.projects;
@@ -148,7 +148,7 @@ export class GenesisChamber {
    * @returns True if the player can afford all required costs.
    */
   canAfford(project: ResearchProject): boolean {
-    const playerResources = this.player.resources();
+    const playerResources = this.playerStore.resources();
     return playerResources.polymer >= project.costPolymer && 
            playerResources.scrap >= project.costScrap && 
            playerResources.credits >= project.costCredits;

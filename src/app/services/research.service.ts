@@ -1,17 +1,24 @@
 import { Injectable, signal, inject, effect } from '@angular/core';
 import { ResearchProject } from '../models/research.model';
-import { PlayerService } from './player.service';
+import { PlayerStore } from './player.store';
 import { WorkshopService } from './workshop.service';
 
 @Injectable({ providedIn: 'root' })
 export class ResearchService {
-  private player = inject(PlayerService);
+  /** Centralized player state store. */
+  private playerStore = inject(PlayerStore);
+  
+  /** Workshop for unlocking hardware components. */
   private workshop = inject(WorkshopService);
 
+  /** Signal containing the list of all potential and active research project states. */
   readonly projects = signal<ResearchProject[]>(this.loadProjects());
+  
+  /** Signal containing the ID of the project currently being processed. */
   readonly activeProjectId = signal<string | null>(localStorage.getItem('rogueBlade_activeResearch'));
 
   constructor() {
+    // Logic: Automatically persist project progress and active research ID to local storage.
     effect(() => {
       localStorage.setItem('rogueBlade_projects', JSON.stringify(this.projects()));
       if (this.activeProjectId()) {
@@ -21,77 +28,96 @@ export class ResearchService {
       }
     });
 
-    // Research Tick
+    /** 
+     * Background Tick:
+     * Logic: Increments progress for the active project every second.
+     */
     setInterval(() => {
       this.tick();
     }, 1000);
   }
 
+  /**
+   * Logic: Calculates progress increments and handles project completion events.
+   */
   private tick() {
     const activeId = this.activeProjectId();
     if (!activeId) return;
 
-    this.projects.update(list => list.map(p => {
-      if (p.id === activeId && !p.isCompleted) {
-        const increment = (100 / p.timeToCompleteSeconds);
-        const newProgress = Math.min(100, p.progressPercent + increment);
+    this.projects.update(list => list.map(project => {
+      if (project.id === activeId && !project.isCompleted) {
+        const increment = (100 / project.timeToCompleteSeconds);
+        const newProgress = Math.min(100, project.progressPercent + increment);
         
-        if (newProgress >= 100 && !p.isCompleted) {
+        if (newProgress >= 100 && !project.isCompleted) {
           // Completion logic
-          this.completeProject(p);
-          return { ...p, progressPercent: 100, isCompleted: true, isStarted: false };
+          this.completeProject(project);
+          return { ...project, progressPercent: 100, isCompleted: true, isStarted: false };
         }
-        return { ...p, progressPercent: newProgress };
+        return { ...project, progressPercent: newProgress };
       }
-      return p;
+      return project;
     }));
 
-    // If completed, clear active
+    // Logic: Clear active ID if the project just completed.
     const currentActive = this.projects().find(p => p.id === activeId);
     if (currentActive?.isCompleted) {
       this.activeProjectId.set(null);
     }
   }
 
-  private completeProject(p: ResearchProject) {
-    if (p.unlockedComponentId) {
-      this.workshop.unlockedComponentIds.update(ids => Array.from(new Set([...ids, p.unlockedComponentId!])));
+  /**
+   * Logic: Permanently unlocks the project's component ID in the WorkshopService.
+   * @param project The completed project.
+   */
+  private completeProject(project: ResearchProject) {
+    if (project.unlockedComponentId) {
+      this.workshop.unlockedComponentIds.update(ids => Array.from(new Set([...ids, project.unlockedComponentId!])));
     }
-    console.log(`[RESEARCH] Project Completed: ${p.name}`);
+    console.log(`[RESEARCH] Project Completed: ${project.name}`);
   }
 
+  /**
+   * Initiates the research process for a specific project.
+   * Logic: Validates prerequisites and deducts resources from PlayerStore before starting.
+   * @param projectId The target project ID.
+   */
   startResearch(projectId: string) {
-    const p = this.projects().find(proj => proj.id === projectId);
-    if (!p || p.isCompleted || this.activeProjectId()) return;
+    const project = this.projects().find(proj => proj.id === projectId);
+    if (!project || project.isCompleted || this.activeProjectId()) return;
 
-    // Check prerequisites
-    const unmetPrereqs = p.prerequisites.filter(preId => {
+    // Logic: Validate that all required prerequisite projects are already completed.
+    const unmetPrereqs = project.prerequisites.filter(preId => {
        const pre = this.projects().find(proj => proj.id === preId);
        return !pre?.isCompleted;
     });
     if (unmetPrereqs.length > 0) return;
 
-    // Check resources
-    if (this.player.resources().polymer >= p.costPolymer &&
-        this.player.resources().scrap >= p.costScrap &&
-        this.player.resources().credits >= p.costCredits) {
+    // Logic: Check if player can afford the materials via the PlayerStore state.
+    const playerResources = this.playerStore.resources();
+    if (playerResources.polymer >= project.costPolymer &&
+        playerResources.scrap >= project.costScrap &&
+        playerResources.credits >= project.costCredits) {
       
-      this.player.resources.update(r => ({
-        ...r,
-        polymer: r.polymer - p.costPolymer,
-        scrap: r.scrap - p.costScrap,
-        credits: r.credits - p.costCredits
-      }));
+      // Logic: Atomic resource deduction.
+      this.playerStore.addResources({
+        polymer: -project.costPolymer,
+        scrap: -project.costScrap,
+        credits: -project.costCredits
+      });
 
       this.projects.update(list => list.map(proj => proj.id === projectId ? { ...proj, isStarted: true } : proj));
       this.activeProjectId.set(projectId);
     }
   }
 
+  /**
+   * Logic: Loads projects from local storage or returns the default research tree.
+   */
   private loadProjects(): ResearchProject[] {
-    const saved = localStorage.getItem('rogueBlade_projects');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+    const savedData = localStorage.getItem('rogueBlade_projects');
+    if (savedData) {
+      try { return JSON.parse(savedData); } catch (error) {}
     }
 
     return [

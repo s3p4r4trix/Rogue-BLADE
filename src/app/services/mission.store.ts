@@ -2,7 +2,7 @@ import { computed, inject } from '@angular/core';
 import { signalStore, withState, withComputed, withMethods, patchState, withHooks } from '@ngrx/signals';
 import { MissionContract, MissionDifficulty } from '../models/mission.model';
 import { WorkshopService } from './workshop.service';
-import { PlayerService } from './player.service';
+import { PlayerStore } from './player.store';
 import { ArmorType } from '../models/hardware.model';
 
 /** ─── Mission Data Constants ─────────────────────────────────────────────── */
@@ -68,7 +68,7 @@ export const MissionStore = signalStore(
   })),
 
   /** ─── Methods (Actions) ─────────────────────────────────────────────── */
-  withMethods((store, workshop = inject(WorkshopService), player = inject(PlayerService)) => {
+  withMethods((store, workshop = inject(WorkshopService), playerStore = inject(PlayerStore)) => {
 
     /**
      * Internal: Calculates the average combat power of the current drone squad.
@@ -92,7 +92,7 @@ export const MissionStore = signalStore(
      * Internal: Generates a single mission contract based on index (Tier) and player stats.
      */
     const generateSingleContract = (index: number): MissionContract => {
-      const playerStats = player.stats();
+      const playerStats = playerStore.stats();
       const successfulRuns = playerStats.successfulRuns;
       const squadPower = calculateSquadPower();
 

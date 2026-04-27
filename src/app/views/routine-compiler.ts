@@ -5,7 +5,7 @@ import { Inventory } from '../components/inventory';
 import { GambitSlot } from '../components/gambit-slot';
 import { CompilerConsole } from '../components/compiler-console';
 import { WorkshopService } from '../services/workshop.service';
-import { PlayerService } from '../services/player.service';
+import { PlayerStore } from '../services/player.store';
 
 @Component({
   selector: 'app-routine-compiler',
@@ -23,19 +23,19 @@ import { PlayerService } from '../services/player.service';
                   <h1 class="text-2xl font-bold tracking-widest text-green-400 drop-shadow-[0_0_5px_rgba(74,222,128,0.8)]">
                       SMART-SHURIKEN // ROGUE-OS
                   </h1>
-                  <p class="text-sm text-green-700">User: MECHANIC_77 | Status: OFFLINE_MODE</p>
+                  <p class="text-sm text-green-700">User: {{ playerStore.profile().username }} | Status: OFFLINE_MODE</p>
               </div>
           </div>
       </header>
 
       <!-- Main Content -->
       <div class="flex flex-col lg:flex-row gap-8 h-full min-h-0">
-          <!-- Linke Seite: System Reference -->
+          <!-- Left Sidebar: System Reference -->
           <div class="w-full lg:w-1/3 neon-border bg-[#030014]/95 p-4 flex flex-col h-full neuro-panel">
               <app-inventory class="h-full flex-1 min-h-0 block"></app-inventory>
           </div>
 
-          <!-- Rechte Seite: Programmierung -->
+          <!-- Programming Interface -->
           <div class="w-full lg:w-2/3 neon-border bg-[#030014]/95 p-4 flex flex-col h-full min-h-0 neuro-panel">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-green-800 pb-2 mb-4 gap-4">
                   <h2 class="text-lg font-bold tracking-widest">// ROUTINE_MANAGER</h2>
@@ -44,8 +44,8 @@ import { PlayerService } from '../services/player.service';
                        <select class="cyber-native-select"
                                [value]="activeShuriken().id"
                                (change)="onNativeShurikenChange($event)">
-                         @for (opt of getShurikenOptions(); track opt.value) {
-                           <option [value]="opt.value">{{ opt.label }}</option>
+                         @for (option of getShurikenOptions(); track option.value) {
+                           <option [value]="option.value">{{ option.label }}</option>
                          }
                        </select>
                     </div>
@@ -59,9 +59,9 @@ import { PlayerService } from '../services/player.service';
               <div class="flex-1 overflow-y-auto pr-2">
                   <div id="gambit-list" class="flex flex-col gap-4 overflow-visible pb-40">
                       
-                      <!-- Dynamisch gerenderte Slots -->
-                      @for (routine of routines(); track routine.priority; let i = $index) {
-                        <app-gambit-slot [routine]="routine" [index]="i"></app-gambit-slot>
+                      <!-- Dynamic Priority Slots -->
+                      @for (routine of routines(); track routine.priority; let index = $index) {
+                        <app-gambit-slot [routine]="routine" [index]="index"></app-gambit-slot>
                       }
                       
                       <!-- Add Routine Button -->
@@ -80,7 +80,7 @@ import { PlayerService } from '../services/player.service';
                          }
                       </div>
                       
-                      <!-- Fallback (Always active) -->
+                      <!-- Fallback (Default Action) -->
                       <div class="bg-gray-900/20 border border-gray-800/50 p-3 flex flex-col sm:flex-row items-center gap-3 mt-4 opacity-50">
                           <div class="text-gray-600 font-bold w-16 text-center text-xs">DEFAULT<br>GATE</div>
                           <div class="flex-1 text-center text-gray-500 text-[10px] uppercase tracking-widest">If no priority routine returns TRUE:</div>
@@ -90,7 +90,7 @@ import { PlayerService } from '../services/player.service';
                   </div>
               </div>
 
-              <!-- Konsole & Upload -->
+              <!-- Terminal & Telemetry Logs -->
               <app-compiler-console></app-compiler-console>
           </div>
       </div>
@@ -111,32 +111,56 @@ import { PlayerService } from '../services/player.service';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RoutineCompiler {
+  /** Reference to the workshop for shuriken and routine management. */
   workshop = inject(WorkshopService);
-  player = inject(PlayerService);
+  
+  /** Centralized player state store. */
+  playerStore = inject(PlayerStore);
 
+  /** Signal containing the routines for the currently active shuriken. */
   routines = this.workshop.routines;
+  
+  /** Fallback logic action when no routine triggers match. */
   fallbackAction = this.workshop.fallbackAction;
+  
+  /** List of all shurikens available in the user's hangar. */
   availableShurikens = this.workshop.availableShurikens;
+  
+  /** The specific shuriken currently being modified. */
   activeShuriken = this.workshop.activeShuriken;
 
+  /**
+   * Logic: Checks if the current routine count matches the hardware limit of the processor.
+   * @returns True if no more slots can be allocated.
+   */
   capacityReached() {
     return this.routines().length >= (this.activeShuriken().processor?.routineCapacity || 2);
   }
 
+  /**
+   * Logic: Maps available shurikens to selection options for the dropdown.
+   */
   getShurikenOptions() {
-    return this.availableShurikens().map(s => ({
-      value: s.id,
-      label: `${s.name} (Cap: ${s.processor?.routineCapacity || 2})`
+    return this.availableShurikens().map(shuriken => ({
+      value: shuriken.id,
+      label: `${shuriken.name} (Cap: ${shuriken.processor?.routineCapacity || 2})`
     }));
   }
 
+  /**
+   * Updates the global active shuriken selection.
+   * @param event The change event from the native select element.
+   */
   onNativeShurikenChange(event: Event) {
-    const id = (event.target as HTMLSelectElement).value;
-    if (id) {
-      this.workshop.setActiveShuriken(id);
+    const shurikenId = (event.target as HTMLSelectElement).value;
+    if (shurikenId) {
+      this.workshop.setActiveShuriken(shurikenId);
     }
   }
 
+  /**
+   * Allocates a new priority routine slot via the workshop.
+   */
   addRoutine() {
     this.workshop.addRoutine();
   }

@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, inject, computed } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { PlayerService } from './services/player.service';
+import { PlayerStore } from './services/player.store';
 import { PcbBackground } from './components/pcb-background';
 import { TopBar } from './components/top-bar';
 
@@ -22,8 +22,12 @@ import { TopBar } from './components/top-bar';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class App {
-  private player = inject(PlayerService);
+  /** Centralized player state store. */
+  private playerStore = inject(PlayerStore);
 
-  /** True when the active theme is the Neuromancer Deck. */
-  readonly isNeuromancer = computed(() => this.player.theme() === 'neuromancer');
+  /** 
+   * Computed flag that determines if the 'Neuromancer' visual aesthetic should be active.
+   * Logic: Checks the player's active theme setting from the store.
+   */
+  readonly isNeuromancer = computed(() => this.playerStore.theme() === 'neuromancer');
 }
