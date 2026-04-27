@@ -148,7 +148,7 @@ export interface Shuriken {
   shield: ShieldGenerator | null; // New slot
   reactor: Reactor | null; // New slot
   semiAI: SemiAI | null; // Optional slot
-  
+
   // Coordination Mode
   coordinationMode: 'SOLO' | 'MASTER' | 'SLAVE';
   masterId?: string; // If SLAVE, which master are we following?

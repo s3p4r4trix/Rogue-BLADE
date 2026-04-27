@@ -256,7 +256,10 @@ The Liberation Strike's **Phase 2 (Passive)** is accompanied by a **Tactical Map
 These are the core spatial behaviors mapped to existing GDD actions:
 *   **Seek (Standard Strike):** Drone moves in a straight line toward its target with smooth acceleration.
 *   **Orbit (Defend Ally):** Drone maintains a fixed radius around the target and continuously rotates, useful for intercepting or maintaining distance. Also used after a strike to build speed for the next pass.
-*   **Flee (Emergency Withdrawal):** Drone calculates the vector away from the nearest enemy and moves toward the furthest arena boundary.
+*   **Flee (Emergency Withdrawal):** Triggered when HP drops below 20% and no other routines restricts this behavior. The drone calculates the vector away from the nearest enemy and moves toward the nearest arena boundary.
+    *   **Disengagement:** Upon reaching the arena edge, the drone must remain there for **2 seconds** without being destroyed.
+    *   **Exit:** After the 2-second hold, the drone leaves the combat zone (state: `WITHDRAWN`). This preserves the hardware for future missions at a significantly lower repair cost compared to full destruction.
+    *   **Mission End:** If all drones are either `WITHDRAWN` or `DESTROYED`, the mission ends in failure (unless the objective was already met).
 *   **Search (LOS Lost):** When an enemy disappears behind cover, the drone navigates to its **last-seen position** and performs an expanding spiral search. After a set time (`SEARCH_LINGER_TIME = 3s`), the last-seen memory is cleared and the drone falls back to direct seeking.
 
 ### 13.4.1 Minimum Strike Velocity
@@ -283,4 +286,4 @@ Since this is an AI-driven game, the Tactical Map includes comprehensive visual 
 The Tactical Map and Live Feed are synchronized via an event bridge:
 *   The arena emits log events (`arenaLog`) for every significant action: state transitions, strikes, kills, and search status.
 *   The Live Feed consumes these events in real-time, displaying them with appropriate styling.
-*   The player can toggle between views at any time; the Live Feed always reflects the latest arena events regardless of which view is active.
+*   The player can toggle between views at any time; the Live Feed always reflects the latest arena events regardless of which view is active.

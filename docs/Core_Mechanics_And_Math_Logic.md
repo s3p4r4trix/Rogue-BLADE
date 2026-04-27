@@ -339,3 +339,19 @@ goalX = lastSeen.x + cos(orbitAngle) * searchRadius
 goalY = lastSeen.y + sin(orbitAngle) * searchRadius
 ```
 4. **Memory Expiry:** After `SEARCH_LINGER_TIME = 3 seconds`, `lastSeenPos` is cleared and the drone falls back to direct SEEKING.
+
+### 6.9 Emergency Withdrawal (FLEEING to WITHDRAWN)
+
+Drones prioritize hardware preservation when critical damage is sustained.
+
+1. **Trigger:** `currentHP < maxHP * 0.2` (below 20%) and no other routines restricts this behavior.
+2. **Behavior:** `state = FLEEING`. Drone moves to the nearest arena boundary.
+3. **Disengagement Timer:** If `drone.position` is within 2 units of any `WALL_THICKNESS` boundary:
+   ```
+   withdrawalTimer += deltaTime
+   if (withdrawalTimer >= 2.0 seconds):
+       state = WITHDRAWN
+   ```
+4. **Hardware Preservation:**
+   * **`WITHDRAWN`:** Drone is safe. Repair cost is calculated based on remaining HP (standard repair).
+   * **`DESTROYED`:** Drone is lost. Requires full reconstruction (significantly higher `SCRAP` and `CREDITS` cost).

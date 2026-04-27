@@ -14,6 +14,8 @@ const PERSPECTIVE_SCALE_Y = 0.7;
 const MIN_STRIKE_SPEED = 0.4; // Fraction of topSpeed required to attempt a strike
 const STRIKE_COOLDOWN = 1.5; // Seconds between strike attempts
 const SEARCH_LINGER_TIME = 3; // Seconds to search at last-seen before expanding
+const ENEMY_STRIKE_COOLDOWN = 2.0;
+const ENEMY_DAMAGE = 15;
 
 // ─── Data Interfaces ──────────────────────────────────────────────
 
@@ -24,7 +26,7 @@ interface AABB { x: number; y: number; w: number; h: number; }
 interface Vec2 { x: number; y: number; }
 
 /** AI behavior state machine labels */
-type AIState = 'SEEKING' | 'ORBITING' | 'FLEEING' | 'IDLE' | 'REBOOTING' | 'SEARCHING';
+type AIState = 'SEEKING' | 'ORBITING' | 'FLEEING' | 'IDLE' | 'REBOOTING' | 'SEARCHING' | 'WITHDRAWN' | 'PATROLLING';
 
 /** Runtime entity used for both drones and the enemy */
 interface ArenaEntity {
@@ -55,6 +57,9 @@ interface ArenaEntity {
   searchTimer: number;       // Time spent searching at last-seen position
   // Hit flash VFX
   hitFlashTimer: number;     // Remaining flash duration (seconds)
+  // Withdrawal mechanics
+  withdrawalTimer: number;   // Seconds spent at edge while fleeing
+  rotation: number;          // Current facing direction (radians)
 }
 
 @Component({
@@ -83,6 +88,8 @@ export class CombatArena implements AfterViewInit, OnDestroy {
 
   /** Emits log strings for the Live Feed to consume */
   arenaLog = output<string>();
+  /** Emits when the mission ends */
+  missionComplete = output<{ success: boolean }>();
 
   // ─── Canvas ref ────────────────────────────────────────────────
   private canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('arenaCanvas');
@@ -94,7 +101,9 @@ export class CombatArena implements AfterViewInit, OnDestroy {
   private obstacles: AABB[] = [];
   private drones: ArenaEntity[] = [];
   private enemy!: ArenaEntity;
-  private arenaTime = 0; // Total elapsed arena time in seconds
+  private arenaTime = 0;
+  private telemetryTimer = 0;
+  private isGameOver = false;
 
   /** Tracks whether the arena has been initialized */
   private initialized = false;
@@ -174,6 +183,8 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       lastSeenPos: null as Vec2 | null,
       searchTimer: 0,
       hitFlashTimer: 0,
+      withdrawalTimer: 0,
+      rotation: Math.PI * 1.25, // Facing center from bottom-left
     }));
 
     // Spawn enemy in upper-right area
@@ -189,18 +200,23 @@ export class CombatArena implements AfterViewInit, OnDestroy {
       acceleration: 5,
       radius: 22,
       color: '#ef4444',
-      sensorRange: 0,
-      meleeRange: 0,
-      state: 'IDLE' as AIState,
+      sensorRange: 200,
+      meleeRange: 40,
+      state: 'PATROLLING' as AIState,
       orbitAngle: 0,
       isEnemy: true,
       hp: mission?.hull ?? 300,
       maxHp: (mission?.hull ?? 300) + (mission?.shields ?? 0),
       strikeCooldown: 0,
       canStrike: false,
-      lastSeenPos: null,
+      lastSeenPos: {
+        x: WALL_THICKNESS + 100 + Math.random() * (ARENA_W - 200 - WALL_THICKNESS * 2),
+        y: WALL_THICKNESS + 100 + Math.random() * (ARENA_H - 200 - WALL_THICKNESS * 2)
+      },
       searchTimer: 0,
       hitFlashTimer: 0,
+      withdrawalTimer: 0,
+      rotation: Math.PI * 0.75, // Facing towards bottom-left (drone spawn)
     };
 
     this.arenaTime = 0;
@@ -231,11 +247,55 @@ export class CombatArena implements AfterViewInit, OnDestroy {
   // ═══════════════════════════════════════════════════════════════
 
   private update(dt: number) {
-    // Tick down enemy hit flash
+    if (this.isGameOver) return;
+
+    // Tick down enemy hit flash & cooldown
     if (this.enemy.hitFlashTimer > 0) this.enemy.hitFlashTimer -= dt;
+    if (this.enemy.strikeCooldown > 0) this.enemy.strikeCooldown -= dt;
+
+    // Periodic Telemetry Logs
+    this.telemetryTimer += dt;
+    if (this.telemetryTimer >= 1.0) {
+      this.telemetryTimer = 0;
+      for (const d of this.drones) {
+        if (d.hp > 0) {
+          // Format expected by StrikeReport: "[TELEMETRY] Name: H:hp/maxHp S:s/maxS E:e/maxE R:reboot"
+          this.emitLog(`[TELEMETRY] ${d.name}: H:${Math.ceil(d.hp)}/${d.maxHp} S:0/0 E:100/100 R:0`);
+        }
+      }
+    }
+
+    // Enemy Counter-Attack Logic
+    if (this.enemy.strikeCooldown <= 0 && this.enemy.hp > 0) {
+      // Find nearest drone in engagement range
+      const targetDrone = this.drones.find(d => d.hp > 0 && this.dist(d, this.enemy) < this.enemy.radius + d.radius + 15);
+      if (targetDrone) {
+        targetDrone.hp = Math.max(0, targetDrone.hp - ENEMY_DAMAGE);
+        targetDrone.hitFlashTimer = 0.2;
+        this.enemy.strikeCooldown = ENEMY_STRIKE_COOLDOWN;
+        this.emitLog(`[WARNING] ${this.enemy.name} Counter: ${targetDrone.name} hit! (-${ENEMY_DAMAGE} HP)`);
+        
+        if (targetDrone.hp <= 0) {
+          this.emitLog(`[CRITICAL] ${targetDrone.name} SIGNAL LOST.`);
+        }
+      }
+    }
+
+    let activeDronesCount = 0;
+    let withdrawnDronesCount = 0;
+    let destroyedDronesCount = 0;
 
     for (const drone of this.drones) {
-      if (drone.hp <= 0) continue;
+      if (drone.state === 'WITHDRAWN') {
+        withdrawnDronesCount++;
+        continue;
+      }
+      if (drone.hp <= 0) {
+        destroyedDronesCount++;
+        continue;
+      }
+
+      activeDronesCount++;
 
       // Tick cooldowns
       if (drone.strikeCooldown > 0) drone.strikeCooldown -= dt;
@@ -306,6 +366,22 @@ export class CombatArena implements AfterViewInit, OnDestroy {
           const away = this.normalize({ x: drone.x - this.enemy.x, y: drone.y - this.enemy.y });
           targetVx = away.x * drone.topSpeed;
           targetVy = away.y * drone.topSpeed;
+
+          // Check for edge disengagement
+          const atEdge = drone.x <= WALL_THICKNESS + drone.radius + 2 ||
+                         drone.x >= ARENA_W - WALL_THICKNESS - drone.radius - 2 ||
+                         drone.y <= WALL_THICKNESS + drone.radius + 2 ||
+                         drone.y >= ARENA_H - WALL_THICKNESS - drone.radius - 2;
+
+          if (atEdge) {
+            drone.withdrawalTimer += dt;
+            if (drone.withdrawalTimer >= 2.0) {
+              drone.state = 'WITHDRAWN';
+              this.emitLog(`[SYSTEM] ${drone.name}: Emergency Withdrawal Complete. Unit Secured.`);
+            }
+          } else {
+            drone.withdrawalTimer = 0;
+          }
           break;
         }
         case 'SEARCHING': {
@@ -360,6 +436,23 @@ export class CombatArena implements AfterViewInit, OnDestroy {
         newY = resolved.y;
       }
 
+      // Drone-to-Enemy Collision
+      if (this.enemy.hp > 0) {
+        const distToEnemy = this.dist({ x: newX, y: newY }, this.enemy);
+        const minDist = drone.radius + this.enemy.radius;
+        if (distToEnemy < minDist && distToEnemy > 0) {
+          const overlap = minDist - distToEnemy;
+          const dir = this.normalize({ x: newX - this.enemy.x, y: newY - this.enemy.y });
+          newX += dir.x * overlap;
+          newY += dir.y * overlap;
+          // Apply mutual impulse
+          drone.vx += dir.x * 30;
+          drone.vy += dir.y * 30;
+          this.enemy.vx -= dir.x * 10;
+          this.enemy.vy -= dir.y * 10;
+        }
+      }
+
       drone.x = newX;
       drone.y = newY;
       drone.speed = Math.sqrt(drone.vx * drone.vx + drone.vy * drone.vy);
@@ -377,13 +470,210 @@ export class CombatArena implements AfterViewInit, OnDestroy {
         this.emitLog(`${drone.name}: Hull Hit (-${dmg} H) [REM: ${Math.ceil(this.enemy.hp)}]`);
 
         if (this.enemy.hp <= 0) {
+          this.isGameOver = true;
           this.emitLog(`[SYSTEM] MISSION OBJECTIVE NEUTRALIZED.`);
+          this.missionComplete.emit({ success: true });
         }
 
         // Bounce away after strike (adds fly-by variation)
         const bounceDir = this.normalize({ x: drone.x - this.enemy.x, y: drone.y - this.enemy.y });
         drone.vx = bounceDir.x * drone.topSpeed * 0.7;
         drone.vy = bounceDir.y * drone.topSpeed * 0.7;
+      }
+    }
+
+    // Check Loss Condition: No active drones left (all either withdrawn or destroyed)
+    if (activeDronesCount === 0 && this.drones.length > 0 && !this.isGameOver) {
+      this.isGameOver = true;
+      if (withdrawnDronesCount > 0) {
+        this.emitLog(`[SYSTEM] SQUAD WITHDRAWN. MISSION ABORTED.`);
+      } else {
+        this.emitLog(`[CRITICAL] SQUAD ELIMINATED. MISSION FAILURE.`);
+      }
+      this.missionComplete.emit({ success: false });
+    }
+
+    // ── Enemy Movement AI ──
+    if (this.enemy.hp > 0 && !this.isGameOver) {
+      const activeDrones = this.drones.filter(d => d.hp > 0 && d.state !== 'WITHDRAWN');
+      
+      // 1. Vision Check: Can enemy see any drone?
+      let bestTarget: ArenaEntity | null = null;
+      let closestDist = Infinity;
+
+      for (const d of activeDrones) {
+        const dDist = this.dist(this.enemy, d);
+        if (dDist < 250) { // 25m sensor range
+          const angleToDrone = Math.atan2(d.y - this.enemy.y, d.x - this.enemy.x);
+          let angleDiff = Math.abs(angleToDrone - this.enemy.rotation);
+          // Normalize angle diff
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          angleDiff = Math.abs(angleDiff);
+
+          // 120 degree cone = 60 degrees either side (~1.04 radians)
+          if (angleDiff < 1.05 && !this.isLOSBlocked(this.enemy, d)) {
+            if (dDist < closestDist) {
+              closestDist = dDist;
+              bestTarget = d;
+            }
+          }
+        }
+      }
+
+      if (bestTarget) {
+        this.enemy.state = 'SEEKING';
+        this.enemy.lastSeenPos = { x: bestTarget.x, y: bestTarget.y };
+        this.enemy.searchTimer = 0;
+      } else if (this.enemy.lastSeenPos) {
+        this.enemy.state = 'SEARCHING';
+      } else if (this.enemy.state !== 'PATROLLING') {
+        this.enemy.state = 'IDLE';
+      }
+
+      // 2. State-based Movement
+      let targetVx = 0;
+      let targetVy = 0;
+
+      switch (this.enemy.state) {
+        case 'SEEKING': {
+          if (bestTarget) {
+            const dir = this.normalize({ x: bestTarget.x - this.enemy.x, y: bestTarget.y - this.enemy.y });
+            targetVx = dir.x * this.enemy.topSpeed;
+            targetVy = dir.y * this.enemy.topSpeed;
+            this.enemy.rotation = Math.atan2(dir.y, dir.x);
+          }
+          break;
+        }
+        case 'SEARCHING': {
+          if (this.enemy.lastSeenPos) {
+            const lsp = this.enemy.lastSeenPos;
+            const distToLSP = this.dist(this.enemy, lsp);
+            
+            if (distToLSP > 30 && this.enemy.searchTimer < 3) {
+              const dir = this.normalize({ x: lsp.x - this.enemy.x, y: lsp.y - this.enemy.y });
+              targetVx = dir.x * this.enemy.topSpeed;
+              targetVy = dir.y * this.enemy.topSpeed;
+              this.enemy.rotation = Math.atan2(dir.y, dir.x);
+            } else {
+              this.enemy.searchTimer += dt;
+              // Spiral search + Scanning rotation
+              const searchRadius = Math.min(200, 60 + this.enemy.searchTimer * 20);
+              const orbitAngle = this.arenaTime * 1.5;
+              const goalX = lsp.x + Math.cos(orbitAngle) * searchRadius;
+              const goalY = lsp.y + Math.sin(orbitAngle) * searchRadius;
+              const dir = this.normalize({ x: goalX - this.enemy.x, y: goalY - this.enemy.y });
+              targetVx = dir.x * this.enemy.topSpeed;
+              targetVy = dir.y * this.enemy.topSpeed;
+              
+              // Rotate along movement + extra scan wiggle
+              this.enemy.rotation = Math.atan2(dir.y, dir.x) + Math.sin(this.arenaTime * 3) * 0.2;
+              
+              if (this.enemy.searchTimer > 10) {
+                this.enemy.lastSeenPos = null;
+                this.enemy.state = 'IDLE';
+              }
+            }
+          }
+          break;
+        }
+        case 'PATROLLING': {
+          if (this.enemy.lastSeenPos) {
+            const distToPoint = this.dist(this.enemy, this.enemy.lastSeenPos);
+            if (distToPoint < 20) {
+              this.enemy.state = 'IDLE';
+              this.enemy.searchTimer = 0;
+            } else {
+              const dir = this.normalize({ x: this.enemy.lastSeenPos.x - this.enemy.x, y: this.enemy.lastSeenPos.y - this.enemy.y });
+              targetVx = dir.x * (this.enemy.topSpeed * 0.6); // Move slower while patrolling
+              targetVy = dir.y * (this.enemy.topSpeed * 0.6);
+              this.enemy.rotation = Math.atan2(dir.y, dir.x);
+            }
+          } else {
+            this.enemy.state = 'IDLE';
+          }
+          break;
+        }
+        case 'IDLE':
+          this.enemy.vx *= 0.95;
+          this.enemy.vy *= 0.95;
+          this.enemy.searchTimer += dt;
+          // Scanning behavior
+          this.enemy.rotation += Math.sin(this.arenaTime * 0.8) * 0.015;
+          
+          // After 4 seconds of idle scanning, pick a new patrol point
+          if (this.enemy.searchTimer > 4) {
+            this.enemy.state = 'PATROLLING';
+            this.enemy.lastSeenPos = {
+              x: WALL_THICKNESS + 100 + Math.random() * (ARENA_W - 200 - WALL_THICKNESS * 2),
+              y: WALL_THICKNESS + 100 + Math.random() * (ARENA_H - 200 - WALL_THICKNESS * 2)
+            };
+          }
+          break;
+      }
+
+      if (this.enemy.state !== 'IDLE') {
+        // ── Obstacle Avoidance (Feeler) ──
+        const feelerDist = 50;
+        const feelerX = this.enemy.x + Math.cos(this.enemy.rotation) * feelerDist;
+        const feelerY = this.enemy.y + Math.sin(this.enemy.rotation) * feelerDist;
+        
+        let avoidX = 0, avoidY = 0;
+        for (const obs of this.obstacles) {
+          if (feelerX > obs.x - 5 && feelerX < obs.x + obs.w + 5 && 
+              feelerY > obs.y - 5 && feelerY < obs.y + obs.h + 5) {
+            // Steer away from obstacle center
+            const centerX = obs.x + obs.w / 2;
+            const centerY = obs.y + obs.h / 2;
+            const steer = this.normalize({ x: this.enemy.x - centerX, y: this.enemy.y - centerY });
+            avoidX = steer.x * this.enemy.topSpeed;
+            avoidY = steer.y * this.enemy.topSpeed;
+          }
+        }
+
+        if (avoidX !== 0 || avoidY !== 0) {
+          targetVx = targetVx * 0.3 + avoidX * 0.7;
+          targetVy = targetVy * 0.3 + avoidY * 0.7;
+        }
+
+        const accelFactor = this.enemy.acceleration * dt;
+        this.enemy.vx += (targetVx - this.enemy.vx) * Math.min(1, accelFactor * 0.1);
+        this.enemy.vy += (targetVy - this.enemy.vy) * Math.min(1, accelFactor * 0.1);
+
+        let newX = this.enemy.x + this.enemy.vx * dt;
+        let newY = this.enemy.y + this.enemy.vy * dt;
+
+        newX = Math.max(WALL_THICKNESS + this.enemy.radius, Math.min(ARENA_W - WALL_THICKNESS - this.enemy.radius, newX));
+        newY = Math.max(WALL_THICKNESS + this.enemy.radius, Math.min(ARENA_H - WALL_THICKNESS - this.enemy.radius, newY));
+
+        for (const obs of this.obstacles) {
+          const resolved = this.resolveCircleAABB(newX, newY, this.enemy.radius, obs);
+          newX = resolved.x;
+          newY = resolved.y;
+        }
+
+        this.enemy.x = newX;
+        this.enemy.y = newY;
+        this.enemy.speed = Math.sqrt(this.enemy.vx * this.enemy.vx + this.enemy.vy * this.enemy.vy);
+      }
+    }
+
+    // ── Drone-to-Drone Collision ──
+    for (let i = 0; i < this.drones.length; i++) {
+      for (let j = i + 1; j < this.drones.length; j++) {
+        const a = this.drones[i];
+        const b = this.drones[j];
+        if (a.hp <= 0 || b.hp <= 0 || a.state === 'WITHDRAWN' || b.state === 'WITHDRAWN') continue;
+
+        const d = this.dist(a, b);
+        const minDist = a.radius + b.radius;
+        if (d < minDist && d > 0) {
+          const overlap = (minDist - d) / 2;
+          const dir = this.normalize({ x: a.x - b.x, y: a.y - b.y });
+          a.x += dir.x * overlap;
+          a.y += dir.y * overlap;
+          b.x -= dir.x * overlap;
+          b.y -= dir.y * overlap;
+        }
       }
     }
   }
@@ -412,6 +702,13 @@ export class CombatArena implements AfterViewInit, OnDestroy {
         this.drawEnemy(ctx, entity);
       } else {
         this.drawDrone(ctx, entity);
+      }
+    }
+
+    // ── Global Sensor Links (Drones to Enemy) ──
+    for (const drone of this.drones) {
+      if (drone.hp > 0 && drone.state !== 'WITHDRAWN') {
+        this.drawSensorLink(ctx, drone);
       }
     }
 
@@ -491,6 +788,18 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     ctx.fill();
     ctx.restore();
 
+    // ── Sensor Radius (Faint Pulse) ──
+    ctx.save();
+    const sensorPulse = 0.03 + Math.sin(this.arenaTime * 2) * 0.02;
+    ctx.fillStyle = `rgba(34, 197, 94, ${sensorPulse})`;
+    ctx.beginPath();
+    ctx.ellipse(drone.x, drone.y, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(34, 197, 94, 0.08)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+
     // ── Elevation connector line (shadow to drone) ──
     if (drone.z > 0) {
       ctx.strokeStyle = 'rgba(100, 200, 255, 0.1)';
@@ -530,7 +839,8 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     // ── State label ──
     const stateColors: Record<AIState, string> = {
       SEEKING: '#22d3ee', ORBITING: '#a78bfa', FLEEING: '#f97316',
-      IDLE: '#6b7280', REBOOTING: '#ef4444', SEARCHING: '#facc15'
+      IDLE: '#6b7280', REBOOTING: '#ef4444', SEARCHING: '#facc15', 
+      WITHDRAWN: '#4ade80', PATROLLING: '#94a3b8'
     };
     ctx.fillStyle = stateColors[drone.state] || '#fff';
     ctx.font = 'bold 8px monospace';
@@ -540,6 +850,44 @@ export class CombatArena implements AfterViewInit, OnDestroy {
 
   /** Render the hostile enemy entity */
   private drawEnemy(ctx: CanvasRenderingContext2D, enemy: ArenaEntity) {
+    ctx.save();
+    
+    // ── FOV Cone (120 degrees, clipped by obstacles) ──
+    const sensorRange = 250;
+    const fovAngle = 1.05; // ~60 degrees
+    const step = 0.05; // Ray frequency
+    
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
+    ctx.beginPath();
+    ctx.moveTo(enemy.x, enemy.y);
+    
+    for (let a = enemy.rotation - fovAngle; a <= enemy.rotation + fovAngle; a += step) {
+      const tx = enemy.x + Math.cos(a) * sensorRange;
+      const ty = enemy.y + Math.sin(a) * sensorRange;
+      
+      let minT = 1.0;
+      for (const obs of this.obstacles) {
+        const t = this.getRayIntersectionDist(enemy.x, enemy.y, tx, ty, obs);
+        if (t < minT) minT = t;
+      }
+      
+      ctx.lineTo(enemy.x + Math.cos(a) * sensorRange * minT, enemy.y + Math.sin(a) * sensorRange * minT);
+    }
+    
+    // Final ray at exact boundary
+    const finalA = enemy.rotation + fovAngle;
+    const ftx = enemy.x + Math.cos(finalA) * sensorRange;
+    const fty = enemy.y + Math.sin(finalA) * sensorRange;
+    let fMinT = 1.0;
+    for (const obs of this.obstacles) {
+      const t = this.getRayIntersectionDist(enemy.x, enemy.y, ftx, fty, obs);
+      if (t < fMinT) fMinT = t;
+    }
+    ctx.lineTo(enemy.x + Math.cos(finalA) * sensorRange * fMinT, enemy.y + Math.sin(finalA) * sensorRange * fMinT);
+    
+    ctx.closePath();
+    ctx.fill();
+
     // ── Hit Flash VFX: white expand ring on impact ──
     if (enemy.hitFlashTimer > 0) {
       const flashProgress = 1 - (enemy.hitFlashTimer / 0.2);
@@ -577,7 +925,17 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     ctx.fillStyle = '#ef4444';
     ctx.font = 'bold 10px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(enemy.name, enemy.x, enemy.y - enemy.radius - 12);
+    ctx.fillText(enemy.name, enemy.x, enemy.y - enemy.radius - 18);
+
+    // State Label
+    const stateColors: Record<AIState, string> = {
+      SEEKING: '#ef4444', ORBITING: '#f87171', FLEEING: '#f97316',
+      IDLE: '#6b7280', REBOOTING: '#ef4444', SEARCHING: '#facc15', 
+      WITHDRAWN: '#4ade80', PATROLLING: '#94a3b8'
+    };
+    ctx.fillStyle = stateColors[enemy.state] || '#fff';
+    ctx.font = '8px monospace';
+    ctx.fillText(enemy.state, enemy.x, enemy.y - enemy.radius - 8);
 
     // HP bar
     const barW = 50;
@@ -593,8 +951,14 @@ export class CombatArena implements AfterViewInit, OnDestroy {
   private drawDebugOverlay(ctx: CanvasRenderingContext2D, drone: ArenaEntity) {
     const drawY = drone.y - drone.z * PERSPECTIVE_SCALE_Y;
 
-    // ── Sensor Range circle ──
-    ctx.strokeStyle = 'rgba(34, 211, 238, 0.15)';
+    // ── Sensor Range pulsing circle ──
+    const pulse = 0.08 + Math.sin(performance.now() * 0.003) * 0.04;
+    ctx.fillStyle = `rgba(34, 211, 238, ${pulse})`;
+    ctx.beginPath();
+    ctx.ellipse(drone.x, drawY, drone.sensorRange, drone.sensorRange * PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.2)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 6]);
     ctx.beginPath();
@@ -646,6 +1010,48 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     }
   }
 
+  /** Draw a tactical link line between a drone and the enemy */
+  private drawSensorLink(ctx: CanvasRenderingContext2D, drone: ArenaEntity) {
+    const dist = this.dist(drone, this.enemy);
+    if (dist > drone.sensorRange || this.enemy.hp <= 0) return;
+
+    const drawY = drone.y - drone.z * PERSPECTIVE_SCALE_Y;
+    const isBlocked = this.isLOSBlocked(drone, this.enemy);
+
+    ctx.save();
+    if (isBlocked) {
+      // Weak/Interrupted signal
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
+      ctx.setLineDash([2, 6]);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(drone.x, drawY);
+      ctx.lineTo(this.enemy.x, this.enemy.y);
+      ctx.stroke();
+    } else {
+      // Strong lock
+      const alpha = 0.2 + Math.sin(this.arenaTime * 5) * 0.1;
+      ctx.strokeStyle = `rgba(34, 211, 238, ${alpha})`;
+      ctx.lineWidth = 1.5;
+      
+      ctx.beginPath();
+      ctx.moveTo(drone.x, drawY);
+      ctx.lineTo(this.enemy.x, this.enemy.y);
+      ctx.stroke();
+
+      // Add a subtle scan point moving along the line
+      const progress = (this.arenaTime % 1.0);
+      const scanX = drone.x + (this.enemy.x - drone.x) * progress;
+      const scanY = drawY + (this.enemy.y - drawY) * progress;
+      
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.6)';
+      ctx.beginPath();
+      ctx.arc(scanX, scanY, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   // ═══════════════════════════════════════════════════════════════
   //  SPATIAL MATH & SENSORS
   // ═══════════════════════════════════════════════════════════════
@@ -694,34 +1100,62 @@ export class CombatArena implements AfterViewInit, OnDestroy {
     const dx = x2 - x1;
     const dy = y2 - y1;
 
-    let tmin = 0;
-    let tmax = 1;
+    let tmin = -Infinity;
+    let tmax = Infinity;
 
-    // X slab
-    if (Math.abs(dx) < 1e-8) {
+    // X axis slab check
+    if (Math.abs(dx) > 1e-9) {
+      const t1 = (box.x - x1) / dx;
+      const t2 = (box.x + box.w - x1) / dx;
+      tmin = Math.max(tmin, Math.min(t1, t2));
+      tmax = Math.min(tmax, Math.max(t1, t2));
+    } else {
+      // Ray is vertical; check if X is within box bounds
       if (x1 < box.x || x1 > box.x + box.w) return false;
-    } else {
-      let t1 = (box.x - x1) / dx;
-      let t2 = (box.x + box.w - x1) / dx;
-      if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
-      tmin = Math.max(tmin, t1);
-      tmax = Math.min(tmax, t2);
-      if (tmin > tmax) return false;
     }
 
-    // Y slab
-    if (Math.abs(dy) < 1e-8) {
+    // Y axis slab check
+    if (Math.abs(dy) > 1e-9) {
+      const t1 = (box.y - y1) / dy;
+      const t2 = (box.y + box.h - y1) / dy;
+      tmin = Math.max(tmin, Math.min(t1, t2));
+      tmax = Math.min(tmax, Math.max(t1, t2));
+    } else {
+      // Ray is horizontal; check if Y is within box bounds
       if (y1 < box.y || y1 > box.y + box.h) return false;
-    } else {
-      let t1 = (box.y - y1) / dy;
-      let t2 = (box.y + box.h - y1) / dy;
-      if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
-      tmin = Math.max(tmin, t1);
-      tmax = Math.min(tmax, t2);
-      if (tmin > tmax) return false;
     }
 
-    return true;
+    // Intersection occurs if the overlap interval [tmin, tmax] is valid
+    // AND it overlaps with the ray segment interval [0, 1]
+    return tmax >= tmin && tmax >= 0 && tmin <= 1;
+  }
+
+  /**
+   * Helper for visibility raycasting. 
+   * Returns the intersection factor t [0, 1] for a ray vs a box.
+   */
+  private getRayIntersectionDist(x1: number, y1: number, x2: number, y2: number, box: AABB): number {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    let tmin = -Infinity;
+    let tmax = Infinity;
+
+    if (Math.abs(dx) > 1e-9) {
+      const t1 = (box.x - x1) / dx;
+      const t2 = (box.x + box.w - x1) / dx;
+      tmin = Math.max(tmin, Math.min(t1, t2));
+      tmax = Math.min(tmax, Math.max(t1, t2));
+    } else if (x1 < box.x || x1 > box.x + box.w) return 1.0;
+
+    if (Math.abs(dy) > 1e-9) {
+      const t1 = (box.y - y1) / dy;
+      const t2 = (box.y + box.h - y1) / dy;
+      tmin = Math.max(tmin, Math.min(t1, t2));
+      tmax = Math.min(tmax, Math.max(t1, t2));
+    } else if (y1 < box.y || y1 > box.y + box.h) return 1.0;
+
+    if (tmax >= tmin && tmax >= 0 && tmin <= 1) return Math.max(0, tmin);
+    return 1.0;
   }
 
   /**

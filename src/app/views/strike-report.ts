@@ -42,35 +42,36 @@ import { CombatArena } from '../components/combat-arena';
       <!-- Main Feed -->
       <div class="flex-1 overflow-hidden flex flex-col lg:flex-row gap-8">
         <!-- View: Terminal Logs (LIVE_FEED) -->
-        @if (activeView() === 'LIVE_FEED') {
-          <div class="flex-1 bg-[#050110] border border-white/5 p-4 flex flex-col relative overflow-hidden">
-            <!-- Background Grid -->
-            <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: linear-gradient(#1e1b4b 1px, transparent 1px), linear-gradient(90deg, #1e1b4b 1px, transparent 1px); background-size: 40px 40px;"></div>
-            
-            <div class="absolute top-0 right-0 p-2 text-[8px] text-cyan-900 uppercase tracking-widest bg-black/40 border-l border-b border-white/5">Secure_Link: 256-bit_AES</div>
-            
-            <div #logContainer class="flex-1 overflow-y-auto space-y-1 pr-4 relative z-10">
-              @for (log of visibleLogs(); track $index) {
-                @if (shouldShowLog(log)) {
-                  <div class="text-[11px] font-mono animate-in fade-in slide-in-from-left-1 duration-200">
-                    <span class="opacity-30 mr-2">[{{ $index.toString().padStart(3, '0') }}]</span>
-                    <span [ngClass]="getLogClass(log)">{{ log }}</span>
-                  </div>
-                }
+        <div class="flex-1 bg-[#050110] border border-white/5 p-4 flex flex-col relative overflow-hidden"
+             [class.hidden]="activeView() !== 'LIVE_FEED'">
+          <!-- Background Grid -->
+          <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: linear-gradient(#1e1b4b 1px, transparent 1px), linear-gradient(90deg, #1e1b4b 1px, transparent 1px); background-size: 40px 40px;"></div>
+          
+          <div class="absolute top-0 right-0 p-2 text-[8px] text-cyan-900 uppercase tracking-widest bg-black/40 border-l border-b border-white/5">Secure_Link: 256-bit_AES</div>
+          
+          <div #logContainer class="flex-1 overflow-y-auto space-y-1 pr-4 relative z-10">
+            @for (log of visibleLogs(); track $index) {
+              @if (shouldShowLog(log)) {
+                <div class="text-[11px] font-mono animate-in fade-in slide-in-from-left-1 duration-200">
+                  <span class="opacity-30 mr-2">[{{ $index.toString().padStart(3, '0') }}]</span>
+                  <span [ngClass]="getLogClass(log)">{{ log }}</span>
+                </div>
               }
-              @if (!isFinished()) {
-                <div class="animate-pulse text-cyan-500 font-bold ml-10">_</div>
-              }
-            </div>
+            }
+            @if (!isFinished()) {
+              <div class="animate-pulse text-cyan-500 font-bold ml-10">_</div>
+            }
           </div>
-        }
+        </div>
 
-        <!-- View: Tactical Map (COMBAT_ARENA) -->
-        @if (activeView() === 'TACTICAL_MAP') {
-          <div class="flex-1 bg-[#050110] border border-white/5 p-4 flex items-center justify-center relative overflow-hidden">
-            <app-combat-arena [mission]="mission()" [shurikens]="shurikens()" (arenaLog)="onArenaLog($event)" />
-          </div>
-        }
+        <div class="flex-1 bg-[#050110] border border-white/5 p-4 flex items-center justify-center relative overflow-hidden"
+             [class.hidden]="activeView() !== 'TACTICAL_MAP'">
+          <app-combat-arena 
+            [mission]="mission()" 
+            [shurikens]="shurikens()" 
+            (arenaLog)="onArenaLog($event)"
+            (missionComplete)="onMissionComplete($event)" />
+        </div>
 
         <!-- Tactical Sidebar -->
         <div class="w-full lg:w-96 flex flex-col gap-6 overflow-hidden">
@@ -328,6 +329,13 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
     this.processLogEvent(log);
   }
 
+  /**
+   * Handles the end of a mission from the arena.
+   */
+  onMissionComplete(event: { success: boolean }) {
+    this.finishStrike(event.success);
+  }
+
   ngAfterViewChecked() {
     this.scrollToBottom();
   }
@@ -413,12 +421,26 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
-  private finishStrike() {
+  private finishStrike(success: boolean) {
+    if (this.isFinished()) return;
+
     this.isFinished.set(true);
     this.timeRemaining.set(0);
-    this.currentPolymer.set(this.result()?.totalPolymer || 0);
-    this.currentScrap.set(this.result()?.totalScrap || 0);
-    this.currentCredits.set(this.result()?.totalCredits || 0);
+
+    // Update internal result status
+    this.result.update(res => res ? { ...res, success } : res);
+
+    if (success) {
+      this.currentPolymer.set(this.result()?.totalPolymer || 0);
+      this.currentScrap.set(this.result()?.totalScrap || 0);
+      this.currentCredits.set(this.result()?.totalCredits || 0);
+    } else {
+      // 95% penalty on failure (looted items lost)
+      this.currentPolymer.set(Math.floor((this.result()?.totalPolymer || 0) * 0.05));
+      this.currentScrap.set(Math.floor((this.result()?.totalScrap || 0) * 0.05));
+      this.currentCredits.set(Math.floor((this.result()?.totalCredits || 0) * 0.05));
+    }
+
     if (this.intervalId) clearInterval(this.intervalId);
   }
 
@@ -447,16 +469,7 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   abandon() {
-    if (this.intervalId) clearInterval(this.intervalId);
-    const res = this.result();
-    if (res) {
-      res.success = false;
-      res.totalPolymer = Math.floor(res.totalPolymer * 0.05);
-      res.totalScrap = Math.floor(res.totalScrap * 0.05);
-      res.totalCredits = Math.floor(res.totalCredits * 0.05);
-      this.result.set(res);
-      this.finishStrike();
-    }
+    this.finishStrike(false);
   }
 
   finalize() {
