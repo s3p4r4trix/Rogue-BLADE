@@ -81,16 +81,23 @@ A Shuriken with an equipped Semi-AI is designated as a **MASTER**. A Shuriken wi
 ## 4. Combat Mechanics & Math Formulas
 
 ### 3.1 Acceleration & Movement Math
+**Logic:** Actual Speed in combat is not instantaneous. Apply weight penalty to acceleration: Heavy things are hard to get moving. Heavier shurikens take longer to reach top speed.
 
-Actual Speed in combat is not instantaneous.
-currentSpeed = min(topSpeed, currentSpeed + (acceleration * (1 - (baseWeight / 1000))))
-Logic: Heavier shurikens take longer to reach top speed.
+The `currentSpeed` of a Shuriken is updated every tick based on its `acceleration` and `baseWeight`.
+
+**Example:** A shuriken with `baseWeight` of 100 will have its `acceleration` multiplied by (1 - 0.1) = 0.
+9. A shuriken with `baseWeight` of 500 will have its `acceleration` multiplied by (1 - 0.5) = 0.5.
+
+**Formula:** `currentSpeed = min(topSpeed, currentSpeed + (acceleration * (1 - (baseWeight / 1000))))`
 
 ### 3.2 Kinetic Damage Scaling (Momentum)
-
 Blunt/Kinetic weapons deal more damage the heavier and faster the Shuriken is.
-momentumMultiplier = 1.0 + ((currentSpeed / 100) * (baseWeight / 100))
-finalKineticDamage = baseDamage * momentumMultiplier
+**Logic:** Calculate force: Rewards heavy objects that manage to build up speed.
+
+**Example:** A shuriken with `currentSpeed` of 100 and `baseWeight` of 50 will have its `momentumMultiplier` of 2.0. A shuriken with `currentSpeed` of 200 and `baseWeight` of 55 will have its `momentumMultiplier` of 3.2.
+
+**Formula:** `momentumMultiplier = 1.0 + ((currentSpeed * baseWeight) / 5000)`
+**Formula:** `finalKineticDamage = baseDamage * momentumMultiplier`
 
 ### 3.3 Energy Exhaustion (Emergency Reboot)
 To prevent the "Death Spiral" of doing zero damage and moving slowly until death: If currentEnergy drops to 0, the drone initiates an Emergency Reboot.

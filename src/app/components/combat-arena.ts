@@ -466,13 +466,13 @@ export class CombatArena implements OnDestroy {
 
     // Momentum Scaling
     if (attacker.damageType === 'KINETIC') {
-      const momentumMultiplier = 1.0 + ((attacker.speed / 100) * (attacker.baseWeight / 100));
+      const momentumMultiplier = 1.0 + ((attacker.speed * attacker.baseWeight) / 5000);
       grossDamage *= momentumMultiplier;
     }
 
     // Matrix Multiplier
-    // For now, enemies are considered HEAVY_ARMOR unless specified (drones are UNARMORED in early game)
-    const armorType = defender.isEnemy ? 'HEAVY_ARMOR' : 'UNARMORED';
+    const mission = this.mission();
+    const armorType = defender.isEnemy ? (mission?.armorType || 'HEAVY_ARMOR') : 'UNARMORED';
     const matrix = EFFECTIVENESS_MATRIX[attacker.damageType] || EFFECTIVENESS_MATRIX['SLASHING'];
     const multiplier = matrix[armorType] || 1.0;
     grossDamage *= multiplier;

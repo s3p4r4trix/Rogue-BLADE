@@ -75,8 +75,8 @@ export class MissionService {
     return shurikens.reduce((acc, s) => {
       const proc = s.processor?.routineCapacity || 1;
       const blade = s.blade?.baseDamage || 5;
-      const sens = s.sensor?.range || 5;
-      return acc + (proc * 50) + (blade * 10) + (sens * 1.0); // Reduced weight of sensor range
+      const hull = s.hull?.maxHp || 50;
+      return acc + (proc * 30) + (blade * 5) + (hull * 0.5); 
     }, 0) / shurikens.length;
   }
 
@@ -130,7 +130,7 @@ export class MissionService {
     sMax = Math.floor(baseLoot * 1.2);
     cBonus = Math.floor(baseLoot * 1.5);
 
-    const hull = Math.floor(baseLoot * 0.8); // Reduced hull multiplier from 1.5 to 0.8
+    const hull = Math.floor(baseLoot * 0.45); // Significantly reduced hull multiplier from 0.8 to 0.45
     // Force 0 shields/armor for early game (onboarding)
     const shields = (successfulRuns < 10) ? 0 : (resProfile.type === 'ENERGY_SHIELD' ? Math.floor(baseLoot * 1.2) : Math.floor(baseLoot * 0.2));
     const armorValue = (successfulRuns < 10) ? 0 : (resProfile.type === 'HEAVY_ARMOR' ? Math.floor(baseLoot * 0.15) : 0);
