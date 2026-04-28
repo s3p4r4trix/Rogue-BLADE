@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { CombatEntity, Vector2D, BehaviorContext } from '../models/combat.model';
+import { CombatEntity, Vector2D, BehaviorContext } from '../models/combat-model';
 import { VectorMath } from '../utils/vector-math.utils';
 
 @Injectable({ providedIn: 'root' })

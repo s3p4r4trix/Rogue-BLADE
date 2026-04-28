@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { CombatStore } from './combat.store';
+import { CombatStore } from './combat-store';
 import { SensorService } from './sensor.service';
 import { RoutineService } from './routine.service';
 import { BaseAIService } from './base-ai.service';
 import { SteeringService } from './steering.service';
-import { CombatEntity, Vector2D, CombatState, BehaviorContext } from '../models/combat.model';
+import { CombatEntity, Vector2D, CombatState, BehaviorContext } from '../models/combat-model';
 
 @Injectable({ providedIn: 'root' })
 export class CombatEngineService {
@@ -17,12 +17,20 @@ export class CombatEngineService {
   /**
    * The core game loop tick. 
    * Orchestrates the synchronous pipeline for all entities.
+   * @param deltaTime Time elapsed since last frame in seconds.
    */
-  public updateTick(): void {
+  public updateTick(deltaTime: number): void {
+    // Update store with latest deltaTime
+    this.store.setDeltaTime(deltaTime);
+
     const state: CombatState = {
       entities: this.store.entities(),
       obstacles: this.store.obstacles(),
-      deltaTime: this.store.deltaTime(),
+      deltaTime: deltaTime,
+      timeElapsed: this.store.timeElapsed(),
+      isFinished: this.store.isFinished(),
+      success: this.store.success(),
+      logs: this.store.logs(),
       isPaused: this.store.isPaused(),
       activePlayerId: this.store.activePlayerId(),
     };

@@ -22,7 +22,7 @@ export interface AABB {
 /**
  * Possible AI states for the state machine.
  */
-export type AIState = 'PATROLLING' | 'PURSUING' | 'STRIKING' | 'ORBITING' | 'SEARCHING';
+export type AIState = 'PATROLLING' | 'PURSUING' | 'STRIKING' | 'ORBITING' | 'SEARCHING' | 'REBOOTING' | 'WITHDRAWN' | 'IDLE';
 
 /**
  * Represents a drone or enemy in the combat arena.
@@ -34,6 +34,7 @@ export interface CombatEntity {
   
   // Physics / Transform
   position: Vector2D;
+  z: number; // Elevation / Height
   velocity: Vector2D;
   rotation: number; // in radians
   
@@ -70,6 +71,10 @@ export interface CombatState {
   entities: CombatEntity[];
   obstacles: AABB[];
   deltaTime: number;
+  timeElapsed: number;
+  isFinished: boolean;
+  success: boolean;
+  logs: string[];
   isPaused: boolean;
   activePlayerId: string | null;
 }
@@ -80,4 +85,16 @@ export interface CombatState {
 export interface BehaviorContext extends CombatState {
   nearbyEnemies?: CombatEntity[];
   currentTarget?: CombatEntity | null;
+}
+
+/**
+ * Result of a high-fidelity offline combat simulation.
+ */
+export interface StrikeResult {
+  success: boolean;
+  durationSeconds: number;
+  remainingHull: number;
+  remainingDrones: number;
+  totalDamageDealt: number;
+  log: string[];
 }

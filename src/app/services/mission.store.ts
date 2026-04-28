@@ -1,9 +1,9 @@
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withComputed, withMethods, patchState, withHooks } from '@ngrx/signals';
-import { MissionContract, MissionDifficulty } from '../models/mission.model';
+import { MissionContract, MissionDifficulty } from '../models/mission-model';
 import { WorkshopStore } from './workshop.store';
 import { PlayerStore } from './player.store';
-import { ArmorType } from '../models/hardware.model';
+import { ArmorType } from '../models/hardware-model';
 
 /** ─── Mission Data Constants ─────────────────────────────────────────────── */
 

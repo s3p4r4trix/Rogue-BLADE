@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { CombatEntity, AABB, Vector2D } from '../models/combat.model';
+import { CombatEntity, AABB, Vector2D } from '../models/combat-model';
 
 @Injectable({ providedIn: 'root' })
 export class SensorService {

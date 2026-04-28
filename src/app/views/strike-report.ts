@@ -5,16 +5,16 @@ import { MissionStore } from '../services/mission.store';
 import { WorkshopStore } from '../services/workshop.store';
 import { PlayerStore } from '../services/player.store';
 import { CombatSimulationService } from '../services/combat-simulation.service';
-import { StrikeResult } from '../models/combat.model';
+import { StrikeResult } from '../models/combat-model';
 import { ScrapFilterService } from '../services/scrap-filter.service';
-import { CombatArena } from '../components/combat-arena';
-import { CombatStore } from '../services/combat.store';
+import { CombatArenaComponent } from '../components/combat-arena';
+import { CombatStore } from '../services/combat-store';
 
 
 @Component({
   selector: 'app-strike-report',
   standalone: true,
-  imports: [CommonModule, CombatArena, RouterLink],
+  imports: [CommonModule, CombatArenaComponent, RouterLink],
   template: `
     <div class="h-screen bg-black text-green-500 font-mono p-8 flex flex-col overflow-hidden">
       <!-- War Room Header -->
@@ -174,28 +174,6 @@ import { CombatStore } from '../services/combat.store';
               </div>
            </div>
 
-           <!-- Resources Recovered -->
-           <div class="border border-white/5 p-5 bg-[#050110]">
-              <h3 class="text-[9px] uppercase font-black text-gray-500 mb-6 tracking-[0.4em] flex items-center gap-3">
-                <span class="w-2 h-[1px] bg-cyan-500"></span>
-                RECOVERY_MANIFEST
-              </h3>
-              <div class="grid grid-cols-1 gap-4">
-                 <div class="flex justify-between items-center bg-white/5 p-3 border-l-2 border-blue-500">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Polymer</span>
-                    <span class="text-xl font-mono font-black text-blue-400">{{ combatStore.currentPolymer() }}</span>
-                 </div>
-                 <div class="flex justify-between items-center bg-white/5 p-3 border-l-2 border-orange-500">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Scrap</span>
-                    <span class="text-xl font-mono font-black text-orange-400">{{ combatStore.currentScrap() }}</span>
-                 </div>
-                 <div class="flex justify-between items-center bg-white/5 p-3 border-l-2 border-yellow-500">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Credits</span>
-                    <span class="text-xl font-mono font-black text-yellow-500">{{ combatStore.currentCredits() }}</span>
-                 </div>
-              </div>
-           </div>
-
            <!-- Completion Status -->
            @if (combatStore.isFinished()) {
              <div class="animate-in zoom-in duration-300">
@@ -231,24 +209,18 @@ import { CombatStore } from '../services/combat.store';
 export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   /** Signal-based view child for the log terminal container. */
   private logContainer = viewChild<ElementRef>('logContainer');
-
-  /** Centralized mission state store. */
-  private missionStore = inject(MissionStore);
-  
-  /** Drone hardware and routine mapping. */
-  private workshopStore = inject(WorkshopStore);
-  
-  /** Centralized player state store. */
-  private playerStore = inject(PlayerStore);
   
   /** High-fidelity offline combat simulation. */
   private combat = inject(CombatSimulationService);
   
-  /** Resource filtering service. */
-  private scrapFilter = inject(ScrapFilterService);
-  
   /** Navigation service. */
   private router = inject(Router);
+  
+  /** Mission state manager. */
+  private missionStore = inject(MissionStore);
+  
+  /** Workshop state manager. */
+  private workshopStore = inject(WorkshopStore);
   
   /** Live combat state manager. */
   readonly combatStore = inject(CombatStore);
@@ -344,8 +316,7 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   /**
-   * Finalizes the combat state and performs resource distribution math.
-   * Logic: On failure, a 95% resource loss penalty is applied.
+   * Finalizes the combat state.
    * @param success The victory condition.
    */
   private finishStrike(success: boolean) {
@@ -357,20 +328,6 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
     this.strikeResult.update(currentResult => currentResult ? { ...currentResult, success } : currentResult);
 
     const result = this.strikeResult();
-    if (success) {
-      this.combatStore.updateLoot(
-        result?.totalPolymer || 0,
-        result?.totalScrap || 0,
-        result?.totalCredits || 0
-      );
-    } else {
-      // 95% penalty on failure (Extraction failure).
-      this.combatStore.updateLoot(
-        Math.floor((result?.totalPolymer || 0) * 0.05),
-        Math.floor((result?.totalScrap || 0) * 0.05),
-        Math.floor((result?.totalCredits || 0) * 0.05)
-      );
-    }
   }
 
   /**
@@ -412,20 +369,9 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   /**
-   * Logic: Finalizes the session, processes loot through filters, and resets mission state.
+   * Logic: Finalizes the session and resets mission state.
    */
-  finalize() {
-    const result = this.strikeResult();
-    if (result) {
-      const filteredLoot = this.scrapFilter.applyFilter({
-        polymer: result.totalPolymer,
-        scrap: result.totalScrap,
-        credits: result.totalCredits
-      });
-
-      this.playerStore.addResources(filteredLoot);
-    }
-    
+  finalize() {   
     this.missionStore.refreshContracts();
     this.missionStore.clearStrike();
     this.router.navigate(['/liberation']);

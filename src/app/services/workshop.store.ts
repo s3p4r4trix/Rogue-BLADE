@@ -2,7 +2,7 @@ import { computed, inject, effect } from '@angular/core';
 import { signalStore, withState, withComputed, withMethods, withHooks, patchState } from '@ngrx/signals';
 import { moveItemInArray } from '@angular/cdk/drag-drop';
 import { Action, GambitRoutine, Trigger } from '../models/gambit.model';
-import { Shuriken } from '../models/hardware.model';
+import { Shuriken } from '../models/hardware-model';
 import { HARDWARE_INVENTORY, loadShurikens, loadUnlockedComponents, loadSavedRoutinesMap } from '../data/hardware-inventory.data';
 
 /** ─── Workshop State Definition ─────────────────────────────────────────────── */

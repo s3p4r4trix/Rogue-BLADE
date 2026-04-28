@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { CombatEntity, BehaviorContext } from '../models/combat.model';
+import { CombatEntity, BehaviorContext } from '../models/combat-model';
 import { Action } from '../models/gambit.model';
 
 @Injectable({ providedIn: 'root' })

@@ -1,4 +1,4 @@
-import { Vector2D, AABB } from '../models/combat.model';
+import { Vector2D, AABB } from '../models/combat-model';
 
 /**
  * Basic 2D Vector Utility Library
