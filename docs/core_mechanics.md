@@ -288,7 +288,7 @@ Entities must be rendered in the correct visual order. Entities "further back" (
 All movement uses smooth acceleration toward a target velocity. The acceleration factor prevents instant direction changes, creating inertia.
 
 **Obstacle Avoidance (Dynamic Feeler Length & Slide):** Vision (finding targets) and Navigation (not hitting walls) are strictly separated. Both drones and enemies utilize a dynamic "feeler" system projected ahead of their current rotation to handle purely physical obstacle avoidance.
-*   **Dynamic Length:** feelerLength = baseLength + (currentSpeed \* speedLookAheadFactor).
+*   **Dynamic Length:** feelerLength = 40 + (currentSpeed \* 0.5). (BASE\_FEELER\_LENGTH = 40, SPEED\_LOOKAHEAD\_FACTOR = 0.5).
 *   **Wall-Sliding:** Instead of bouncing off walls, the AI uses vector projection to slide parallel to the obstacle surface (see 8.4 Collision Detection for math).
 
 **Pursuit (actionStandardStrike):** Moves in a straight, interpolated line directly toward a visible target entity. (Requires active sensor lock).
@@ -324,8 +324,8 @@ All movement uses smooth acceleration toward a target velocity. The acceleration
 ### 8.5 Sensors & Detection
 
 **Radius Checks (AoE):** Simple Euclidean distance check between entities on the 2D ground plane.
-*   **Radar Range:** sensorRange (default 120 units). Returns true if dist(drone, target) <= sensorRange.
-*   **Melee Range:** meleeRange (default 20 units). Returns true if dist(drone, target) <= meleeRange.
+*   **Radar Range:** sensorRange (default 400 units). Returns true if dist(drone, target) <= sensorRange.
+*   **Melee Range:** meleeRange (default 30 units). Returns true if dist(drone, target) <= meleeRange. (Calculation uses entity.radius + target.radius + 15).
 
 **Initial Detection (No Omniscience):** Drones start a mission with lastSeenPos = null and begin in the PATROLLING state. They have no information about enemy coordinates until they achieve a "Sensor Lock" (Range <= sensorRange AND LOS is clear).
 
@@ -338,7 +338,7 @@ All movement uses smooth acceleration toward a target velocity. The acceleration
 ### 8.6 Strike Velocity Gating & Bounce
 
 Drones must reach a minimum velocity before a strike attempt is valid. This prevents low-energy "humping" where a drone sticks to a target.
-*   **Minimum Strike Speed:** MIN_STRIKE_SPEED = 0.6 (60% of topSpeed)
+*   **Minimum Strike Speed:** MIN_STRIKE_SPEED = 0.4 (40% of topSpeed)
 *   **Gate Check:** canStrike = currentSpeed >= (topSpeed \* MIN_STRIKE_SPEED)
 *   **Post-Strike Bounce:** Immediately after registering a hit, the drone's velocity is inverted and reduced (velocity = -velocity \* 0.5) and its state shifts to ORBITING for 1 second. This forces a natural fly-by and repositioning loop.
 *   **Strike Cooldown:** After a successful hit, strikeCooldown = 1.0 seconds before the next strike.
@@ -353,7 +353,7 @@ When LOS to the enemy is lost, drones transition to SEARCHING to handle the "Cor
 1.  **Last-Seen Memory:** While LOS is clear, drones update lastSeenPos = { enemy.x, enemy.y }.
 2.  **Navigate to Last-Seen:** Drone moves to lastSeenPos at full speed.
 3.  **360-Degree Scan (Dog Sniffing):** Upon arrival (within 30 units), if the target is still not visible, the drone performs a slow 360-degree rotation in place for 2 seconds to sweep its sensors around the corner.
-4.  **Memory Expiry:** After SEARCH\_LINGER\_TIME = 3 seconds, lastSeenPos is cleared and the drone falls back to PATROLLING.    
+4.  **Memory Expiry:** After SEARCH\_TOTAL\_TIME = 3 seconds, lastSeenPos is cleared and the drone falls back to PATROLLING. (Search scan takes 2 seconds).
 
 ### 8.9 Emergency Withdrawal (FLEEING to WITHDRAWN)
 
@@ -389,3 +389,15 @@ Combatants (Drones and Hostiles) possess immediate sensor feedback upon sustaini
 1.  **Damage Lock-on:** When an entity is struck by a kinetic strike or a projectile, it immediately registers the attacker's current spatial coordinates.
 2.  **Memory Update:** The entity's lastSeenPos is updated to the attacker's position, and the searchTimer is reset to 0.
 3.  **Behavior Shift:** Transition immediately from PATROLLING or SEARCHING to PURSUING.
+
+### 8.13 Corner Navigation (Pursuit Optimization)
+
+To prevent drones from getting stuck against convex obstacles when the target is on the other side, the AI calculates a navigation waypoint around the blocking obstacle.
+
+1.  **Blocker Detection:** If `checkLineOfSight` returns false during Pursuit, the AI identifies the `getBlockingObstacle` (AABB).
+2.  **Corner Evaluation:** The AI retrieves all 4 corners of the AABB and applies a safety margin:
+    *   `safetyMargin = entity.radius + 15`
+    *   `safePoint = corner + (normalize(corner - aabbCenter) * safetyMargin)`
+3.  **Path Selection:** The AI checks which `safePoints` have a clear LOS from the current position.
+4.  **Best Path:** The AI selects the `safePoint` that minimizes the total distance: `dist(entity, safePoint) + dist(safePoint, target)`.
+5.  **Execution:** The drone sets its desired velocity toward the selected `safePoint` until LOS to the actual target is restored.

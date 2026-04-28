@@ -52,7 +52,7 @@ Every trigger must evaluate to a boolean (true / false). Many triggers arelocked
     *   logic: Returns true if an enemy is within collision/strike radius.
 *   **ifEnemyInSight** (Designation: Enemy: Detected )    
     *   reqSensor: Radar / Lidar
-    *   logic: Returns true if an enemy is within the global tracking radius.
+    *   logic: Returns true if an enemy is within the 400 unit tracking radius.
 *   **ifEnemyIsShielded** (Designation: Enemy: Shield Active )    
     *   reqSensor: EM-Scanner (DEFERRED)
     *   logic: Currently returns false (Shields disabled in prototype).
@@ -130,7 +130,7 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
 
 ## 6.5 Sensors (Unlocking Triggers)
 
-*   **Radar**: Long-range monitoring; susceptible to chaff (up to 120 meters).
+*   **Radar**: Long-range monitoring; susceptible to chaff (up to 400 units).
 *   **Terahertz**: Penetrates physical obstacles (up to 20 meters).
 
 ## 6.6 Blades & Edges
@@ -184,7 +184,7 @@ The Liberation Strike's Phase 2 is accompanied by a Tactical Map – a 2D combat
 ## 12.4 AI Movement Behaviors
 These are the core spatial behaviors mapped to existing GDD actions:
 
-*   **Pursuit (Standard Strike)**: Drone moves in a straight line toward its visible target.
+*   **Pursuit (Standard Strike)**: Drone moves toward its visible target. If LOS is blocked, it calculates the best corner of the obstacle to navigate around.
 *   **Fighting & Post-Strike Bounce**: High-intensity engagement. Once a strike connects,the drone physically bounces (velocity = -velocity \* 0.5) and forces anOrbiting reposition to build up momentum for the next pass, preventing sticky "humping".
 *   **Steering & Obstacle Avoidance (Wall-Sliding)**: Navigation and Vision are strictly separated.Units project a dynamic set of feelers whose length scales with speed. When a feelerhits an AABB, vector projection allows the drone to slide elegantly parallel to theobstacle rather than bouncing off it.
 *   **Orbit (Repositioning)**: Drone maintains a fixed radius around the target.
@@ -193,11 +193,11 @@ These are the core spatial behaviors mapped to existing GDD actions:
 *   **Patrol (Idle Movement)**: When no target is known, unit moves between random waypoints.
 
 ## 12.4.1 Minimum Strike Velocity
-Drones must reach a minimum speed threshold (MIN\_STRIKE\_SPEED = 60% of topSpeed)before they can execute a strike.
+Drones must reach a minimum speed threshold (MIN_STRIKE_SPEED = 40% of topSpeed)before they can execute a strike.
 
 ## 12.5 Sensors & Spatial Detection
-*   **Radius Checks**: Euclidean distance checks for Radar and Melee range.
-*   **Line of Sight (LOS)**: A parametric raycast from the drone to its target.
+*   **Radius Checks**: Euclidean distance checks for Radar (400 units) and Melee range (30 units).
+*   **Line of Sight (LOS)**: A parametric raycast from the drone to its target. If blocked during pursuit, drone navigates via obstacle corners.
 *   **Lock-on Requirement**: Drones must achieve a sensor lock to begin offensive behaviors.
 
 ## 12.6 Visual Feedback & Debugging
@@ -212,6 +212,6 @@ To avoid spaghetti code, the real-time AI and physics rely on a strongly decoupl
 *   **The Pipeline**: A CombatEngineService loops every requestAnimationFrame and orchestrates the tick for each entity by passing data through stateless specialized services:
     1.  **SensorService**: Generates vision and proximity data.
     2.  **RoutineService**: Evaluates player Gambit Slots for tactical overrides.  
-    3.  **BaseAIService**: Provides the default state machine target vector if no Gambits trigger.  
+    3.  **BaseAIService**: Provides the default state machine target vector and handles corner navigation if no Gambits trigger.  
     4.  **SteeringService**: Applies dynamic feelers, wall-sliding, and physical momentum.  
 *   **Reactive UI**: The Angular UI components bind directly to the signals in the CombatStore,eliminating event listeners and ensuring telemetry is always 100% accurate.
