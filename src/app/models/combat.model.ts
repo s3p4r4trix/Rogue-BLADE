@@ -1,71 +1,79 @@
-import { MissionContract } from './mission.model';
-import { Shuriken, DamageType, ArmorType } from './hardware.model';
 import { GambitRoutine } from './gambit.model';
 
-export interface StrikeResult {
-  success: boolean;
-  totalPolymer: number;
-  totalScrap: number;
-  totalCredits: number;
-  logs: string[];
-  initialSquadHP: number;
-  initialEnemyHP: number;
-  initialEnemyHull: number;
-  initialEnemyShields: number;
+/**
+ * Basic 2D Vector for position and velocity.
+ */
+export interface Vector2D {
+  x: number;
+  y: number;
 }
 
-export interface ShurikenSimulationState {
+/**
+ * Axis-Aligned Bounding Box for obstacles and collision detection.
+ */
+export interface AABB {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Possible AI states for the state machine.
+ */
+export type AIState = 'PATROLLING' | 'PURSUING' | 'SEARCHING' | 'ATTACKING' | 'FLEEING';
+
+/**
+ * Represents a drone or enemy in the combat arena.
+ */
+export interface CombatEntity {
   id: string;
   name: string;
-  hp: number;
-  maxHp: number;
-  armorValue: number;
-  shields: number;
-  maxShields: number;
-  evasionRate: number;
-  baseWeight: number;
-  topSpeed: number;
-  acceleration: number;
-  currentSpeed: number;
-  energy: number;
-  maxEnergy: number;
-  energyRegen: number;
-  passiveDrain: number;
-  baseDamage: number;
-  damageType: DamageType;
-  critChance: number;
-  critMultiplier: number;
-  reactionTime: number;
-  processorSpeed: number;
-  coordinationMode: 'SOLO' | 'MASTER' | 'SLAVE';
-  masterId?: string;
-  isExhausted: boolean;
-  routines: GambitRoutine[];
-  isStealthed: boolean;
-  evasionBuff: number;
-  // New States
-  chaosModeTicks: number;     // Remaining ticks for Chaos Mode
-  rebootTicks: number;        // Remaining ticks for Emergency Reboot
-  rechargeBoostTicks: number; // Remaining ticks for 150% energy efficiency
+  type: 'PLAYER' | 'ENEMY';
+  
+  // Physics / Transform
+  position: Vector2D;
+  velocity: Vector2D;
+  rotation: number; // in radians
+  
+  // Stats
+  stats: {
+    hp: number;
+    maxHp: number;
+    energy: number;
+    maxEnergy: number;
+    speed: number; // Current movement speed
+    maxSpeed: number; // Top speed from engine
+    acceleration: number;
+  };
+  
+  // AI / Logic
+  state: AIState;
+  gambits: GambitRoutine[];
+  targetId?: string; // ID of the entity currently being targeted
+  lastKnownTargetPosition?: Vector2D; // For SEARCHING behavior
+  
+  // Visual / Debug
+  radius: number; // Collision radius
+  color: string;
 }
 
-export interface ShurikenStatus {
-  id: string;
-  name: string;
-  hp: number;
-  maxHp: number;
-  shields: number;
-  maxShields: number;
-  energy: number;
-  maxEnergy: number;
-  rebootTicks: number;
+/**
+ * State definition for the CombatStore and simulation context.
+ */
+export interface CombatState {
+  entities: CombatEntity[];
+  obstacles: AABB[];
+  deltaTime: number;
+  isPaused: boolean;
+  activePlayerId: string | null;
 }
 
-export interface SimulationContext {
-  enemyRef?: { hull: number; shields: number };
-  enemyHull?: number;
-  enemyShields?: number;
-  mission: MissionContract;
-  tick: number;
-  logs: string[];
+/**
+ * Contextual data provided to AI and Gambit evaluation during a tick.
+ */
+export interface BehaviorContext extends CombatState {
+  nearbyEnemies?: CombatEntity[];
+  currentTarget?: CombatEntity | null;
 }

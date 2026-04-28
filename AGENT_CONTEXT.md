@@ -28,7 +28,7 @@ The core gameplay loop is divided into two strict phases:
 A Shuriken is a composite object made of modular hardware. Each part affects the combat simulation:
 
 1. **Anti-Grav Engines:** Determines `speed`, `stealth` (acoustic), `energyConsumption`, and `evasionRate`.
-2. **Hull Materials (Tiers 1 to 3):** Determines `hp`, `armor`, `weight` (affects kinetic damage), and resistances. *Examples: Sinter-Scrap (Weak), Durasteel (Standard), Neutronium (God-tier).*
+2. **Hull Materials (Tiers 1 to 3):** Determines `hp`, `armor`, `weight` (affects kinetic damage), and resistances. *Examples: Plasteel (Weak), Durasteel (Standard), Neutronium (God-tier).*
 3. **Energy Cells:** Determines `maxEnergy`, `regenRate`, and `maxOutput`.
 4. **Sensors:** Unlocks specific software triggers (e.g., Biosensor, Radar, EM-Sensor, Terahertz for seeing through walls).
 5. **Blades/Edges:** Determines damage type (e.g., Blunt for kinetic, Vibro-Blade for armor-piercing, Plasma for shield-breaking).
@@ -48,8 +48,8 @@ We are currently building **Phase 2 (The Liberation Strike / Passive Combat)**. 
 ### Immediate Tasks for the Agent:
 
 1. **2D Arena (Tactical Map):** Canvas-based 2D combat arena with 3/4 perspective, Y+Z depth sorting, obstacle cover, AI visualization, and **Live Feed synchronization** (arena emits log events to the feed via `arenaLog` output).
-2. **AI Movement Behaviors:** Seek, Orbit, Flee, and **Search** (new: navigates to last-seen enemy position with expanding spiral when LOS is lost). Smooth acceleration with obstacle collision.
-3. **Strike Velocity Gating:** Drones must reach **40% of topSpeed** (`MIN_STRIKE_SPEED`) before strikes connect. Post-strike bounce creates fly-by attack patterns. 1.0s cooldown between strikes.
+2. **AI Movement Behaviors:** Seek, Orbit, Flee, and **Search** (new: navigates to last-seen enemy position and performs a 360-degree sensor sweep when LOS is lost). Smooth acceleration with obstacle collision.
+3. **Strike Velocity Gating:** Drones must reach **60% of topSpeed** (`MIN_STRIKE_SPEED`) before strikes connect. Post-strike bounce creates fly-by attack patterns. 1.0s cooldown between strikes.
 4. **Sensors & Raycasting:** Radius detection (Radar/Melee), parametric LOS raycasting, and **last-seen memory** that drives SEARCHING behavior when LOS is blocked.
 5. **Visual Feedback:** Hit flash VFX (white ring + flash on enemy), ⚡ strike-ready indicator, LAST CONTACT crosshair marker for search state, and full debug overlays.
 6. **Combat Simulation:** Refine the high-frequency (0.1s) battle engine to ensure fair hostile attack speeds and accurate shuriken latency processing.
