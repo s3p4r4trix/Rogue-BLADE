@@ -275,7 +275,22 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // 3. State Label: Small text string above the sprite
+    // 3. HP Bar: Small bar above the sprite
+    const hpPercent = Math.max(0, entity.stats.hp / entity.stats.maxHp);
+    const barWidth = 30;
+    const barHeight = 4;
+    const barX = x - barWidth / 2;
+    const barY = bodyY - 28;
+
+    // Background
+    ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    // Foreground
+    ctx.fillStyle = hpPercent > 0.5 ? '#22c55e' : (hpPercent > 0.2 ? '#eab308' : '#ef4444'); // Green, Yellow, Red
+    ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+
+    // 4. State Label: Small text string above the sprite
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.font = 'bold 9px "Courier New", monospace';
     ctx.textAlign = 'center';
@@ -385,12 +400,19 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
           speed: 0,
           maxSpeed: shuriken.engine?.topSpeed || 150,
           acceleration: shuriken.engine?.acceleration || 50,
+          weight: [
+            shuriken.engine, shuriken.hull, shuriken.energyCell, 
+            shuriken.sensor, shuriken.blade, shuriken.formDesign, 
+            shuriken.processor, shuriken.shield, shuriken.reactor, shuriken.semiAI
+          ].reduce((acc, comp) => acc + (comp?.weight || 0), 0) || 100,
+          baseDamage: shuriken.blade?.baseDamage || 15,
         },
         state: 'PATROLLING',
         gambits: [], // Logic handled by RoutineService elsewhere
         radius: 12,
         color: '#06b6d4',
-        stateTimer: 0
+        stateTimer: 0,
+        retaliationTimer: 0
       });
     });
 
@@ -403,20 +425,23 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
       z: 0,
       velocity: { x: 0, y: 0 },
       rotation: Math.PI / 2,
-      stats: {
-        hp: mission.hull,
-        maxHp: mission.hull,
-        energy: 1000,
-        maxEnergy: 1000,
-        speed: 0,
-        maxSpeed: 80,
-        acceleration: 30,
-      },
+        stats: {
+          hp: mission.hull,
+          maxHp: mission.hull,
+          energy: 1000,
+          maxEnergy: 1000,
+          speed: 0,
+          maxSpeed: 80,
+          acceleration: 30,
+          weight: 500,
+          baseDamage: 25,
+        },
       state: 'PATROLLING',
       gambits: [],
       radius: 20,
       color: '#ef4444',
-      stateTimer: 0
+      stateTimer: 0,
+      retaliationTimer: 0
     });
 
     this.store.setEntities(combatEntities);

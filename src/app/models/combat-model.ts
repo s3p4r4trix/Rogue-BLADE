@@ -39,7 +39,6 @@ export interface CombatEntity {
   velocity: Vector2D;
   rotation: number; // in radians
   
-  // Stats
   stats: {
     hp: number;
     maxHp: number;
@@ -48,6 +47,8 @@ export interface CombatEntity {
     speed: number; // Current movement speed
     maxSpeed: number; // Top speed from engine
     acceleration: number;
+    weight: number;
+    baseDamage: number;
   };
   
   // AI / Logic
@@ -58,6 +59,7 @@ export interface CombatEntity {
   
   // State machine helpers
   stateTimer: number; // Generic timer for state-specific logic (e.g. searching, orbiting)
+  retaliationTimer: number; // Dedicated timer for enemy retaliation cooldown
   waypoint?: Vector2D; // Current movement target for patrolling
   
   // Visual / Debug
