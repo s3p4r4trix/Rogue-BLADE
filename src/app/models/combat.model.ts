@@ -22,7 +22,7 @@ export interface AABB {
 /**
  * Possible AI states for the state machine.
  */
-export type AIState = 'PATROLLING' | 'PURSUING' | 'SEARCHING' | 'ATTACKING' | 'FLEEING';
+export type AIState = 'PATROLLING' | 'PURSUING' | 'STRIKING' | 'ORBITING' | 'SEARCHING';
 
 /**
  * Represents a drone or enemy in the combat arena.
@@ -52,7 +52,11 @@ export interface CombatEntity {
   state: AIState;
   gambits: GambitRoutine[];
   targetId?: string; // ID of the entity currently being targeted
-  lastKnownTargetPosition?: Vector2D; // For SEARCHING behavior
+  lastSeenPos?: Vector2D; // For SEARCHING behavior
+  
+  // State machine helpers
+  stateTimer: number; // Generic timer for state-specific logic (e.g. searching, orbiting)
+  waypoint?: Vector2D; // Current movement target for patrolling
   
   // Visual / Debug
   radius: number; // Collision radius
