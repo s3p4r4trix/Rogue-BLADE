@@ -1,4 +1,4 @@
-import { GambitRoutine } from './gambit.model';
+import { GambitRoutine } from './gambit-model';
 
 /**
  * Basic 2D Vector for position and velocity.

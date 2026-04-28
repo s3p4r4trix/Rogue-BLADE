@@ -1,5 +1,5 @@
 import { Injectable, signal, inject, effect } from '@angular/core';
-import { ResearchProject } from '../models/research.model';
+import { ResearchProject } from '../models/research-model';
 import { PlayerStore } from './player.store';
 import { WorkshopStore } from './workshop.store';
 

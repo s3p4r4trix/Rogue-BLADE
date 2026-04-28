@@ -1,9 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { CombatEntity, Vector2D, BehaviorContext } from '../models/combat-model';
 import { VectorMath } from '../utils/vector-math.utils';
+import { SensorService } from './sensor.service';
 
 @Injectable({ providedIn: 'root' })
 export class BaseAIService {
+  private sensorService = inject(SensorService);
   private readonly MELEE_RANGE = 30; // Slightly larger for better strike detection
   private readonly MIN_STRIKE_SPEED_RATIO = 0.4;
   private readonly ARENA_BOUNDS = 800;
@@ -34,7 +36,7 @@ export class BaseAIService {
           entity.state = 'SEARCHING';
           break;
         }
-        desiredVelocity = this.handlePursuing(entity, target);
+        desiredVelocity = this.handlePursuing(entity, target, context);
         break;
 
       case 'STRIKING':
@@ -78,13 +80,51 @@ export class BaseAIService {
     return VectorMath.mul(dir, entity.stats.maxSpeed);
   }
 
-  private handlePursuing(entity: CombatEntity, target: CombatEntity): Vector2D {
+  private handlePursuing(entity: CombatEntity, target: CombatEntity, context: BehaviorContext): Vector2D {
     const dist = VectorMath.dist(entity.position, target.position);
     const currentSpeed = VectorMath.length(entity.velocity);
     const minStrikeSpeed = entity.stats.maxSpeed * this.MIN_STRIKE_SPEED_RATIO;
 
+    // Check Line of Sight
+    const hasLOS = this.sensorService.checkLineOfSight(entity, target.position, context.obstacles);
+    
+    if (!hasLOS) {
+      const blocker = this.sensorService.getBlockingObstacle(entity.position, target.position, context.obstacles);
+      if (blocker) {
+        const corners = VectorMath.getAABBCorners(blocker);
+        const safetyMargin = entity.radius + 15;
+        
+        // Find the best corner to navigate around
+        let bestCorner: Vector2D | null = null;
+        let minTotalDist = Infinity;
+
+        for (const corner of corners) {
+          // Offset corner away from center of AABB for safety
+          const centerX = blocker.x + blocker.width / 2;
+          const centerY = blocker.y + blocker.height / 2;
+          const offsetDir = VectorMath.normalize({ x: corner.x - centerX, y: corner.y - centerY });
+          const safePoint = VectorMath.add(corner, VectorMath.mul(offsetDir, safetyMargin));
+
+          // Check if corner is reachable (LOS from current pos to safePoint)
+          if (this.sensorService.checkLineOfSight(entity, safePoint, context.obstacles)) {
+            const d1 = VectorMath.dist(entity.position, safePoint);
+            const d2 = VectorMath.dist(safePoint, target.position);
+            if (d1 + d2 < minTotalDist) {
+              minTotalDist = d1 + d2;
+              bestCorner = safePoint;
+            }
+          }
+        }
+
+        if (bestCorner) {
+          const dir = VectorMath.normalize(VectorMath.sub(bestCorner, entity.position));
+          return VectorMath.mul(dir, entity.stats.maxSpeed);
+        }
+      }
+    }
+
     // Transition to STRIKING if in range and moving fast enough
-    if (dist <= this.MELEE_RANGE && currentSpeed >= minStrikeSpeed) {
+    if (dist <= this.MELEE_RANGE && currentSpeed >= minStrikeSpeed && hasLOS) {
       entity.state = 'STRIKING';
       entity.stateTimer = 0;
     }

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { MissionStore } from '../services/mission.store';
 import { WorkshopStore } from '../services/workshop.store';
-import { MissionContract } from '../models/mission.model';
+import { MissionContract } from '../models/mission-model';
 
 @Component({
   selector: 'app-liberation-strike',

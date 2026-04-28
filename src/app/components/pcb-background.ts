@@ -9,7 +9,7 @@ import {
   PLATFORM_ID,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Point, Trace, Node, Chip, Electron } from '../models/pcb.model';
+import { Point, Trace, Node, Chip, Electron } from '../models/pcb-model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Geometry Helpers

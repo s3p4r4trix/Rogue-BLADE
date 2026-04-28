@@ -28,25 +28,48 @@ export class SteeringService {
 
     let avoidanceForce = { x: 0, y: 0 };
     let closestHit: { normal: Vector2D; distance: number; feelerLength: number } | null = null;
+    let centerBlocked = false;
+    let leftClear = true;
+    let rightClear = true;
 
     for (let i = 0; i < angles.length; i++) {
       const angle = entity.rotation + angles[i];
       const dir = { x: Math.cos(angle), y: Math.sin(angle) };
       const l = feelerLength * lengths[i];
 
+      let feelerHit = false;
       for (const obstacle of obstacles) {
         const hit = VectorMath.intersectRayAABB(entity.position, dir, l, obstacle);
         if (hit) {
-          // If multiple feelers hit, we prioritize the closest one for sliding
+          feelerHit = true;
+          if (i === 0) centerBlocked = true;
+          if (i === 1 || i === 3) leftClear = false;
+          if (i === 2 || i === 4) rightClear = false;
+
           if (!closestHit || hit.distance < closestHit.distance) {
             closestHit = { normal: hit.normal, distance: hit.distance, feelerLength: l };
           }
 
-          // Accumulate avoidance force
           const penetrationRatio = 1.0 - (hit.distance / l);
           const force = VectorMath.mul(hit.normal, penetrationRatio * this.MAX_AVOIDANCE_FORCE);
           avoidanceForce = VectorMath.add(avoidanceForce, force);
         }
+      }
+    }
+
+    // Add Side Bias if blocked head-on
+    if (centerBlocked) {
+      const biasStrength = this.MAX_AVOIDANCE_FORCE * 0.5;
+      if (leftClear && !rightClear) {
+        const leftDir = VectorMath.rotate({ x: 1, y: 0 }, entity.rotation - Math.PI / 2);
+        avoidanceForce = VectorMath.add(avoidanceForce, VectorMath.mul(leftDir, biasStrength));
+      } else if (rightClear && !leftClear) {
+        const rightDir = VectorMath.rotate({ x: 1, y: 0 }, entity.rotation + Math.PI / 2);
+        avoidanceForce = VectorMath.add(avoidanceForce, VectorMath.mul(rightDir, biasStrength));
+      } else if (leftClear && rightClear) {
+        // Both clear? Pick one to break symmetry
+        const nudgeDir = VectorMath.rotate({ x: 1, y: 0 }, entity.rotation + Math.PI / 2);
+        avoidanceForce = VectorMath.add(avoidanceForce, VectorMath.mul(nudgeDir, biasStrength * 0.5));
       }
     }
 

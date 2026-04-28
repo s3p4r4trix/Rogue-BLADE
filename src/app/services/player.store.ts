@@ -1,7 +1,7 @@
 import { inject, PLATFORM_ID, computed, effect } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { signalStore, withState, withMethods, withHooks, patchState, withComputed } from '@ngrx/signals';
-import { PlayerResources, PlayerProfile, PlayerStats } from '../models/player.model';
+import { PlayerResources, PlayerProfile, PlayerStats } from '../models/player-model';
 
 /** ─── Persistence Utilities ─────────────────────────────────────────────── */
 

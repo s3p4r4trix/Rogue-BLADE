@@ -64,6 +64,20 @@ export class CombatEngineService {
       currentTarget
     };
 
+    // Log engagement events (Basic proximity check for telemetry feedback)
+    if (currentTarget) {
+      const dx = entity.position.x - currentTarget.position.x;
+      const dy = entity.position.y - currentTarget.position.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      
+      if (dist < entity.radius + currentTarget.radius + 20) {
+        // Simple throttle using deltaTime/timeElapsed or a probability check
+        if (Math.random() < 0.01) { 
+           this.store.addLog(`TACTICAL: ${entity.name} engaging ${currentTarget.name}`);
+        }
+      }
+    }
+
     // 2. Decision (Override): RoutineService checks Gambit IF/THEN slots
     const overrideAction = this.routineService.evaluateGambits(entity, context);
 

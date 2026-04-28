@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, input, model, signal, computed, HostListener, ElementRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CyberOption } from '../models/hardware.model';
+import { CyberOption } from '../models/hardware-model';
 
 @Component({
   selector: 'app-cyber-select',

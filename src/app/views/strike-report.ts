@@ -190,6 +190,23 @@ import { CombatStore } from '../services/combat-store';
                      [ FINALIZE_DATA_STREAM ]
                    </button>
                 </div>
+               
+               <!-- Mini Log Feed (Always Visible) -->
+               <div class="mt-8 border-t border-white/5 pt-4">
+                  <h3 class="text-[8px] uppercase font-bold text-gray-600 mb-3 tracking-widest flex items-center gap-2">
+                    <span class="w-1 h-1 bg-green-500"></span> 
+                    TACTICAL_COMMS_PREVIEW
+                  </h3>
+                  <div class="space-y-1 max-h-32 overflow-hidden opacity-80">
+                    @for (log of combatStore.logs().slice(-3); track $index) {
+                      <div class="text-[9px] font-mono text-green-700 truncate">
+                         {{ log }}
+                      </div>
+                    } @empty {
+                      <div class="text-[9px] font-mono text-gray-800">WAITING_FOR_UPLINK...</div>
+                    }
+                  </div>
+               </div>
             </div>
            } @else {
              <div class="p-5 bg-red-950/5 border border-red-900/20">

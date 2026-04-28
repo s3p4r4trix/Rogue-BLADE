@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ResearchService } from '../services/research.service';
 import { PlayerStore } from '../services/player.store';
-import { ResearchProject } from '../models/research.model';
+import { ResearchProject } from '../models/research-model';
 
 @Component({
   selector: 'app-genesis-chamber',

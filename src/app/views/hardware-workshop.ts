@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { WorkshopStore } from '../services/workshop.store';
 import { HARDWARE_INVENTORY } from '../data/hardware-inventory.data';
 import { CommonModule } from '@angular/common';
-import { Shuriken, CyberOption } from '../models/hardware.model';
+import { Shuriken, CyberOption } from '../models/hardware-model';
 
 @Component({
   selector: 'app-hardware-workshop',

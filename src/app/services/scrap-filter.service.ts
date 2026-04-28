@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { PlayerStore } from './player.store';
-import { PlayerResources } from '../models/player.model';
+import { PlayerResources } from '../models/player-model';
 
 @Injectable({ providedIn: 'root' })
 export class ScrapFilterService {

@@ -1,5 +1,5 @@
-import { Action, GambitRoutine, Trigger } from '../models/gambit.model';
-import { Shuriken, AntiGravEngine, EnergyCell, Reactor, Sensor, Blade, FormDesign, HullMaterial, Processor, SemiAI, ShieldGenerator } from '../models/hardware.model';
+import { Action, GambitRoutine, Trigger } from '../models/gambit-model';
+import { Shuriken, AntiGravEngine, EnergyCell, Reactor, Sensor, Blade, FormDesign, HullMaterial, Processor, SemiAI, ShieldGenerator } from '../models/hardware-model';
 
 /** ─── Hardware Inventory Constants ─────────────────────────────────────────────── */
 

@@ -1,7 +1,7 @@
 import { Component, inject, ChangeDetectionStrategy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WorkshopStore } from '../services/workshop.store';
-import { Trigger, Action } from '../models/gambit.model';
+import { Trigger, Action } from '../models/gambit-model';
 
 @Component({
   selector: 'app-inventory',

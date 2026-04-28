@@ -83,5 +83,25 @@ export const VectorMath = {
     else if (Math.abs(hitPoint.y - (aabb.y + aabb.height)) < epsilon) normal = { x: 0, y: 1 };
 
     return { hitPoint, normal, distance: tmin };
+  },
+
+  /**
+   * Checks if a point is inside an AABB.
+   */
+  isPointInAABB: (p: Vector2D, aabb: AABB): boolean => {
+    return p.x >= aabb.x && p.x <= aabb.x + aabb.width &&
+           p.y >= aabb.y && p.y <= aabb.y + aabb.height;
+  },
+
+  /**
+   * Returns the 4 corners of an AABB.
+   */
+  getAABBCorners: (aabb: AABB): Vector2D[] => {
+    return [
+      { x: aabb.x, y: aabb.y },
+      { x: aabb.x + aabb.width, y: aabb.y },
+      { x: aabb.x, y: aabb.y + aabb.height },
+      { x: aabb.x + aabb.width, y: aabb.y + aabb.height }
+    ];
   }
 };

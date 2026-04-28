@@ -1,4 +1,4 @@
-import { ArmorType } from './hardware.model';
+import { ArmorType } from './hardware-model';
 
 export type MissionDifficulty = 'Tier I (Low)' | 'Tier II (Moderate)' | 'Tier III (High)' | 'Tier IV (Extreme)';
 
