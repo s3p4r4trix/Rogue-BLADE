@@ -4,7 +4,7 @@ import { SensorService } from './sensor.service';
 import { RoutineService } from './routine.service';
 import { BaseAIService } from './base-ai.service';
 import { SteeringService } from './steering.service';
-import { CombatEntity, Vector2D, CombatState, BehaviorContext } from '../models/combat-model';
+import { CombatEntity, Vector2D, BehaviorContext } from '../models/combat-model';
 
 @Injectable({ providedIn: 'root' })
 export class CombatEngineService {
@@ -14,102 +14,84 @@ export class CombatEngineService {
   private readonly baseAIService = inject(BaseAIService);
   private readonly steeringService = inject(SteeringService);
 
+  private readonly ARENA_SIZE = 800;
+
   /**
    * The core game loop tick. 
    * Orchestrates the synchronous pipeline for all entities.
    * @param deltaTime Time elapsed since last frame in seconds.
    */
   public updateTick(deltaTime: number): void {
-    // Update store with latest deltaTime
+    if (this.store.isPaused()) return;
+
+    // Update store with latest deltaTime and timeElapsed (internal to setDeltaTime)
     this.store.setDeltaTime(deltaTime);
 
-    const state: CombatState = {
-      entities: this.store.entities(),
-      obstacles: this.store.obstacles(),
-      deltaTime: deltaTime,
-      timeElapsed: this.store.timeElapsed(),
-      isFinished: this.store.isFinished(),
-      success: this.store.success(),
-      logs: this.store.logs(),
-      isPaused: this.store.isPaused(),
-      activePlayerId: this.store.activePlayerId(),
-    };
+    const entities = this.store.entities();
+    const obstacles = this.store.obstacles();
 
-    if (state.isPaused) return;
+    // Process every entity through the pipeline to create a new state array
+    const updatedEntities = entities.map(entity => {
+      
+      // Step A: Perception (SensorService)
+      // Determine context: nearest enemy, line of sight, etc.
+      const nearbyEnemies = this.sensorService.getEnemiesInRadar(entity, entities);
+      const currentTarget = nearbyEnemies.length > 0 ? nearbyEnemies[0] : null;
 
-    // Process every entity in the store
-    const updatedEntities = state.entities.map(entity => {
-      return this.processEntity(entity, state);
+      const context: BehaviorContext = {
+        entities,
+        obstacles,
+        deltaTime,
+        timeElapsed: this.store.timeElapsed(),
+        isFinished: this.store.isFinished(),
+        success: this.store.success(),
+        logs: this.store.logs(),
+        isPaused: this.store.isPaused(),
+        activePlayerId: this.store.activePlayerId(),
+        nearbyEnemies,
+        currentTarget
+      };
+
+      // Step B: Tactical Override (RoutineService)
+      // Evaluates player IF/THEN slots. Returns desiredVelocity or null.
+      // We handle the Action | null to Vector2D conversion if needed, 
+      // but following the pipeline description where B returns desiredVelocity or null.
+      const overrideResult = this.routineService.evaluateGambits(entity, context);
+      const overrideVelocity = overrideResult as unknown as Vector2D | null;
+
+      // Step C: Default AI (BaseAIService)
+      // If no override, use default state machine behavior.
+      const desiredVelocity = overrideVelocity ?? this.baseAIService.calculateDefaultBehavior(entity, context);
+
+      // Step D: Navigation & Physics (SteeringService)
+      // Handles 5-Feeler Wall-Sliding logic and returns finalVelocity.
+      const finalVelocity = this.steeringService.calculateFinalVelocity(entity, desiredVelocity, obstacles);
+
+      // Step E: Kinematic Application
+      // Apply velocity to position: newPos = oldPos + (vel * dt)
+      let newX = entity.position.x + (finalVelocity.x * deltaTime);
+      let newY = entity.position.y + (finalVelocity.y * deltaTime);
+
+      // Clamp to arena boundaries (800x800) respecting entity radius
+      newX = Math.max(entity.radius, Math.min(this.ARENA_SIZE - entity.radius, newX));
+      newY = Math.max(entity.radius, Math.min(this.ARENA_SIZE - entity.radius, newY));
+
+      // Calculate rotation based on velocity direction if moving
+      const rotation = (finalVelocity.x !== 0 || finalVelocity.y !== 0)
+        ? Math.atan2(finalVelocity.y, finalVelocity.x)
+        : entity.rotation;
+
+      // Return immutable copy of the entity with updated kinematics
+      return {
+        ...entity,
+        position: { x: newX, y: newY },
+        velocity: finalVelocity,
+        rotation
+      };
     });
 
-    // Batch update state
+    // Step F: State Patching
+    // Trigger reactive UI update with the new entities array
     this.store.setEntities(updatedEntities);
-  }
-
-  /**
-   * The Execution Pipeline for a single entity per tick.
-   * Following the strict sequence: Perception -> Decision (Override) -> Decision (Default) -> Execution -> Physics.
-   */
-  private processEntity(entity: CombatEntity, state: CombatState): CombatEntity {
-    // 1. Perception: Gather environmental data
-    const nearbyEnemies = this.sensorService.getEnemiesInRadar(entity, state.entities);
-    
-    // Update target if needed (simplified logic for demo)
-    const currentTarget = nearbyEnemies.length > 0 ? nearbyEnemies[0] : null;
-
-    // Construct the full behavior context
-    const context: BehaviorContext = {
-      ...state,
-      nearbyEnemies,
-      currentTarget
-    };
-
-    // Log engagement events (Basic proximity check for telemetry feedback)
-    if (currentTarget) {
-      const dx = entity.position.x - currentTarget.position.x;
-      const dy = entity.position.y - currentTarget.position.y;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      
-      if (dist < entity.radius + currentTarget.radius + 20) {
-        // Simple throttle using deltaTime/timeElapsed or a probability check
-        if (Math.random() < 0.01) { 
-           this.store.addLog(`TACTICAL: ${entity.name} engaging ${currentTarget.name}`);
-        }
-      }
-    }
-
-    // 2. Decision (Override): RoutineService checks Gambit IF/THEN slots
-    const overrideAction = this.routineService.evaluateGambits(entity, context);
-
-    let desiredVelocity: Vector2D;
-
-    if (overrideAction) {
-      // If a Gambit triggers, it determines the behavior
-      // TODO: Translate action to desired velocity (e.g., 'KINETIC_RAM' -> dash towards target)
-      desiredVelocity = { x: 0, y: 0 }; 
-    } else {
-      // 3. Decision (Default): BaseAIService determines the target vector based on AI state
-      desiredVelocity = this.baseAIService.calculateDefaultBehavior(entity, context);
-    }
-
-    // 4. Execution & Evasion: SteeringService calculates safe movement (Feeler system + Wall-sliding)
-    const finalVelocity = this.steeringService.calculateFinalVelocity(entity, desiredVelocity, state.obstacles);
-
-    // 5. Physics & State Update: Update position based on finalVelocity * deltaTime
-    const newPosition: Vector2D = {
-      x: entity.position.x + finalVelocity.x * state.deltaTime,
-      y: entity.position.y + finalVelocity.y * state.deltaTime
-    };
-
-    // Return the updated entity object to be patched into the store
-    return {
-      ...entity,
-      position: newPosition,
-      velocity: finalVelocity,
-      // Rotation follows velocity direction if moving
-      rotation: (finalVelocity.x !== 0 || finalVelocity.y !== 0) 
-        ? Math.atan2(finalVelocity.y, finalVelocity.x) 
-        : entity.rotation
-    };
   }
 }

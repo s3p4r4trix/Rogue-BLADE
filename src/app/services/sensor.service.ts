@@ -18,7 +18,10 @@ export class SensorService {
     const dir = VectorMath.normalize(VectorMath.sub(target, entity.position));
     
     for (const obstacle of obstacles) {
-      // Raycast from entity to target
+      // If entity is flying higher than the obstacle, LOS is not blocked by it
+      if (entity.z >= (obstacle.zHeight ?? 0)) continue;
+
+      // Raycast from entity to target (on the ground plane)
       const hit = VectorMath.intersectRayAABB(entity.position, dir, dist, obstacle);
       if (hit) return false;
     }
@@ -28,14 +31,17 @@ export class SensorService {
   /**
    * Returns the first obstacle that blocks the line of sight between two points.
    */
-  getBlockingObstacle(origin: Vector2D, target: Vector2D, obstacles: AABB[]): AABB | null {
-    const dist = VectorMath.dist(origin, target);
+  getBlockingObstacle(entity: CombatEntity, target: Vector2D, obstacles: AABB[]): AABB | null {
+    const dist = VectorMath.dist(entity.position, target);
     if (dist < 1) return null;
 
-    const dir = VectorMath.normalize(VectorMath.sub(target, origin));
+    const dir = VectorMath.normalize(VectorMath.sub(target, entity.position));
     
     for (const obstacle of obstacles) {
-      const hit = VectorMath.intersectRayAABB(origin, dir, dist, obstacle);
+      // If entity is flying higher than the obstacle, it doesn't block LOS
+      if (entity.z >= (obstacle.zHeight ?? 0)) continue;
+
+      const hit = VectorMath.intersectRayAABB(entity.position, dir, dist, obstacle);
       if (hit) return obstacle;
     }
     return null;

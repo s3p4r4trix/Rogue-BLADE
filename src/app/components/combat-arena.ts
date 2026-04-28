@@ -223,20 +223,29 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Renders obstacles as solid rectangular blocks.
+   * Renders obstacles as solid blocks with a simulated height.
    */
   private drawObstacles(ctx: CanvasRenderingContext2D): void {
     const obstacles = this.store.obstacles();
-    ctx.fillStyle = '#1e293b'; // slate-800
-    ctx.strokeStyle = '#334155'; // slate-700
-    ctx.lineWidth = 1;
-
+    
     for (const obs of obstacles) {
       const renderY = obs.y * this.PERSPECTIVE_SCALE_Y;
       const renderHeight = obs.height * this.PERSPECTIVE_SCALE_Y;
+      const zOffset = (obs.zHeight || 0) * this.PERSPECTIVE_SCALE_Y;
       
-      ctx.fillRect(obs.x, renderY, obs.width, renderHeight);
-      ctx.strokeRect(obs.x, renderY, obs.width, renderHeight);
+      // 1. Draw the vertical faces (Sides/Front)
+      ctx.fillStyle = '#1e293b'; // slate-800
+      ctx.fillRect(obs.x, renderY - zOffset, obs.width, renderHeight + zOffset);
+      
+      // 2. Draw the top face
+      ctx.fillStyle = '#334155'; // slate-700
+      ctx.fillRect(obs.x, renderY - zOffset, obs.width, renderHeight);
+      
+      // 3. Highlight edges
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(obs.x, renderY - zOffset, obs.width, renderHeight);
+      ctx.strokeRect(obs.x, renderY - zOffset, obs.width, renderHeight + zOffset);
     }
   }
 
@@ -348,10 +357,10 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
     
     // 1. Initialize Obstacles
     const obstacles: AABB[] = [
-      { id: 'wall-1', x: 300, y: 300, width: 200, height: 60 },
-      { id: 'wall-2', x: 150, y: 500, width: 80, height: 120 },
-      { id: 'wall-3', x: 550, y: 150, width: 80, height: 120 },
-      { id: 'wall-4', x: 400, y: 600, width: 120, height: 60 }
+      { id: 'wall-1', x: 300, y: 300, width: 200, height: 60, zHeight: 50 },
+      { id: 'wall-2', x: 150, y: 500, width: 80, height: 120, zHeight: 50 },
+      { id: 'wall-3', x: 550, y: 150, width: 80, height: 120, zHeight: 50 },
+      { id: 'wall-4', x: 400, y: 600, width: 120, height: 60, zHeight: 50 }
     ];
     this.store.setObstacles(obstacles);
 

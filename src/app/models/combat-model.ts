@@ -17,6 +17,7 @@ export interface AABB {
   y: number;
   width: number;
   height: number;
+  zHeight: number; // Height of the obstacle along the Z-axis
 }
 
 /**

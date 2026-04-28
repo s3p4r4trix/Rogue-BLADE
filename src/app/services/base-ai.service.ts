@@ -89,7 +89,7 @@ export class BaseAIService {
     const hasLOS = this.sensorService.checkLineOfSight(entity, target.position, context.obstacles);
     
     if (!hasLOS) {
-      const blocker = this.sensorService.getBlockingObstacle(entity.position, target.position, context.obstacles);
+      const blocker = this.sensorService.getBlockingObstacle(entity, target.position, context.obstacles);
       if (blocker) {
         const corners = VectorMath.getAABBCorners(blocker);
         const safetyMargin = entity.radius + 15;
