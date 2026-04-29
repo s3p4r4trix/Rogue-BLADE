@@ -2,15 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { CombatEntity, Vector2D, BehaviorContext } from '../models/combat-model';
 import { VectorMath } from '../utils/vector-math.utils';
 import { SensorService } from './sensor.service';
+import { COMBAT_CONFIG } from '../constants/combat-config';
 
 @Injectable({ providedIn: 'root' })
 export class BaseAIService {
   private sensorService = inject(SensorService);
-  private readonly MELEE_RANGE = 30; // Matches core_mechanics.md Section 8.5
-  private readonly MIN_STRIKE_SPEED_RATIO = 0.4;
-  private readonly ARENA_BOUNDS = 800;
-  private readonly SEARCH_SCAN_TIME = 2; // seconds
-  private readonly SEARCH_TOTAL_TIME = 3; // seconds
 
   /**
    * Calculates the default behavior (desired velocity) based on the state machine.
@@ -71,8 +67,8 @@ export class BaseAIService {
     // If no waypoint or reached waypoint, pick a new one
     if (!entity.waypoint || VectorMath.dist(entity.position, entity.waypoint) < 10) {
       entity.waypoint = {
-        x: Math.random() * (this.ARENA_BOUNDS - 100) + 50,
-        y: Math.random() * (this.ARENA_BOUNDS - 100) + 50
+        x: Math.random() * (COMBAT_CONFIG.ARENA_SIZE - 100) + 50,
+        y: Math.random() * (COMBAT_CONFIG.ARENA_SIZE - 100) + 50
       };
     }
 
@@ -80,20 +76,28 @@ export class BaseAIService {
     return VectorMath.mul(dir, entity.stats.maxSpeed);
   }
 
-  private handlePursuing(entity: CombatEntity, target: CombatEntity, context: BehaviorContext): Vector2D {
+  private handlePursuing(
+    entity: CombatEntity,
+    target: CombatEntity,
+    context: BehaviorContext
+  ): Vector2D {
     const dist = VectorMath.dist(entity.position, target.position);
     const currentSpeed = VectorMath.length(entity.velocity);
-    const minStrikeSpeed = entity.stats.maxSpeed * this.MIN_STRIKE_SPEED_RATIO;
+    const minStrikeSpeed = entity.stats.maxSpeed * COMBAT_CONFIG.PHYSICS.MIN_STRIKE_SPEED_RATIO;
 
     // Check Line of Sight
     const hasLOS = this.sensorService.checkLineOfSight(entity, target.position, context.obstacles);
-    
+
     if (!hasLOS) {
-      const blocker = this.sensorService.getBlockingObstacle(entity, target.position, context.obstacles);
+      const blocker = this.sensorService.getBlockingObstacle(
+        entity,
+        target.position,
+        context.obstacles
+      );
       if (blocker) {
         const corners = VectorMath.getAABBCorners(blocker);
         const safetyMargin = entity.radius + 15;
-        
+
         // Find the best corner to navigate around
         let bestCorner: Vector2D | null = null;
         let minTotalDist = Infinity;
@@ -124,8 +128,14 @@ export class BaseAIService {
     }
 
     // Transition to STRIKING if in range and moving fast enough
-    if (dist <= this.MELEE_RANGE && currentSpeed >= minStrikeSpeed && hasLOS) {
+    if (dist <= COMBAT_CONFIG.RANGES.MELEE_RANGE_BASE && currentSpeed >= minStrikeSpeed && hasLOS) {
       entity.state = 'STRIKING';
+      entity.stateTimer = 0;
+    }
+
+    // Force retreat if stuck in melee range without speed (Sticky Pursuit fix)
+    if (dist <= COMBAT_CONFIG.RANGES.MELEE_RANGE_BASE && currentSpeed < minStrikeSpeed) {
+      entity.state = 'ORBITING';
       entity.stateTimer = 0;
     }
 
@@ -135,15 +145,12 @@ export class BaseAIService {
 
   private handleStriking(entity: CombatEntity, target: CombatEntity): Vector2D {
     const dir = VectorMath.normalize(VectorMath.sub(target.position, entity.position));
-    
+
     // Post-Strike logic: After a hit is registered (handled elsewhere), state switches to ORBITING.
     // Here we just provide the acceleration vector "through" the target.
-    // We'll simulate the "hit" detection by checking distance in the main engine, 
-    // but for the move vector, we just keep going.
-    
+
     // If we've passed the target or hit it, we switch to ORBITING
-    // For this simulation, let's assume if we are very close, we've "hit"
-    if (VectorMath.dist(entity.position, target.position) < 10) {
+    if (VectorMath.dist(entity.position, target.position) < COMBAT_CONFIG.RANGES.STRIKE_HIT_THRESHOLD) {
       entity.state = 'ORBITING';
       entity.stateTimer = 0;
     }
@@ -153,30 +160,25 @@ export class BaseAIService {
 
   private handleOrbiting(entity: CombatEntity, target: CombatEntity, dt: number): Vector2D {
     entity.stateTimer += dt;
-    
-    // Orbit for 1 second before pursuing again
-    if (entity.stateTimer > 1.0) {
-      entity.state = 'PURSUING';
-      entity.stateTimer = 0;
-    }
-
     const toTarget = VectorMath.sub(target.position, entity.position);
     const dist = VectorMath.length(toTarget);
-    
-    // Calculate tangent vector (perpendicular)
-    // Rotate toTarget by 90 degrees
-    const tangent = { x: -toTarget.y, y: toTarget.x };
-    const tangentDir = VectorMath.normalize(tangent);
-    
-    // Blend with a slight pull towards/push away from the orbit radius (e.g. 100 units)
-    const orbitRadius = 120;
-    const radialPull = (dist - orbitRadius) * 0.01;
-    const radialDir = VectorMath.normalize(toTarget);
-    
-    const combinedDir = VectorMath.normalize(VectorMath.add(tangentDir, VectorMath.mul(radialDir, radialPull)));
-    
-    // 4. Clamp to max speed
-    return VectorMath.mul(combinedDir, entity.stats.maxSpeed);
+
+    // Retreat & Regroup Phase:
+    // Drones fly away until they are at least RETREAT_DISTANCE away or RETREAT_DURATION has passed.
+    if (
+      dist >= COMBAT_CONFIG.RANGES.RETREAT_DISTANCE ||
+      entity.stateTimer >= COMBAT_CONFIG.AI_TIMINGS.RETREAT_DURATION
+    ) {
+      entity.state = 'PURSUING';
+      entity.stateTimer = 0;
+      return { x: 0, y: 0 };
+    }
+
+    // Direction is AWAY from target
+    const retreatDir = VectorMath.normalize(VectorMath.neg(toTarget));
+
+    // Apply full speed to get away fast
+    return VectorMath.mul(retreatDir, entity.stats.maxSpeed);
   }
 
   private handleSearching(entity: CombatEntity, dt: number): Vector2D {
@@ -190,21 +192,25 @@ export class BaseAIService {
     const distToLastSeen = VectorMath.dist(entity.position, entity.lastSeenPos);
 
     // 1. Move to last seen position
-    if (distToLastSeen > 5 && entity.stateTimer < this.SEARCH_TOTAL_TIME) {
+    if (
+      distToLastSeen > 5 &&
+      entity.stateTimer < COMBAT_CONFIG.AI_TIMINGS.SEARCH_TOTAL_TIME
+    ) {
       const dir = VectorMath.normalize(VectorMath.sub(entity.lastSeenPos, entity.position));
       return VectorMath.mul(dir, entity.stats.maxSpeed);
     }
 
     // 2. Arrived: Rotate 360 degrees
-    if (entity.stateTimer < this.SEARCH_SCAN_TIME) {
+    if (entity.stateTimer < COMBAT_CONFIG.AI_TIMINGS.SEARCH_SCAN_TIME) {
       // Rotation logic would be applied to the entity.rotation property,
       // here we return 0 velocity to stay in place.
-      entity.rotation += (Math.PI * 2 / this.SEARCH_SCAN_TIME) * dt;
+      entity.rotation +=
+        ((Math.PI * 2) / COMBAT_CONFIG.AI_TIMINGS.SEARCH_SCAN_TIME) * dt;
       return { x: 0, y: 0 };
     }
 
     // 3. Timeout
-    if (entity.stateTimer >= this.SEARCH_TOTAL_TIME) {
+    if (entity.stateTimer >= COMBAT_CONFIG.AI_TIMINGS.SEARCH_TOTAL_TIME) {
       entity.state = 'PATROLLING';
       entity.stateTimer = 0;
       entity.lastSeenPos = undefined;

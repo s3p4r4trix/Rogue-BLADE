@@ -1,13 +1,10 @@
 import { Injectable } from '@angular/core';
 import { CombatEntity, Vector2D, AABB } from '../models/combat-model';
 import { VectorMath } from '../utils/vector-math.utils';
+import { COMBAT_CONFIG } from '../constants/combat-config';
 
 @Injectable({ providedIn: 'root' })
 export class SteeringService {
-  private readonly BASE_FEELER_LENGTH = 40;
-  private readonly SPEED_LOOKAHEAD_FACTOR = 0.5;
-  private readonly MAX_AVOIDANCE_FORCE = 250;
-
   /**
    * Translates desired behavior into safe, obstacle-aware movement.
    * Implements the 5-Feeler-System and Wall-Sliding logic.
@@ -16,10 +13,16 @@ export class SteeringService {
    * @param obstacles List of walls/cover to avoid.
    * @returns The final, safe movement vector.
    */
-  calculateFinalVelocity(entity: CombatEntity, desiredVelocity: Vector2D, obstacles: AABB[]): Vector2D {
+  calculateFinalVelocity(
+    entity: CombatEntity,
+    desiredVelocity: Vector2D,
+    obstacles: AABB[]
+  ): Vector2D {
     // 1. Calculate Dynamic Feeler Length
     const currentSpeed = VectorMath.length(entity.velocity);
-    const feelerLength = this.BASE_FEELER_LENGTH + (currentSpeed * this.SPEED_LOOKAHEAD_FACTOR);
+    const feelerLength =
+      COMBAT_CONFIG.PHYSICS.BASE_FEELER_LENGTH +
+      currentSpeed * COMBAT_CONFIG.PHYSICS.SPEED_LOOKAHEAD_FACTOR;
 
     // 2. Project 5 Feelers based on current rotation
     // Angles in radians: 0, -45, 45, -90, 90
@@ -50,8 +53,11 @@ export class SteeringService {
             closestHit = { normal: hit.normal, distance: hit.distance, feelerLength: l };
           }
 
-          const penetrationRatio = 1.0 - (hit.distance / l);
-          const force = VectorMath.mul(hit.normal, penetrationRatio * this.MAX_AVOIDANCE_FORCE);
+          const penetrationRatio = 1.0 - hit.distance / l;
+          const force = VectorMath.mul(
+            hit.normal,
+            penetrationRatio * COMBAT_CONFIG.PHYSICS.MAX_AVOIDANCE_FORCE
+          );
           avoidanceForce = VectorMath.add(avoidanceForce, force);
         }
       }
@@ -59,7 +65,7 @@ export class SteeringService {
 
     // Add Side Bias if blocked head-on
     if (centerBlocked) {
-      const biasStrength = this.MAX_AVOIDANCE_FORCE * 0.5;
+      const biasStrength = COMBAT_CONFIG.PHYSICS.MAX_AVOIDANCE_FORCE * 0.5;
       if (leftClear && !rightClear) {
         const leftDir = VectorMath.rotate({ x: 1, y: 0 }, entity.rotation - Math.PI / 2);
         avoidanceForce = VectorMath.add(avoidanceForce, VectorMath.mul(leftDir, biasStrength));
@@ -69,7 +75,10 @@ export class SteeringService {
       } else if (leftClear && rightClear) {
         // Both clear? Pick one to break symmetry
         const nudgeDir = VectorMath.rotate({ x: 1, y: 0 }, entity.rotation + Math.PI / 2);
-        avoidanceForce = VectorMath.add(avoidanceForce, VectorMath.mul(nudgeDir, biasStrength * 0.5));
+        avoidanceForce = VectorMath.add(
+          avoidanceForce,
+          VectorMath.mul(nudgeDir, biasStrength * 0.5)
+        );
       }
     }
 

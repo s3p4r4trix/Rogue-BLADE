@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CombatEntity, AABB, Vector2D } from '../models/combat-model';
 import { VectorMath } from '../utils/vector-math.utils';
+import { COMBAT_CONFIG } from '../constants/combat-config';
 
 @Injectable({ providedIn: 'root' })
 export class SensorService {
@@ -16,7 +17,7 @@ export class SensorService {
     if (dist < 1) return true;
 
     const dir = VectorMath.normalize(VectorMath.sub(target, entity.position));
-    
+
     for (const obstacle of obstacles) {
       // If entity is flying higher than the obstacle, LOS is not blocked by it
       if (entity.z >= (obstacle.zHeight ?? 0)) continue;
@@ -36,7 +37,7 @@ export class SensorService {
     if (dist < 1) return null;
 
     const dir = VectorMath.normalize(VectorMath.sub(target, entity.position));
-    
+
     for (const obstacle of obstacles) {
       // If entity is flying higher than the obstacle, it doesn't block LOS
       if (entity.z >= (obstacle.zHeight ?? 0)) continue;
@@ -54,12 +55,12 @@ export class SensorService {
    * @returns Array of entities detected within range.
    */
   getEnemiesInRadar(entity: CombatEntity, allEntities: CombatEntity[]): CombatEntity[] {
-    const radarRange = 400; // Standard radar range
-    
-    return allEntities.filter(e => {
+    const radarRange = COMBAT_CONFIG.RANGES.RADAR_RANGE;
+
+    return allEntities.filter((e) => {
       if (e.id === entity.id) return false;
       if (e.type === entity.type) return false; // Ignore teammates
-      
+
       const dist = VectorMath.dist(entity.position, e.position);
       return dist <= radarRange;
     });
@@ -72,7 +73,8 @@ export class SensorService {
    * @returns True if within range, false otherwise.
    */
   isInMeleeRange(entity: CombatEntity, target: CombatEntity): boolean {
-    const meleeRange = entity.radius + target.radius + 15;
+    const meleeRange =
+      entity.radius + target.radius + COMBAT_CONFIG.RANGES.MELEE_RANGE_BUFFER;
     const dist = VectorMath.dist(entity.position, target.position);
     return dist <= meleeRange;
   }
