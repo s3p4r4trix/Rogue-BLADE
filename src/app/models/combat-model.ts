@@ -83,6 +83,7 @@ export interface CombatEntity {
   radius: number; // Collision radius
   color: string;
   hitFlash: number; // Timer for hit flash effect (seconds)
+  empGroundingTimer?: number; // Timer for stun immunity (seconds)
 }
 
 /**

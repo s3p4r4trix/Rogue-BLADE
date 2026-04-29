@@ -540,15 +540,14 @@ export class HardwareWorkshop {
     const baseDamage = (b?.baseDamage || 0) * (f?.damageMult || 1.0);
     const critChance = (b?.critChance || 0) * (f?.critChanceMult || 1.0) * 100; // Display as percentage
 
-    // Effective Reaction Time Formula from Section 4.2
-    // effectiveReactionTime = baseReactionTime * (1.0 + (baseWeight / 250) - (acceleration / 1000) - (processorSpeed / 25))
+    // Effective Reaction Time Formula from Section 5.2
+    // effectiveReactionTime = baseRX * (1.0 + (weight / 250) - (acceleration / 1000)) / (1.0 + (procSpeed / 20)) * aiMult
     const baseRX = p?.reactionTime || 0.2;
     const procSpeed = p?.processorSpeed || 5;
     const aiMult = s.semiAI?.reactionTimeMult || 1.0;
     
-    let rxMult = 1.0 + (weight / 250) - (acceleration / 1000) - (procSpeed / 25);
-    rxMult = Math.max(0.2, rxMult);
-    const effectiveRX = baseRX * rxMult * aiMult;
+    const rxMultiplier = (1.0 + (weight / 250) - (acceleration / 1000)) / (1.0 + (procSpeed / 20));
+    const effectiveRX = Math.max(baseRX * 0.15, baseRX * rxMultiplier * aiMult);
 
     return {
       hp, armor, shields, evasion, stealth,

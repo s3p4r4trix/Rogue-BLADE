@@ -73,7 +73,7 @@ export class CombatEngineService {
 
       // Step E: Kinematic Application
       // Formula from core_mechanics.md: currentSpeed = min(topSpeed, currentSpeed + (acceleration * (1 - (baseWeight / 1000))))
-      const weightFactor = 1 - entity.stats.weight / 1000;
+      const weightFactor = Math.max(0, 1 - entity.stats.weight / COMBAT_CONFIG.PHYSICS.MAX_DEPLOYABLE_WEIGHT);
       const effectiveAcceleration = entity.stats.acceleration * weightFactor;
 
       // Calculate direction to desired velocity
@@ -128,7 +128,8 @@ export class CombatEngineService {
             ? entity.stateTimer
             : entity.stateTimer + deltaTime,
         retaliationTimer: (entity.retaliationTimer || 0) + deltaTime,
-        hitFlash: Math.max(0, (entity.hitFlash || 0) - deltaTime)
+        hitFlash: Math.max(0, (entity.hitFlash || 0) - deltaTime),
+        empGroundingTimer: Math.max(0, (entity.empGroundingTimer || 0) - deltaTime)
         // pulseTriggered is preserved and handled in processedEntities loop
       };
     });
@@ -277,7 +278,10 @@ export class CombatEngineService {
               // D. Kinetic Scaling (Formula from core_mechanics.md Section 4.2)
               if (attacker.stats.damageType === 'KINETIC') {
                 const currentSpeed = VectorMath.length(attacker.velocity);
-                const momentumMultiplier = 1.0 + (currentSpeed * attacker.stats.weight) / 10000;
+                const momentumMultiplier = Math.min(
+                  COMBAT_CONFIG.PHYSICS.MAX_MOMENTUM_MULTIPLIER,
+                  1.0 + (currentSpeed * attacker.stats.weight) / 10000
+                );
                 grossDamage *= momentumMultiplier;
               }
               grossDamage *= mult;
@@ -449,12 +453,14 @@ export class CombatEngineService {
           // Strip shields
           target.stats.shields = 0;
           this.store.addLog(`[COMBAT] ${target.name} SHIELD_COLLAPSE. Pulse neutralized.`);
-        } else {
-          // Apply Stun
+        } else if (!target.empGroundingTimer) {
+          // Apply Stun (Check for immunity)
           target.state = 'STUNNED';
           target.stateTimer = 0;
           target.velocity = { x: 0, y: 0 };
           this.store.addLog(`[COMBAT] ${target.name} STUNNED by EMP pulse.`);
+        } else {
+          this.store.addLog(`[COMBAT] ${target.name} EMP_GROUNDED. Stun resisted.`);
         }
         target.hitFlash = 0.3; // Longer flash for EMP
       }

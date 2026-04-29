@@ -273,7 +273,8 @@ export class BaseAIService {
     if (entity.stateTimer >= 1.5) {
       entity.state = 'PATROLLING';
       entity.stateTimer = 0;
-      this.combatStore.addLog(`[SYSTEM] ${entity.name} REBOOT_SEQUENCE_COMPLETE. AI restored.`);
+      entity.empGroundingTimer = COMBAT_CONFIG.PHYSICS.EMP_GROUNDING_DURATION;
+      this.combatStore.addLog(`[SYSTEM] ${entity.name} REBOOT_SEQUENCE_COMPLETE. AI restored. EMP_GROUNDING_ACTIVE.`);
     }
 
     return { x: 0, y: 0 };
