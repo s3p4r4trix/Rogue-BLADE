@@ -608,12 +608,25 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
 
       switch (p.damageType) {
         case 'ENERGY':
-          // Glowing Cyan Orbs
-          ctx.fillStyle = '#22d3ee';
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = '#22d3ee';
-          ctx.arc(x, y, radius, 0, Math.PI * 2);
-          ctx.fill();
+          // Short yellow-reddish beams with afterglow
+          const dir = VectorMath.normalize(p.velocity);
+          const length = 12;
+          
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = '#facc15'; // Yellow core
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#ef4444'; // Reddish afterglow
+          
+          ctx.moveTo(x - dir.x * length, y - dir.y * length * this.PERSPECTIVE_SCALE_Y);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          
+          // Inner core for intensity
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = '#ffffff';
+          ctx.shadowBlur = 0;
+          ctx.stroke();
           break;
 
         case 'KINETIC':

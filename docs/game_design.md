@@ -221,4 +221,4 @@ Zenith hostiles utilize ranged attacks to suppress drones.
 *   **SHOOTING State**: Triggered when a hostile has a valid sensor lock (Range + LOS + FOV). The entity halts all velocity to stabilize aim.
 *   **Projectile Physics**: Projectiles move in a linear path at 300 units/s. They have a small collision radius and are destroyed upon hitting walls, obstacles, or entities.
 *   **Damage Resolution**: Projectiles use the standard effectiveness matrix and armor mitigation rules.
-*   **Aesthetics**: Projectiles are rendered with distinct visual styles (Energy Orbs, Kinetic Streaks, Slashing Tracers, EMP Rings) based on their damage type.
+*   **Aesthetics**: Projectiles are rendered with distinct visual styles (Energy Beams, Kinetic Streaks, Slashing Tracers, EMP Rings) based on their damage type.
