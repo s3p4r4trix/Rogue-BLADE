@@ -202,9 +202,10 @@ Drones must reach a minimum speed threshold (MIN_STRIKE_SPEED = 40% of topSpeed)
 
 ## 12.6 Visual Feedback & Debugging
 Since this is an AI-driven game, the Tactical Map includes comprehensive visual feedback:
-*   **Hit Flash VFX**: When a drone strikes the enemy, the target flashes white.
+*   **Hit Flash VFX**: When a drone or enemy is struck, the target flashes white (300ms for EMP, 150ms for others).
 *   **Sensor Range Wireframe**: A faint, dashed ellipse around each drone.
 *   **LOS Raycast Line**: A line drawn from each drone to its target.
+*   **Tactical Telemetry**: Unit HP and Shields are removed from the arena canvas and relocated to the **Squad Monitor** and **Hostile Intel** sidebars.
 
 ## 12.7 Architecture, Telemetry & Synchronization
 To avoid spaghetti code, the real-time AI and physics rely on a strongly decoupledAngular Entity-Component-System (ECS-lite) Architecture, synchronized via acentralized CombatStore (NgRx SignalStore):
@@ -214,7 +215,8 @@ To avoid spaghetti code, the real-time AI and physics rely on a strongly decoupl
     2.  **RoutineService**: Evaluates player Gambit Slots for tactical overrides.  
     3.  **BaseAIService**: Provides the default state machine target vector and handles corner navigation if no Gambits trigger.  
     4.  **SteeringService**: Applies dynamic feelers, wall-sliding, and physical momentum.  
-*   **Reactive UI**: The Angular UI components bind directly to the signals in the CombatStore,eliminating event listeners and ensuring telemetry is always 100% accurate.
+    5.  **AoE Resolution**: Handles non-projectile pulses and status effects like STUNNED.
+*   **Reactive UI**: The Angular UI components (Squad Monitor, Hostile Intel) bind directly to the signals in the CombatStore, eliminating event listeners and ensuring telemetry is always 100% accurate.
 
 ## 12.8 Ranged Combat & Projectiles
 Zenith hostiles utilize ranged attacks to suppress drones.

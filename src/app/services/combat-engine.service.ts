@@ -112,8 +112,8 @@ export class CombatEngineService {
         finalClampedVelocity.x !== 0 || finalClampedVelocity.y !== 0
           ? Math.atan2(finalClampedVelocity.y, finalClampedVelocity.x)
           : desiredVelocity.x !== 0 || desiredVelocity.y !== 0
-          ? Math.atan2(desiredVelocity.y, desiredVelocity.x)
-          : entity.rotation;
+            ? Math.atan2(desiredVelocity.y, desiredVelocity.x)
+            : entity.rotation;
 
       // Return immutable copy of the entity with updated kinematics and timer increments
       return {
@@ -191,7 +191,7 @@ export class CombatEngineService {
             if (attacker.type === 'PLAYER' && attacker.state !== 'STRIKING') {
               const effectiveness =
                 COMBAT_CONFIG.EFFECTIVENESS_MATRIX[attacker.stats.damageType]?.[
-                  defender.stats.armorType
+                defender.stats.armorType
                 ] || 1.0;
               const finalDamage = Math.max(
                 1,
@@ -218,16 +218,16 @@ export class CombatEngineService {
               // Force ORBITING state only for PLAYER drones with precise deflection math
               const outwardNormal = VectorMath.normalize(VectorMath.sub(attacker.position, defender.position));
               const currentSpeed = VectorMath.length(updatedEntities[aIdx].velocity);
-              
+
               // Determine rotation direction (away from target) using the perp-dot product
               const perpDot = attacker.velocity.x * outwardNormal.y - attacker.velocity.y * outwardNormal.x;
               const side = perpDot > 0 ? 1 : -1;
-              
+
               const deflectedVelocity = VectorMath.rotate(
-                attacker.velocity, 
+                attacker.velocity,
                 COMBAT_CONFIG.PHYSICS.POST_STRIKE_DEFLECTION_ANGLE * side
               );
-              
+
               resolvedCollisions[aIdx] = {
                 ...attacker,
                 state: 'ORBITING',
@@ -272,7 +272,7 @@ export class CombatEngineService {
               // C. Matrix Multiplier
               const mult =
                 COMBAT_CONFIG.EFFECTIVENESS_MATRIX[attacker.stats.damageType]?.[
-                  target.stats.armorType
+                target.stats.armorType
                 ] || 1.0;
               // D. Kinetic Scaling (Formula from core_mechanics.md Section 4.2)
               if (attacker.stats.damageType === 'KINETIC') {
@@ -312,11 +312,11 @@ export class CombatEngineService {
             // Tangential Deflection and State Change for Attacker (PLAYER only)
             // 1. Calculate the vector from the target's center to the attacker's position (the outward normal)
             const outwardNormal = VectorMath.normalize(VectorMath.sub(attacker.position, target.position));
-            
+
             // 2. Normalize the attacker's current velocity and get pre-impulse speed
             const currentSpeed = VectorMath.length(updatedEntities[i].velocity);
             const normalizedVel = VectorMath.normalize(attacker.velocity);
-            
+
             // 3. Determine rotation direction: ensure it rotates "outward" (away from target)
             // Use perp-dot product to find which side of the velocity vector the outward normal lies on
             const perpDot = normalizedVel.x * outwardNormal.y - normalizedVel.y * outwardNormal.x;
@@ -324,7 +324,7 @@ export class CombatEngineService {
 
             // 4. Deflect the velocity away from the target by the configured angle
             const deflectedDir = VectorMath.rotate(
-              normalizedVel, 
+              normalizedVel,
               COMBAT_CONFIG.PHYSICS.POST_STRIKE_DEFLECTION_ANGLE * side
             );
 
@@ -339,7 +339,7 @@ export class CombatEngineService {
         }
       }
     }
-    
+
     // Step E.3: Projectile Update & Collision
     const finalizedEntities = this.updateProjectiles(deltaTime, resolvedEntities);
 
@@ -366,9 +366,9 @@ export class CombatEngineService {
 
       // 2. Arena Boundary Check
       if (
-        newPos.x < 0 || 
-        newPos.x > COMBAT_CONFIG.ARENA_SIZE || 
-        newPos.y < 0 || 
+        newPos.x < 0 ||
+        newPos.x > COMBAT_CONFIG.ARENA_SIZE ||
+        newPos.y < 0 ||
         newPos.y > COMBAT_CONFIG.ARENA_SIZE
       ) {
         continue; // De-spawn projectile
@@ -388,7 +388,7 @@ export class CombatEngineService {
       let hitEntity = false;
       for (let i = 0; i < updatedEntities.length; i++) {
         const target = updatedEntities[i];
-        
+
         // Prevent friendly fire/self-damage from the source
         if (target.id === p.sourceId) continue;
 
@@ -444,7 +444,7 @@ export class CombatEngineService {
       const dist = VectorMath.dist(source.position, target.position);
       if (dist <= radius) {
         hitCount++;
-        
+
         if (target.stats.shields > 0) {
           // Strip shields
           target.stats.shields = 0;
@@ -468,7 +468,7 @@ export class CombatEngineService {
       radius: 0,
       maxRadius: radius,
       timer: 0,
-      duration: 0.5 // 500ms visual duration
+      duration: 0.3 // 300ms visual duration
     });
   }
 

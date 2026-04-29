@@ -145,7 +145,7 @@ When a Shuriken attacks an enemy, the damageType is checked against the enemy's 
 | SLASHING (Razor) | 1.5x (150%) | 0.4x (40%) | 0.8x (80%) |
 | KINETIC (Blunt) | 1.0x (100%) | 1.5x (150%) | 0.5x (50%) |
 | ENERGY (Plasma) | 1.0x (100%) | 1.0x (100%) | 2.0x (200%) |
-| EMP (Utility) | 0.0x (Stun only) | 0.0x (Stun only) | Shield Collapse |
+| EMP (Utility) | 0.0x (Stun only) | 0.0x (Stun only) | Shield Collapse (100%) |
 
 ### 5.1 Damage Calculation Formula
 
@@ -230,8 +230,8 @@ Every trigger must evaluate to a boolean (true / false). Many triggers are locke
     *   **reqSensor:** Radar / Lidar    
     *   **logic:** Returns true if an enemy is within the global tracking radius.
 *   **ifEnemyIsShielded** (Tactical: _Enemy: Shield Active_)
-    *   **reqSensor:** EM-Scanner (DEFERRED)
-    *   **logic:** Currently returns false.
+    *   **reqSensor:** EM-Scanner
+    *   **logic:** Returns true if the target has active energy shields.
 *   **ifEnemyIsOrganic** (Tactical: _Enemy: Soft Target_)
     *   **reqSensor:** Biosensor
     *   **logic:** Returns true if the target armor type is UNARMORED/Flesh.
@@ -407,7 +407,8 @@ Zenith hostiles utilize ranged attacks to suppress drones.
 
 Battle state is managed via an Angular-based centralized CombatStore (NgRx SignalStore). A dedicated CombatEngineService loops every tick, routing data through specialized services (SensorService, RoutineService, BaseAIService, SteeringService) before patching the CombatStore.
 
-*   **Signals:** enemyHull, enemyMaxHull, squadStatuses (HP/Energy/Reboot), timeRemaining, currentLoot.
+*   **Signals:** enemyEntity (name, type, stats), squadStatuses (HP/Shield/Energy/State), logs.
+*   **Tactical Monitor**: Health and Shield bars are **not** rendered in the 3D/2D arena space. All vitals are monitored via the **Squad Monitor** and **Hostile Intel** sidebars to preserve visual clarity during high-intensity combat.
 *   **Log Event Examples:**
     *   **State Transitions:** \[STATE\] EntityName: NEW\_STATE
     *   **Firing:** HOSTILE: EntityName fired energy projectile at TargetName

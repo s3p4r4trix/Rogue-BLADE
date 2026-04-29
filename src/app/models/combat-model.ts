@@ -35,13 +35,13 @@ export interface CombatEntity {
   id: string;
   name: string;
   type: 'PLAYER' | 'ENEMY';
-  
+
   // Physics / Transform
   position: Vector2D;
   z: number; // Elevation / Height
   velocity: Vector2D;
   rotation: number; // in radians
-  
+
   stats: {
     hp: number;
     maxHp: number;
@@ -65,7 +65,7 @@ export interface CombatEntity {
     aoeRadius?: number;
     pulseCooldown?: number;
   };
-  
+
   // AI / Logic
   state: AIState;
   archetype?: string; // e.g. 'EMP_WARDEN'
@@ -73,12 +73,12 @@ export interface CombatEntity {
   gambits: GambitRoutine[];
   targetId?: string; // ID of the entity currently being targeted
   lastSeenPos?: Vector2D; // For SEARCHING behavior
-  
+
   // State machine helpers
   stateTimer: number; // Generic timer for state-specific logic (e.g. searching, orbiting)
   retaliationTimer: number; // Dedicated timer for enemy retaliation cooldown
   waypoint?: Vector2D; // Current movement target for patrolling
-  
+
   // Visual / Debug
   radius: number; // Collision radius
   color: string;
