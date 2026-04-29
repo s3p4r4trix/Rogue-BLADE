@@ -6,18 +6,22 @@ A strategic cyberpunk auto-battler with roguelite elements. Build, upgrade, and 
 
 # 📖 About the Project
 
-**Rogue:BLADE** divides gameplay into two strict phases:
+**Rogue:BLADE** is a high-stakes, strategic cyberpunk auto-battler set in a dystopian future where Earth has fallen to the interstellar **Zenith Collective**. As a cyber-engineer for the human resistance (**The Remnant Fleet**), you operate from a secret underground workshop in the **Substrata**, building and programming **Smart-Shurikens**—autonomous, high-speed blade drones designed to reclaim the mega-cities sector by sector.
 
-1. The Workshop (Active): A UI-heavy management phase. You are a mechanic in a dystopian underground lab. Build, repair, and program flying high-tech drones ("Smart-Shurikens") using a visual Gambit system (IF/THEN logic).
-2. The Run (Passive): A 2D auto-battler simulation. Your programmed Shuriken swarms fight waves of enemies (corporate security, EMP-grenadiers, hacker drones) completely autonomously based on your hardware and software setup.
+The gameplay is divided into two strict phases:
+
+1. **The Workshop (Active):** A UI-heavy management phase. Build, repair, and program your Shuriken swarm. Use the **Gambit System**—a visual drag-and-drop logic interface—to define complex AI behaviors (IF/THEN routines) that allow your drones to react to battlefield conditions autonomously.
+2. **The Liberation Strike (Passive):** A 2D auto-battler simulation. Watch your programmed swarms fight through procedurally generated sectors. Success depends on the synergy between your hardware choices (Engines, Sensors, Blades) and the logic routines you've flashed onto their internal processors.
 
 # 🛠️ Tech Stack
-* Frontend Framework: Angular
-* Language: TypeScript (Strict mode)
-* Styling: Tailwind CSS & SCSS
-* UI Interactions: @angular/cdk/drag-drop
-* State Management: Angular Signals
-* Game Engine: HTML5 Canvas / Phaser.js (for the combat simulation)
+
+* **Frontend Framework:** Angular 21 (Latest stable)
+* **State Management:** Angular Signals & [NgRx SignalStore](https://ngrx.io/guide/signals/signal-store)
+* **Language:** TypeScript (Strict Mode)
+* **Styling:** Tailwind CSS & SCSS
+* **UI Interactions:** `@angular/cdk/drag-drop` (for the Gambit Compiler)
+* **Combat Engine:** HTML5 Canvas API / Phaser.js (High-frequency simulation loop)
+* **Testing:** [Vitest](https://vitest.dev/)
 
 # 🚀 Getting Started
 
@@ -64,21 +68,20 @@ To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use th
 
 # 🗺️ Roadmap / Milestones
 
-* [x] Concept & Game Design Document
-* [x] Static HTML/JS Prototype for the Gambit UI
-* [x] Milestone 1: Angular Architecture & Workshop UI (Drag & Drop Gambit Compiler)
-* [ ] Milestone 2: Core Combat Loop (Canvas/Phaser Auto-Battler Phase)
-* [ ] Milestone 3: Roguelite Progression (Pathing, Meta-Upgrades)
-* [ ] Milestone 4: Mobile Port (Capacitor/Ionic)
+* [x] **Phase 0:** Concept & Game Design Document
+* [x] **Phase 1:** Workshop Architecture & Gambit UI (Drag & Drop Logic Compiler)
+* [/] **Phase 2 (Current):** Core Combat Loop (2D Tactical Map, AI Movement, Strike Physics)
+* [ ] **Phase 3:** Roguelite Loop (Sector Navigation, Randomized Loot, Meta-Progression)
+* [ ] **Phase 4:** Polish & Expansion (Mobile Optimization, Boss Encounters, PvP Simulation)
 
 # ⚙️ Hardware & Programming Synergy
 
-The strategic depth of Rogue:BLADE comes from the synergy between hardware components and AI routines:
+The strategic depth of **Rogue:BLADE** comes from the modular interaction between physical components and software routines:
 
-* Anti-Grav Engines: Determine speed, acoustic stealth, and evasion.
-* Hull Materials: Ranging from cheap Sinter-Scrap to god-tier Neutronium-Cast.
-* Sensors: Required to unlock specific AI triggers (e.g., Terahertz sensors to detect enemies behind cover).
-* Blades: From blunt kinetic edges (heavy impact) to shield-melting plasma cutters (high energy drain).
+* **Anti-Grav Engines:** Define speed, evasion, and acoustic stealth profiles.
+* **Hull Materials:** From lightweight **Plasteel** to near-indestructible **Neutronium-Cast**.
+* **Sensors (Software Keys):** Equipment like **Terahertz Arrays** or **Lidar** are required to unlock specific AI triggers (e.g., "IF Enemy: Obscured").
+* **Blades & Edges:** Specialized damage types, from **Vibro-Blades** for armor-piercing to **Plasma Cutters** for shield disruption.
 
 # ⚖️ License & Copyright
 
