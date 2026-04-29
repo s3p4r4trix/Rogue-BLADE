@@ -100,8 +100,8 @@ export const MissionStore = signalStore(
       const targetName = TARGETS[Math.floor(Math.random() * TARGETS.length)];
       const description = DESCRIPTIONS[Math.floor(Math.random() * DESCRIPTIONS.length)];
 
-      // Logic: For testing/onboarding, we force unarmored profiles.
-      const resistanceProfile = RESISTANCES.find(r => r.type === 'UNARMORED') || RESISTANCES[2];
+      // Logic: Pick a random resistance profile for variety.
+      const resistanceProfile = RESISTANCES[Math.floor(Math.random() * RESISTANCES.length)];
 
       let difficulty: MissionDifficulty;
       let durationSeconds: number;

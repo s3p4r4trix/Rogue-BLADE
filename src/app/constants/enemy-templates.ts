@@ -65,7 +65,7 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
     stats: {
       maxHp: 250,
       maxShields: 50,
-      armorValue: 15,
+      armorValue: 20,
       armorType: 'HEAVY_ARMOR',
       evasionRate: 0.05,
       energy: 1000,
