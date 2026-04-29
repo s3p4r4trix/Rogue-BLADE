@@ -267,13 +267,13 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
     const bodyY = (entity.position.y - entity.z) * this.PERSPECTIVE_SCALE_Y;
     const radius = entity.radius;
 
-    // 1. Shadow: Semi-transparent black ellipse at ground position
+    // Shadow: Semi-transparent black ellipse at ground position
     ctx.beginPath();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.ellipse(x, groundY, radius, radius * this.PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. Sprite / Body: Circle/Ellipse offset by elevation (Z-axis)
+    // Sprite / Body: Circle/Ellipse offset by elevation (Z-axis)
     ctx.beginPath();
 
     // Hit Flash logic: If hitFlash > 0, draw white overlay
@@ -297,24 +297,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // (Strike Ready indicator moved to drawTacticalOverlays for depth sorting)
-
-    // 3. HP Bar: Small bar above the sprite
-    const hpPercent = Math.max(0, entity.stats.hp / entity.stats.maxHp);
-    const barWidth = 30;
-    const barHeight = 4;
-    const barX = x - barWidth / 2;
-    const barY = bodyY - 28;
-
-    // Background
-    ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
-    ctx.fillRect(barX, barY, barWidth, barHeight);
-
-    // Foreground
-    ctx.fillStyle = hpPercent > 0.5 ? '#22c55e' : (hpPercent > 0.2 ? '#eab308' : '#ef4444'); // Green, Yellow, Red
-    ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
-
-    // 4. State Label: Small text string above the sprite
+    // State Label: Small text string above the sprite
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.font = 'bold 9px "Courier New", monospace';
     ctx.textAlign = 'center';
@@ -348,7 +331,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
 
         ctx.beginPath();
         ctx.moveTo(x, y);
-        
+
         // Raycast across the FOV arc to calculate the visibility polygon
         const segments = 64;
         for (let i = 0; i <= segments; i++) {
@@ -371,7 +354,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
           ctx.lineTo(px, py);
         }
         ctx.closePath();
-        
+
         ctx.fillStyle = 'rgba(239, 68, 68, 0.03)';
         ctx.fill();
         ctx.strokeStyle = 'rgba(239, 68, 68, 0.15)';
@@ -379,7 +362,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
       } else {
         // Player drones have 360-degree vision with dynamic clipping
         ctx.beginPath();
-        
+
         const segments = 72; // 5-degree steps
         for (let i = 0; i <= segments; i++) {
           const angle = (i / segments) * Math.PI * 2;
@@ -400,7 +383,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
           else ctx.lineTo(px, py);
         }
         ctx.closePath();
-        
+
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
         ctx.stroke();
       }
@@ -588,7 +571,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
         pulseCooldown: template.stats.pulseCooldown
       },
       state: 'PATROLLING',
-      archetype: mission.enemyTypeId === 'emp-warden' ? 'EMP_WARDEN' : undefined,
+      archetype: mission.enemyTypeId === 'EMP_WARDEN' ? 'EMP_WARDEN' : undefined,
       gambits: [],
       radius: template.radius,
       color: template.color,
@@ -621,17 +604,17 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
           // Short yellow-reddish beams with afterglow
           const dir = VectorMath.normalize(p.velocity);
           const length = 12;
-          
+
           ctx.lineWidth = 3;
           ctx.lineCap = 'round';
           ctx.strokeStyle = '#facc15'; // Yellow core
           ctx.shadowBlur = 15;
           ctx.shadowColor = '#ef4444'; // Reddish afterglow
-          
+
           ctx.moveTo(x - dir.x * length, y - dir.y * length * this.PERSPECTIVE_SCALE_Y);
           ctx.lineTo(x, y);
           ctx.stroke();
-          
+
           // Inner core for intensity
           ctx.lineWidth = 1;
           ctx.strokeStyle = '#ffffff';
@@ -669,7 +652,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
           ctx.arc(x, y, radius + pulse * 4, 0, Math.PI * 2);
           ctx.stroke();
           break;
-        
+
         default:
           ctx.fillStyle = '#ffffff';
           ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -685,41 +668,41 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
    */
   private drawPulses(ctx: CanvasRenderingContext2D): void {
     const pulses = this.store.pulses();
-    
+
     for (const p of pulses) {
       const progress = p.timer / p.duration;
       const alpha = 1 - progress;
-      
+
       ctx.save();
       ctx.beginPath();
       ctx.strokeStyle = `rgba(34, 211, 238, ${alpha})`;
       ctx.lineWidth = 4 * (1 - progress);
       ctx.shadowBlur = 20 * alpha;
       ctx.shadowColor = '#22d3ee';
-      
+
       // Draw as ellipse for perspective
       ctx.ellipse(
-        p.x, 
-        p.y * this.PERSPECTIVE_SCALE_Y, 
-        p.radius, 
-        p.radius * this.PERSPECTIVE_SCALE_Y, 
+        p.x,
+        p.y * this.PERSPECTIVE_SCALE_Y,
+        p.radius,
+        p.radius * this.PERSPECTIVE_SCALE_Y,
         0, 0, Math.PI * 2
       );
       ctx.stroke();
-      
+
       // Inner subtle glow
       ctx.beginPath();
       ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
       ctx.lineWidth = 1;
       ctx.ellipse(
-        p.x, 
-        p.y * this.PERSPECTIVE_SCALE_Y, 
-        p.radius * 0.9, 
-        p.radius * 0.9 * this.PERSPECTIVE_SCALE_Y, 
+        p.x,
+        p.y * this.PERSPECTIVE_SCALE_Y,
+        p.radius * 0.9,
+        p.radius * 0.9 * this.PERSPECTIVE_SCALE_Y,
         0, 0, Math.PI * 2
       );
       ctx.stroke();
-      
+
       ctx.restore();
     }
   }

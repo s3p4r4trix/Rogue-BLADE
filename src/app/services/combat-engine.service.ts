@@ -128,8 +128,8 @@ export class CombatEngineService {
             ? entity.stateTimer
             : entity.stateTimer + deltaTime,
         retaliationTimer: (entity.retaliationTimer || 0) + deltaTime,
-        hitFlash: Math.max(0, (entity.hitFlash || 0) - deltaTime),
-        pulseTriggered: false // Reset flag after use in loop or post-processing
+        hitFlash: Math.max(0, (entity.hitFlash || 0) - deltaTime)
+        // pulseTriggered is preserved and handled in processedEntities loop
       };
     });
 
@@ -148,7 +148,7 @@ export class CombatEngineService {
 
     // Step E.1: Circle-vs-Circle Collision Resolution (Section 8.4)
     // Drones and enemies resolve physical overlap to prevent stacking.
-    const resolvedCollisions = [...updatedEntities];
+    const resolvedCollisions = [...processedEntities];
     for (let i = 0; i < resolvedCollisions.length; i++) {
       for (let j = i + 1; j < resolvedCollisions.length; j++) {
         const e1 = resolvedCollisions[i];
@@ -338,11 +338,10 @@ export class CombatEngineService {
           }
         }
       }
-
     }
     
     // Step E.3: Projectile Update & Collision
-    const finalizedEntities = this.updateProjectiles(deltaTime, processedEntities);
+    const finalizedEntities = this.updateProjectiles(deltaTime, resolvedEntities);
 
     // Step F: State Patching
     // Trigger reactive UI update with the resolved entities

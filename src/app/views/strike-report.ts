@@ -131,6 +131,20 @@ import { CombatStore } from '../services/combat-store';
                                  [ngClass]="{'animate-pulse bg-red-500': enemy.stats.hp < (enemy.stats.maxHp * 0.3)}"
                                  [style.width.%]="(enemy.stats.hp / enemy.stats.maxHp) * 100"></div>
                           </div>
+
+                          <!-- Hostile Shield -->
+                          @if (enemy.stats.maxShields > 0) {
+                            <div class="space-y-1">
+                              <div class="flex justify-between items-center text-[6px] text-blue-900 uppercase font-bold tracking-tighter">
+                                <span>Shield_Array</span>
+                                <span>{{ Math.ceil((enemy.stats.shields / enemy.stats.maxShields) * 100) }}%</span>
+                              </div>
+                              <div class="w-full h-1 bg-blue-950/20">
+                                <div class="h-full bg-blue-500 transition-all duration-300" 
+                                     [style.width.%]="(enemy.stats.shields / enemy.stats.maxShields) * 100"></div>
+                              </div>
+                            </div>
+                          }
                         </div>
                       </div>
                     }
@@ -163,6 +177,18 @@ import { CombatStore } from '../services/combat-store';
                                 [ngClass]="squadStatus.hp > (squadStatus.maxHp * 0.5) ? 'bg-green-500' : (squadStatus.hp > (squadStatus.maxHp * 0.2) ? 'bg-yellow-500 animate-pulse' : 'bg-red-600')"
                                 [style.width.%]="(squadStatus.hp / squadStatus.maxHp) * 100"></div>
                          </div>
+
+                         <!-- Shield Bar -->
+                         @if (squadStatus.maxShields > 0) {
+                           <div class="flex justify-between items-center text-[7px] font-black text-blue-900/50 uppercase tracking-tighter mb-0.5">
+                              <span>SHIELD_CAPACITOR</span>
+                              <span>{{ Math.ceil((squadStatus.shields / squadStatus.maxShields) * 100) }}%</span>
+                           </div>
+                           <div class="w-full h-1 bg-white/5 mb-2">
+                              <div class="h-full bg-blue-500 transition-all duration-300" 
+                                   [style.width.%]="(squadStatus.shields / squadStatus.maxShields) * 100"></div>
+                           </div>
+                         }
 
                          <!-- Energy Bar -->
                          <div class="flex justify-between items-center text-[7px] font-black text-yellow-900/50 uppercase tracking-tighter mb-0.5">

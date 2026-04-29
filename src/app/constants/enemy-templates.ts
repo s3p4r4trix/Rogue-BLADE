@@ -125,7 +125,7 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
       maxSpeed: 160,
       acceleration: 60,
       weight: 120,
-      baseDamage: 10,
+      baseDamage: 0,
       damageType: 'EMP',
       critChance: 0.05,
       critMultiplier: 1.5,

@@ -39,6 +39,8 @@ export const CombatStore = signalStore(
         maxHp: e.stats.maxHp,
         energy: e.stats.energy,
         maxEnergy: e.stats.maxEnergy,
+        shields: e.stats.shields,
+        maxShields: e.stats.maxShields,
         rebootTicks: e.state === 'REBOOTING' ? Math.ceil(e.stateTimer * 10) : 0,
         state: e.state
       })))
