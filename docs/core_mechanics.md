@@ -103,6 +103,7 @@ The currentSpeed of a Shuriken is updated every tick based on its acceleration a
 
 *   **Example:** A shuriken with baseWeight of 100 will have its acceleration multiplied by (1 - 0.1) = 0.9. A shuriken with baseWeight of 500 will have its acceleration multiplied by (1 - 0.5) = 0.5.
 *   **Formula:** currentSpeed = min(topSpeed, currentSpeed + (acceleration \* (1 - (baseWeight / 1000))))
+*   **Constraint:** baseWeight MUST be < 1000 for valid deployment. Acceleration becomes 0 at 1000 mass.
 
 ### 4.2 Kinetic Damage Scaling (Momentum)
 
@@ -110,7 +111,7 @@ Blunt/Kinetic weapons deal more damage the heavier and faster the Shuriken is.
 
 **Logic:** Calculate force: Rewards heavy objects that manage to build up speed.
 *   **Example:** A shuriken with currentSpeed of 100 and baseWeight of 100 will have a momentumMultiplier of 2.0. A shuriken with currentSpeed of 200 and baseWeight of 55 will have a momentumMultiplier of 2.1.
-*   **Formula:** momentumMultiplier = 1.0 + ((currentSpeed \* baseWeight) / 10000)
+*   **Formula:** momentumMultiplier = min(5.0, 1.0 + ((currentSpeed \* baseWeight) / 10000))
 *   **Formula:** finalKineticDamage = baseDamage \* momentumMultiplier
 *   **Note:** Tangential fly-bys (see Section 8.6) help drones retain their `momentumMultiplier` between strikes by preserving velocity directionality rather than reversing it.
 
@@ -118,10 +119,10 @@ Blunt/Kinetic weapons deal more damage the heavier and faster the Shuriken is.
 
 To prevent the "Death Spiral" of doing zero damage and moving slowly until death: If currentEnergy drops to 0, the drone initiates an Emergency Reboot.
 
-*   The drone shuts down completely for 3 seconds (topSpeed = 0, evasion = 0).
-*   During Reboot, the drone takes +50% incoming damage.
-*   After 3 seconds, energy instantly restores to 30% of maximum.
-*   Energy systems recharge at 150% efficiency for 3 seconds immediately after reboot.
+*   **Phase 1 (Shutdown):** The drone shuts down completely for 3 seconds (topSpeed = 0, evasion = 0).
+*   **Phase 2 (Vulnerability):** During Shutdown, the drone takes +50% incoming damage.
+*   **Phase 3 (Restoration):** After 3 seconds, energy instantly restores to 30% of maximum.
+*   **Phase 4 (Post-Reboot Surge):** Energy systems recharge at 150% efficiency for 3 seconds *following* the instant restoration.
 
 ### 4.4 STUNNED Status Effect
 
@@ -133,6 +134,7 @@ Triggered by specialized AoE attacks (e.g., EMP Pulse) when a drone has no activ
     *   AI routine evaluation (Gambits) is suspended.
     *   Default state machine behavior is disabled.
 *   **Recovery**: After the duration, the drone reverts to its `PATROLLING` routine.
+*   **Immunity**: Upon recovery, the drone gains **EMP Grounding** for 3.0 seconds, rendering it immune to further `STUNNED` effects.
     
 
 5\. Damage Types vs. Armor Types (Effectiveness Matrix)
@@ -170,8 +172,9 @@ If a **Player-owned Shuriken** collides with an enemy while NOT in the STRIKING 
 Combat is not purely turn-based but uses a high-frequency simulation (0.1s increments).
 
 *   **Shuriken Attack Speed (Reaction Time Scaling):** A Shuriken's baseReactionTime is affected by its physical inertia (Weight), acceleration (Acceleration), processing power (Processor Speed), and AI integration (Semi-AI).
-    *   **Formula:** effectiveReactionTime = baseReactionTime \* (1.0 + (baseWeight / 250) - (acceleration / 1000) - (processorSpeed / 25)) \* semiAiMultiplier
-    *   **Minimum Floor:** effectiveReactionTime cannot drop below 0.2x of baseReactionTime.        
+    *   **Formula:** effectiveReactionTime = baseReactionTime \* (1.0 + (baseWeight / 250) - (acceleration / 1000)) / (1.0 + (processorSpeed / 20)) \* semiAiMultiplier
+    *   **Minimum Floor:** effectiveReactionTime cannot drop below 0.15x of baseReactionTime.
+        
     *   **Result:** Heavy, low-acceleration drones attack slowly but hit with more momentum. Light, high-acceleration drones strike with high frequency but less kinetic impact.
         
 *   **Hostile Attack Speed (Tiered Cooldowns):** Hostile aggression scales with mission difficulty.    
