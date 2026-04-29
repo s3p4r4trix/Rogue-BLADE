@@ -157,7 +157,7 @@ If a Shuriken collides with an enemy while NOT in the STRIKING state (currentSpe
 Combat is not purely turn-based but uses a high-frequency simulation (0.1s increments).
 
 *   **Shuriken Attack Speed (Reaction Time Scaling):** A Shuriken's baseReactionTime is affected by its physical inertia (Weight), acceleration (Acceleration), processing power (Processor Speed), and AI integration (Semi-AI).
-    *   **Formula:** effectiveReactionTime = baseReactionTime \* (1.0 + (baseWeight / 250) - (acceleration / 25) - (processorSpeed / 25)) \* semiAiMultiplier
+    *   **Formula:** effectiveReactionTime = baseReactionTime \* (1.0 + (baseWeight / 250) - (acceleration / 1000) - (processorSpeed / 25)) \* semiAiMultiplier
     *   **Minimum Floor:** effectiveReactionTime cannot drop below 0.2x of baseReactionTime.        
     *   **Result:** Heavy, low-acceleration drones attack slowly but hit with more momentum. Light, high-acceleration drones strike with high frequency but less kinetic impact.
         

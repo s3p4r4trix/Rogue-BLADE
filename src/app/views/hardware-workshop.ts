@@ -541,12 +541,12 @@ export class HardwareWorkshop {
     const critChance = (b?.critChance || 0) * (f?.critChanceMult || 1.0) * 100; // Display as percentage
 
     // Effective Reaction Time Formula from Section 4.2
-    // effectiveReactionTime = baseReactionTime * (1.0 + (baseWeight / 250) - (acceleration / 25) - (processorSpeed / 25))
+    // effectiveReactionTime = baseReactionTime * (1.0 + (baseWeight / 250) - (acceleration / 1000) - (processorSpeed / 25))
     const baseRX = p?.reactionTime || 0.2;
     const procSpeed = p?.processorSpeed || 5;
     const aiMult = s.semiAI?.reactionTimeMult || 1.0;
     
-    let rxMult = 1.0 + (weight / 250) - (acceleration / 25) - (procSpeed / 25);
+    let rxMult = 1.0 + (weight / 250) - (acceleration / 1000) - (procSpeed / 25);
     rxMult = Math.max(0.2, rxMult);
     const effectiveRX = baseRX * rxMult * aiMult;
 
