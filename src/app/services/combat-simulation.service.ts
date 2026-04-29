@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { MissionContract } from '../models/mission-model';
 import { Shuriken } from '../models/hardware-model';
 import { StrikeResult } from '../models/combat-model';
+import { ENEMY_TEMPLATES } from '../constants/enemy-templates';
 
 @Injectable({
   providedIn: 'root'
@@ -16,8 +17,9 @@ export class CombatSimulationService {
     const squadPower = squad.reduce((acc, s) => acc + (s.blade?.baseDamage || 10), 0);
     const squadHealth = squad.reduce((acc, s) => acc + (s.hull?.maxHp || 100), 0);
     
-    const enemyHealth = mission.hull + mission.shields;
-    const enemyPower = 25; // Base hostile damage
+    const template = ENEMY_TEMPLATES[mission.enemyTypeId] || ENEMY_TEMPLATES['GUARDIAN_UNIT'];
+    const enemyHealth = template.stats.maxHp;
+    const enemyPower = template.stats.baseDamage;
     
     const ticksToKillEnemy = enemyHealth / Math.max(1, squadPower * 0.5);
     const ticksToKillSquad = squadHealth / enemyPower;

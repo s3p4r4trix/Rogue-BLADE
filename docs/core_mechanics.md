@@ -110,6 +110,7 @@ Blunt/Kinetic weapons deal more damage the heavier and faster the Shuriken is.
 *   **Example:** A shuriken with currentSpeed of 100 and baseWeight of 100 will have a momentumMultiplier of 2.0. A shuriken with currentSpeed of 200 and baseWeight of 55 will have a momentumMultiplier of 2.1.
 *   **Formula:** momentumMultiplier = 1.0 + ((currentSpeed \* baseWeight) / 10000)
 *   **Formula:** finalKineticDamage = baseDamage \* momentumMultiplier
+*   **Note:** Tangential fly-bys (see Section 8.6) help drones retain their `momentumMultiplier` between strikes by preserving velocity directionality rather than reversing it.
 
 ### 4.3 Energy Exhaustion (Emergency Reboot)
 
@@ -149,7 +150,7 @@ If a Shuriken collides with an enemy while NOT in the STRIKING state (currentSpe
 
 *   **Logic:** Baseline contact damage without the benefit of the Kinetic Momentum Multiplier.
 *   **Formula:** glancingDamage = max(1, (baseDamage * effectivenessMatrix[weaponType][enemyArmor]) - enemyArmorValue)
-*   **Post-Contact:** Attacker immediately enters ORBITING state and bounces back (velocity = -velocity * 0.5) to prepare for a proper strike.
+*   **Post-Contact:** Attacker immediately enters ORBITING state and deflects tangentially (see Section 8.6) to prepare for a proper strike.
 
 ### 5.2 Combat Frequency & Cooldowns
 
@@ -202,7 +203,7 @@ _(Note: High-tier missions result in significantly more durable Zenith hostiles 
 
 The Drone AI operates on an underlying "Hidden Default" State Machine before evaluating any user-programmed Gambit Slots.
 
-*   **Default Logic Loop:** PATROLLING (Target = null) -> LOS CLEAR -> PURSUING -> IN MELEE RANGE -> STRIKING -> BOUNCE/RETREATING -> LOS BLOCKED -> SEARCHING.    
+*   **Default Logic Loop:** PATROLLING (Target = null) -> LOS CLEAR -> PURSUING -> IN MELEE RANGE -> STRIKING -> DEFLECTION/RETREATING -> LOS BLOCKED -> SEARCHING.    
 *   **Action Fallbacks:** If an IF condition in the user's Gambit slots is met, but the THEN action cannot be executed (e.g., insufficient energy), the simulation skips the routine and evaluates the next one.    
 *   **Default Fallback:** If no gambit conditions are met, the drone reverts to the Hidden Default state machine behavior.    
 
@@ -305,7 +306,7 @@ All movement uses smooth acceleration toward a target velocity. The acceleration
 
 **Patrol (Idle Navigation):**When no target is known or seen, the unit moves at 100% topSpeed between random waypoints within the arena to scan for threats.
 
-**Retreat & Regroup (actionDefendAlly / Post-Strike):** Calculates a vector directly away from the target entity. The drone maintains this retreat until it is at least 150 units away or 1.0 seconds have elapsed. Used to build up maximum momentum before a new strike pass.
+**Retreat & Regroup (actionDefendAlly / Post-Strike):** Calculates a vector to guide the fly-by away from the target entity. The drone maintains this retreat until it is at least 150 units away or 1.0 seconds have elapsed. Used to build up maximum momentum before a new strike pass.
 
 **Flee / Retreat (actionEmergencyWithdrawal):** Calculates the vector directly away from the nearest enemy and moves toward the furthest arena boundary.
 
@@ -344,12 +345,12 @@ All movement uses smooth acceleration toward a target velocity. The acceleration
 *   **Angle:** ±1.05 radians (~60 degrees) from current rotation.
 *   **Dynamic Clipping:** The FOV is rendered as a visibility polygon. Rays are cast at 0.05 radian increments across the 120-degree arc.    
 
-### 8.6 Strike Velocity Gating & Bounce
+### 8.6 Strike Velocity Gating & Deflection
 
 Drones must reach a minimum velocity before a strike attempt is valid. This prevents low-energy "humping" where a drone sticks to a target.
 *   **Minimum Strike Speed:** MIN_STRIKE_SPEED = 0.4 (40% of topSpeed)
 *   **Gate Check:** canStrike = currentSpeed >= (topSpeed \* MIN_STRIKE_SPEED)
-*   **Post-Strike Bounce:** Immediately after registering a hit, the drone's velocity is inverted and reduced (velocity = -velocity * 0.5) and its state shifts to ORBITING (Retreating) until it reaches a distance of 150 units or 1.0s have passed. This forces a natural fly-by and repositioning loop for momentum buildup.
+*   **Post-Strike Deflection:** Immediately after registering a hit, drones execute a tangential fly-by rather than bouncing backward. The velocity vector is rotated outward from the current **facing direction (rotation)** by 45 to 90 degrees. The speed used for the fly-by is derived from the drone's velocity immediately prior to impact (scaled by a positive friction multiplier, e.g. 0.8), ensuring kinetic momentum is preserved as the drone "slices" through the target. The drone's state shifts to ORBITING (Retreating) until it reaches a distance of 150 units or 1.0s have passed, forcing a repositioning loop for subsequent strikes.
 *   **Strike Cooldown:** After a successful hit, strikeCooldown = 1.0 seconds before the next strike.
 *   **Glancing Blow Fallback:** If a collision occurs while Strike conditions are not met, the engine defaults to a Glancing Blow (Section 5.3) to ensure continuous pressure.
 
@@ -410,4 +411,4 @@ To prevent drones from getting stuck against convex obstacles when the target is
     *   `safePoint = corner + (normalize(corner - aabbCenter) * safetyMargin)`
 3.  **Path Selection:** The AI checks which `safePoints` have a clear LOS from the current position.
 4.  **Best Path:** The AI selects the `safePoint` that minimizes the total distance: `dist(entity, safePoint) + dist(safePoint, target)`.
-5.  **Execution:** The drone sets its desired velocity toward the selected `safePoint` until LOS to the actual target is restored.
+5.  **Execution:** The drone sets its desired velocity toward the selected `safePoint` until LOS to the actual target is restored.

@@ -1,5 +1,3 @@
-import { ArmorType } from './hardware-model';
-
 export type MissionDifficulty = 'Tier I (Low)' | 'Tier II (Moderate)' | 'Tier III (High)' | 'Tier IV (Extreme)';
 
 export interface MissionLoot {
@@ -17,11 +15,6 @@ export interface MissionContract {
   difficulty: MissionDifficulty;
   durationSeconds: number;
   expectedResistance: string;
+  enemyTypeId: string;
   potentialLoot: MissionLoot;
-  // Tactical Stats
-  hull: number;
-  shields: number;
-  armorValue: number;
-  armorType: ArmorType;
-  enemyEvasionRate: number; // 0.0 - 1.0
 }

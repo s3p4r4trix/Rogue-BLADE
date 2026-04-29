@@ -4,6 +4,7 @@ import { RouterLink, Router } from '@angular/router';
 import { MissionStore } from '../services/mission.store';
 import { WorkshopStore } from '../services/workshop.store';
 import { MissionContract } from '../models/mission-model';
+import { ENEMY_TEMPLATES } from '../constants/enemy-templates';
 
 @Component({
   selector: 'app-liberation-strike',
@@ -120,6 +121,7 @@ import { MissionContract } from '../models/mission-model';
                     </p>
                     
                     <!-- Defense Analysis -->
+                    @let template = ENEMY_TEMPLATES[contract.enemyTypeId];
                     <div class="bg-black/40 border border-white/5 p-4 mb-4">
                       <div class="text-[10px] text-cyan-700 uppercase font-bold tracking-[0.2em] mb-3 border-b border-white/5 pb-2 flex justify-between">
                         <span>Defensive_Profile</span>
@@ -128,19 +130,19 @@ import { MissionContract } from '../models/mission-model';
                       <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
                         <div class="flex justify-between">
                           <span class="text-gray-500 uppercase font-bold tracking-tighter text-[10px]">Hull</span>
-                          <span class="text-cyan-400 font-mono font-bold">{{ contract.hull }}</span>
+                          <span class="text-cyan-400 font-mono font-bold">{{ template.stats.maxHp }}</span>
                         </div>
                         <div class="flex justify-between">
                           <span class="text-gray-500 uppercase font-bold tracking-tighter text-[10px]">Shields</span>
-                          <span class="text-cyan-400 font-mono font-bold">{{ contract.shields }}</span>
+                          <span class="text-cyan-400 font-mono font-bold">{{ template.stats.maxShields }}</span>
                         </div>
                         <div class="flex justify-between">
                           <span class="text-gray-500 uppercase font-bold tracking-tighter text-[10px]">Armor</span>
-                          <span class="text-cyan-400 font-mono">{{ contract.armorValue }} <span class="text-[9px] opacity-40">[{{ contract.armorType.split('_')[0] }}]</span></span>
+                          <span class="text-cyan-400 font-mono">{{ template.stats.armorValue }} <span class="text-[9px] opacity-40">[{{ template.stats.armorType.split('_')[0] }}]</span></span>
                         </div>
                         <div class="flex justify-between">
                           <span class="text-gray-500 uppercase font-bold tracking-tighter text-[10px]">Evasion</span>
-                          <span class="text-red-500 font-mono font-bold">{{ (contract.enemyEvasionRate * 100).toFixed(0) }}%</span>
+                          <span class="text-red-500 font-mono font-bold">{{ (template.stats.evasionRate * 100).toFixed(0) }}%</span>
                         </div>
                       </div>
                     </div>
@@ -204,6 +206,9 @@ import { MissionContract } from '../models/mission-model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LiberationStrike {
+  /** Centralized repository of enemy unit data. */
+  protected readonly ENEMY_TEMPLATES = ENEMY_TEMPLATES;
+
   /** Centralized store for mission state and logic. */
   missionStore = inject(MissionStore);
   

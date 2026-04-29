@@ -188,13 +188,28 @@ export class CombatEngineService {
                 hitFlash: 0.15
               };
 
-              // Force ORBITING state for the attacker
-              resolvedCollisions[aIdx] = {
-                ...attacker,
-                state: 'ORBITING',
-                stateTimer: 0,
-                velocity: VectorMath.mul(attacker.velocity, COMBAT_CONFIG.PHYSICS.POST_STRIKE_VELOCITY_MULT)
-              };
+              // Force ORBITING state only for PLAYER drones with precise deflection math
+              if (attacker.type === 'PLAYER') {
+                const outwardNormal = VectorMath.normalize(VectorMath.sub(attacker.position, defender.position));
+                const currentSpeed = VectorMath.length(updatedEntities[aIdx].velocity);
+                
+                // Determine rotation direction (away from target) using the perp-dot product
+                // This ensures we rotate "outward" relative to the collision point
+                const perpDot = attacker.velocity.x * outwardNormal.y - attacker.velocity.y * outwardNormal.x;
+                const side = perpDot > 0 ? 1 : -1;
+                
+                const deflectedVelocity = VectorMath.rotate(
+                  attacker.velocity, 
+                  COMBAT_CONFIG.PHYSICS.POST_STRIKE_DEFLECTION_ANGLE * side
+                );
+                
+                resolvedCollisions[aIdx] = {
+                  ...attacker,
+                  state: 'ORBITING',
+                  stateTimer: 0,
+                  velocity: VectorMath.mul(deflectedVelocity, COMBAT_CONFIG.PHYSICS.POST_STRIKE_FRICTION_MULT)
+                };
+              }
 
               this.store.addLog(
                 `[COMBAT] ${attacker.name} glancing blow on ${defender.name} for ${finalDamage} DMG.`
@@ -260,14 +275,32 @@ export class CombatEngineService {
               );
             }
 
-            // Bounce and State Change for Attacker
-            attacker = {
+            // Tangential Deflection and State Change for Attacker (PLAYER only)
+            // 1. Calculate the vector from the target's center to the attacker's position (the outward normal)
+            const outwardNormal = VectorMath.normalize(VectorMath.sub(attacker.position, target.position));
+            
+            // 2. Normalize the attacker's current velocity and get pre-impulse speed
+            const currentSpeed = VectorMath.length(updatedEntities[i].velocity);
+            const normalizedVel = VectorMath.normalize(attacker.velocity);
+            
+            // 3. Determine rotation direction: ensure it rotates "outward" (away from target)
+            // Use perp-dot product to find which side of the velocity vector the outward normal lies on
+            const perpDot = normalizedVel.x * outwardNormal.y - normalizedVel.y * outwardNormal.x;
+            const side = perpDot >= 0 ? 1 : -1;
+
+            // 4. Deflect the velocity away from the target by the configured angle
+            const deflectedDir = VectorMath.rotate(
+              normalizedVel, 
+              COMBAT_CONFIG.PHYSICS.POST_STRIKE_DEFLECTION_ANGLE * side
+            );
+
+            // 5. Multiply by current speed and friction multiplier to retain momentum
+            resolvedEntities[i] = {
               ...attacker,
-              velocity: VectorMath.mul(attacker.velocity, COMBAT_CONFIG.PHYSICS.POST_STRIKE_VELOCITY_MULT), // Reverse and halve speed
+              velocity: VectorMath.mul(deflectedDir, currentSpeed * COMBAT_CONFIG.PHYSICS.POST_STRIKE_FRICTION_MULT),
               state: 'ORBITING',
               stateTimer: 0
             };
-            resolvedEntities[i] = attacker;
           }
         }
       }

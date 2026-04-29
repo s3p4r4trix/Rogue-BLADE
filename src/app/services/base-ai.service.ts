@@ -133,8 +133,8 @@ export class BaseAIService {
       entity.stateTimer = 0;
     }
 
-    // Force retreat if stuck in melee range without speed (Sticky Pursuit fix)
-    if (dist <= COMBAT_CONFIG.RANGES.MELEE_RANGE_BASE && currentSpeed < minStrikeSpeed) {
+    // Force retreat if stuck in melee range without speed (Sticky Pursuit fix) - PLAYER only
+    if (entity.type === 'PLAYER' && dist <= COMBAT_CONFIG.RANGES.MELEE_RANGE_BASE && currentSpeed < minStrikeSpeed) {
       entity.state = 'ORBITING';
       entity.stateTimer = 0;
     }
@@ -149,8 +149,8 @@ export class BaseAIService {
     // Post-Strike logic: After a hit is registered (handled elsewhere), state switches to ORBITING.
     // Here we just provide the acceleration vector "through" the target.
 
-    // If we've passed the target or hit it, we switch to ORBITING
-    if (VectorMath.dist(entity.position, target.position) < COMBAT_CONFIG.RANGES.STRIKE_HIT_THRESHOLD) {
+    // If we've passed the target or hit it, we switch to ORBITING (PLAYER only)
+    if (entity.type === 'PLAYER' && VectorMath.dist(entity.position, target.position) < COMBAT_CONFIG.RANGES.STRIKE_HIT_THRESHOLD) {
       entity.state = 'ORBITING';
       entity.stateTimer = 0;
     }

@@ -4,6 +4,7 @@ import { MissionContract, MissionDifficulty } from '../models/mission-model';
 import { WorkshopStore } from './workshop.store';
 import { PlayerStore } from './player.store';
 import { ArmorType } from '../models/hardware-model';
+import { ENEMY_TEMPLATES } from '../constants/enemy-templates';
 
 /** ─── Mission Data Constants ─────────────────────────────────────────────── */
 
@@ -131,11 +132,12 @@ export const MissionStore = signalStore(
       const scrapMax = Math.floor(baseLoot * 1.2);
       const creditsBonus = Math.floor(baseLoot * 1.5);
 
-      const hull = Math.floor(baseLoot * 1.5);
-      // Logic: Early game (success < 10) features no shields/armor for onboarding smoothness.
-      const shields = (successfulRuns < 10) ? 0 : (resistanceProfile.type === 'ENERGY_SHIELD' ? Math.floor(baseLoot * 1.2) : Math.floor(baseLoot * 0.2));
-      const armorValue = (successfulRuns < 10) ? 0 : (resistanceProfile.type === 'HEAVY_ARMOR' ? Math.floor(baseLoot * 0.15) : 0);
-      const enemyEvasionRate = resistanceProfile.type === 'UNARMORED' ? 0.10 : 0.05;
+
+      // Map resistance profile to a specific enemy template ID
+      let enemyTypeId = 'GUARDIAN_UNIT';
+      if (resistanceProfile.type === 'UNARMORED') enemyTypeId = 'SCYTHE_DRONE';
+      if (resistanceProfile.type === 'ENERGY_SHIELD') enemyTypeId = 'EMP_WARDEN';
+      if (index === 2 && resistanceProfile.type === 'HEAVY_ARMOR') enemyTypeId = 'PHALANX_TANK';
 
       return {
         id: `mission-${Date.now()}-${index}`,
@@ -144,12 +146,8 @@ export const MissionStore = signalStore(
         difficulty,
         durationSeconds,
         expectedResistance: resistanceProfile.label,
-        potentialLoot: { polymerMin, polymerMax, scrapMin, scrapMax, creditsBonus },
-        hull,
-        shields,
-        armorValue,
-        armorType: resistanceProfile.type,
-        enemyEvasionRate
+        enemyTypeId,
+        potentialLoot: { polymerMin, polymerMax, scrapMin, scrapMax, creditsBonus }
       };
     };
 

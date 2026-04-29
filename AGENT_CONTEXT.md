@@ -49,7 +49,7 @@ We are currently building **Phase 2 (The Liberation Strike / Passive Combat)**. 
 
 1. **2D Arena (Tactical Map):** Canvas-based 2D combat arena with 3/4 perspective, Y+Z depth sorting, obstacle cover, AI visualization, and **Live Feed synchronization** (arena emits log events to the feed via `arenaLog` output).
 2. **AI Movement Behaviors:** Seek, Orbit, Flee, Search, and **Corner Navigation** (handles blocked LOS during pursuit by navigating around obstacle corners). Smooth acceleration with obstacle avoidance (5-feeler system).
-3. **Strike Velocity Gating:** Drones must reach **40% of topSpeed** (`MIN_STRIKE_SPEED`) before strikes connect. Post-strike bounce creates fly-by attack patterns. 1.0s cooldown between strikes.
+3. **Strike Velocity Gating:** Drones must reach **40% of topSpeed** (`MIN_STRIKE_SPEED`) before strikes connect. Post-strike deflection (tangential fly-by) creates fluid attack patterns. 1.0s cooldown between strikes.
 4. **Sensors & Raycasting:** Radius detection (Radar: 400 / Melee: 30), parametric LOS raycasting, and **last-seen memory** that drives SEARCHING behavior when LOS is blocked.
 5. **Visual Feedback:** Hit flash VFX (white ring + flash on enemy), ⚡ strike-ready indicator, LAST CONTACT crosshair marker for search state, and full debug overlays.
 6. **Combat Simulation:** Refine the high-frequency (0.1s) battle engine to ensure fair hostile attack speeds and accurate shuriken latency processing.

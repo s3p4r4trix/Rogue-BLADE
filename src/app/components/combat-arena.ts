@@ -16,6 +16,7 @@ import { CombatStore } from '../services/combat-store';
 import { CombatEngineService } from '../services/combat-engine.service';
 import { CombatEntity, AABB } from '../models/combat-model';
 import { MissionContract } from '../models/mission-model';
+import { ENEMY_TEMPLATES } from '../constants/enemy-templates';
 import { Shuriken } from '../models/hardware-model';
 
 @Component({
@@ -476,7 +477,9 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
       });
     });
 
-    // Enemy Target
+    // Enemy Target (Zenith Hostile)
+    const template = ENEMY_TEMPLATES[mission.enemyTypeId] || ENEMY_TEMPLATES['GUARDIAN_UNIT'];
+
     combatEntities.push({
       id: 'enemy-1',
       name: mission.targetName,
@@ -486,28 +489,28 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
       velocity: { x: 0, y: 0 },
       rotation: Math.PI / 2,
       stats: {
-        hp: mission.hull,
-        maxHp: mission.hull,
-        armorValue: 10,
-        armorType: 'HEAVY_ARMOR',
-        evasionRate: 0.05,
-        energy: 1000,
-        maxEnergy: 1000,
-        energyRegen: 10,
-        energyDrain: 0,
+        hp: template.stats.maxHp,
+        maxHp: template.stats.maxHp,
+        armorValue: template.stats.armorValue,
+        armorType: template.stats.armorType,
+        evasionRate: template.stats.evasionRate,
+        energy: template.stats.energy,
+        maxEnergy: template.stats.maxEnergy,
+        energyRegen: template.stats.energyRegen,
+        energyDrain: template.stats.energyDrain,
         speed: 0,
-        maxSpeed: 80,
-        acceleration: 30,
-        weight: 500,
-        baseDamage: 25,
-        damageType: 'KINETIC',
-        critChance: 0.05,
-        critMultiplier: 1.5
+        maxSpeed: template.stats.maxSpeed,
+        acceleration: template.stats.acceleration,
+        weight: template.stats.weight,
+        baseDamage: template.stats.baseDamage,
+        damageType: template.stats.damageType,
+        critChance: template.stats.critChance,
+        critMultiplier: template.stats.critMultiplier
       },
       state: 'PATROLLING',
       gambits: [],
-      radius: 20,
-      color: '#ef4444',
+      radius: template.radius,
+      color: template.color,
       stateTimer: 0,
       retaliationTimer: 0,
       hitFlash: 0
