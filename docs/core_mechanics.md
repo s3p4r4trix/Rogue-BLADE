@@ -143,6 +143,14 @@ When a Shuriken attacks an enemy, the damageType is checked against the enemy's 
 
 _(Note: Net damage always deals at least 1 point of damage unless completely evaded, to prevent zero-damage infinite loops)._
 
+### 5.3 Glancing Blows (Low-Speed Collisions)
+
+If a Shuriken collides with an enemy while NOT in the STRIKING state (currentSpeed < MIN_STRIKE_SPEED), it deals a "Glancing Blow". This provides a baseline damage source even when momentum is low.
+
+*   **Logic:** Baseline contact damage without the benefit of the Kinetic Momentum Multiplier.
+*   **Formula:** glancingDamage = max(1, (baseDamage * effectivenessMatrix[weaponType][enemyArmor]) - enemyArmorValue)
+*   **Post-Contact:** Attacker immediately enters ORBITING state and bounces back (velocity = -velocity * 0.5) to prepare for a proper strike.
+
 ### 5.2 Combat Frequency & Cooldowns
 
 Combat is not purely turn-based but uses a high-frequency simulation (0.1s increments).
@@ -312,6 +320,7 @@ All movement uses smooth acceleration toward a target velocity. The acceleration
 
 *   **Separation:** Entities push each other apart by overlap / 2.
 *   **Mutual Impulse:** Contact triggers a small velocity boost away from the point of impact.
+*   **Combat Trigger:** If a PLAYER vs ENEMY collision occurs, the engine evaluates if it is a full Strike (STRIKING state) or a Glancing Blow (see Section 5.3).
 
 **Obstacle Avoidance (Dynamic Wall-Sliding Math):** AI entities project 5 feeler rays to steer around cover fluidly without losing momentum.
 *   **5-Feeler Layout:** Front (0° at length L), Diag Left/Right (±45° at length L\*0.75), Side Left/Right (±90° at length L\*0.5).
@@ -342,6 +351,7 @@ Drones must reach a minimum velocity before a strike attempt is valid. This prev
 *   **Gate Check:** canStrike = currentSpeed >= (topSpeed \* MIN_STRIKE_SPEED)
 *   **Post-Strike Bounce:** Immediately after registering a hit, the drone's velocity is inverted and reduced (velocity = -velocity \* 0.5) and its state shifts to ORBITING for 1 second. This forces a natural fly-by and repositioning loop.
 *   **Strike Cooldown:** After a successful hit, strikeCooldown = 1.0 seconds before the next strike.
+*   **Glancing Blow Fallback:** If a collision occurs while Strike conditions are not met, the engine defaults to a Glancing Blow (Section 5.3) to ensure continuous pressure.
 
 ### 8.7 Strike Damage (Arena)
 

@@ -126,9 +126,67 @@ export class CombatEngineService {
       };
     });
 
+    // Step E.1: Circle-vs-Circle Collision Resolution (Section 8.4)
+    // Drones and enemies resolve physical overlap to prevent stacking.
+    const resolvedCollisions = [...updatedEntities];
+    for (let i = 0; i < resolvedCollisions.length; i++) {
+      for (let j = i + 1; j < resolvedCollisions.length; j++) {
+        const e1 = resolvedCollisions[i];
+        const e2 = resolvedCollisions[j];
+
+        const dist = VectorMath.dist(e1.position, e2.position);
+        const minDist = e1.radius + e2.radius;
+
+        if (dist < minDist && dist > 0) {
+          const overlap = minDist - dist;
+          const normal = VectorMath.normalize(VectorMath.sub(e1.position, e2.position));
+          const push = VectorMath.mul(normal, overlap / 2);
+
+          // Separation: Push apart by overlap / 2
+          resolvedCollisions[i] = { ...e1, position: VectorMath.add(e1.position, push) };
+          resolvedCollisions[j] = { ...e2, position: VectorMath.sub(e2.position, push) };
+
+          // Mutual Impulse: Trigger a small velocity boost away
+          const impulseStrength = 30;
+          resolvedCollisions[i].velocity = VectorMath.add(resolvedCollisions[i].velocity, VectorMath.mul(normal, impulseStrength));
+          resolvedCollisions[j].velocity = VectorMath.sub(resolvedCollisions[j].velocity, VectorMath.mul(normal, impulseStrength));
+
+          // Glancing Blow Logic: Low-speed collision damage (Player vs Enemy)
+          if ((e1.type === 'PLAYER' && e2.type === 'ENEMY') || (e1.type === 'ENEMY' && e2.type === 'PLAYER')) {
+            const attacker = e1.type === 'PLAYER' ? resolvedCollisions[i] : resolvedCollisions[j];
+            const defender = e1.type === 'PLAYER' ? resolvedCollisions[j] : resolvedCollisions[i];
+            const aIdx = e1.type === 'PLAYER' ? i : j;
+            const dIdx = e1.type === 'PLAYER' ? j : i;
+
+            if (attacker.state !== 'STRIKING') {
+              const effectiveness = this.EFFECTIVENESS_MATRIX[attacker.stats.damageType]?.[defender.stats.armorType] || 1.0;
+              const finalDamage = Math.max(1, Math.round((attacker.stats.baseDamage * effectiveness) - defender.stats.armorValue));
+              const newHp = Math.max(0, defender.stats.hp - finalDamage);
+
+              resolvedCollisions[dIdx] = {
+                ...defender,
+                stats: { ...defender.stats, hp: newHp },
+                hitFlash: 0.15
+              };
+
+              // Force ORBITING state for the attacker
+              resolvedCollisions[aIdx] = {
+                ...attacker,
+                state: 'ORBITING',
+                stateTimer: 0,
+                velocity: VectorMath.mul(attacker.velocity, -0.5)
+              };
+
+              this.store.addLog(`[COMBAT] ${attacker.name} glancing blow on ${defender.name} for ${finalDamage} DMG.`);
+            }
+          }
+        }
+      }
+    }
+
     // Step E.2: Combat Resolution Phase
     // Iterate through entities to resolve strikes and retaliation
-    const resolvedEntities = [...updatedEntities];
+    const resolvedEntities = [...resolvedCollisions];
 
     for (let i = 0; i < resolvedEntities.length; i++) {
       let attacker = resolvedEntities[i];

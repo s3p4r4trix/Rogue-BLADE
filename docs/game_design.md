@@ -185,7 +185,8 @@ The Liberation Strike's Phase 2 is accompanied by a Tactical Map – a 2D combat
 These are the core spatial behaviors mapped to existing GDD actions:
 
 *   **Pursuit (Standard Strike)**: Drone moves toward its visible target. If LOS is blocked, it calculates the best corner of the obstacle to navigate around.
-*   **Fighting & Post-Strike Bounce**: High-intensity engagement. Once a strike connects,the drone physically bounces (velocity = -velocity \* 0.5) and forces anOrbiting reposition to build up momentum for the next pass, preventing sticky "humping".
+*   **Fighting & Post-Strike Bounce**: High-intensity engagement. Once a strike connects,the drone physically bounces (velocity = -velocity \* 0.5) and forces anOrbiting reposition to build up momentum for the next pass.
+    *   **Glancing Blows**: If a drone collides with an enemy without reaching strike velocity, it deals a low-damage "Glancing Blow" and bounces back, preventing "sticky" movement while ensuring continuous damage output.
 *   **Steering & Obstacle Avoidance (Wall-Sliding)**: Navigation and Vision are strictly separated.Units project a dynamic set of feelers whose length scales with speed. When a feelerhits an AABB, vector projection allows the drone to slide elegantly parallel to theobstacle rather than bouncing off it.
 *   **Orbit (Repositioning)**: Drone maintains a fixed radius around the target.
 *   **Flee (Emergency Withdrawal)**: Triggered when HP drops below 20%.
