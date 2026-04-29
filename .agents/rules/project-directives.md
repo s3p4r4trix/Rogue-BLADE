@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # PROJECT DIRECTIVES: Rogue:BLADE
 
 This document defines the mandatory "startup skill" for the Rogue:BLADE project. Any AI agent working on this repository must execute these instructions as their first step in every chat session.
@@ -25,6 +29,9 @@ Before performing any research, code generation, or modification, you MUST read 
 ### C. Documentation Priority
 *   Every complex logic change must be accompanied by updated JSDoc comments.
 *   Explain the **WHY**, not just the **WHAT**.
+
+## 3. Conflict Resolution
+If a conflict arises between a user request and core_mechanics.md, you must flag the discrepancy and ask for clarification before proceeding with the code.
 
 ---
 **Status**: ACTIVE
