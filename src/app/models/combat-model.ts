@@ -20,6 +20,9 @@ export interface AABB {
   zHeight: number; // Height of the obstacle along the Z-axis
 }
 
+export type DamageType = 'KINETIC' | 'SLASHING' | 'ENERGY' | 'EMP';
+export type ArmorType = 'UNARMORED' | 'HEAVY_ARMOR' | 'ENERGY_SHIELD';
+
 /**
  * Possible AI states for the state machine.
  */
@@ -42,13 +45,21 @@ export interface CombatEntity {
   stats: {
     hp: number;
     maxHp: number;
+    armorValue: number;
+    armorType: ArmorType;
+    evasionRate: number;
     energy: number;
     maxEnergy: number;
+    energyRegen: number;
+    energyDrain: number;
     speed: number; // Current movement speed
     maxSpeed: number; // Top speed from engine
     acceleration: number;
     weight: number;
     baseDamage: number;
+    damageType: DamageType;
+    critChance: number;
+    critMultiplier: number;
   };
   
   // AI / Logic
@@ -65,6 +76,7 @@ export interface CombatEntity {
   // Visual / Debug
   radius: number; // Collision radius
   color: string;
+  hitFlash: number; // Timer for hit flash effect (seconds)
 }
 
 /**

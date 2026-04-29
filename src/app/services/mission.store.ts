@@ -116,7 +116,7 @@ export const MissionStore = signalStore(
 
       if (index === 0) {
         difficulty = 'Tier I (Low)';
-        durationSeconds = Math.min(90, 30 + (successfulRuns * 5));
+        durationSeconds = Math.min(120, 60 + (successfulRuns * 5));
       } else if (index === 1) {
         difficulty = 'Tier II (Moderate)';
         durationSeconds = Math.min(180, 60 + (successfulRuns * 10));

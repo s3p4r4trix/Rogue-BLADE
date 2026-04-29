@@ -6,7 +6,7 @@ import { SensorService } from './sensor.service';
 @Injectable({ providedIn: 'root' })
 export class BaseAIService {
   private sensorService = inject(SensorService);
-  private readonly MELEE_RANGE = 30; // Slightly larger for better strike detection
+  private readonly MELEE_RANGE = 30; // Matches core_mechanics.md Section 8.5
   private readonly MIN_STRIKE_SPEED_RATIO = 0.4;
   private readonly ARENA_BOUNDS = 800;
   private readonly SEARCH_SCAN_TIME = 2; // seconds
@@ -174,6 +174,8 @@ export class BaseAIService {
     const radialDir = VectorMath.normalize(toTarget);
     
     const combinedDir = VectorMath.normalize(VectorMath.add(tangentDir, VectorMath.mul(radialDir, radialPull)));
+    
+    // 4. Clamp to max speed
     return VectorMath.mul(combinedDir, entity.stats.maxSpeed);
   }
 

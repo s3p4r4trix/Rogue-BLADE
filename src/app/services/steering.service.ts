@@ -73,17 +73,20 @@ export class SteeringService {
       }
     }
 
-    // 3. Wall-Sliding Logic
-    let finalVelocity = VectorMath.add(desiredVelocity, avoidanceForce);
+    // 3. Wall-Sliding Logic (Applied to desiredVelocity first)
+    let slidingVelocity = { ...desiredVelocity };
 
     if (closestHit) {
-      const dot = VectorMath.dot(finalVelocity, closestHit.normal);
+      const dot = VectorMath.dot(slidingVelocity, closestHit.normal);
       // If dot < 0, we are moving INTO the wall
       if (dot < 0) {
-        const slideVelocity = VectorMath.sub(finalVelocity, VectorMath.mul(closestHit.normal, dot));
-        finalVelocity = slideVelocity;
+        const slide = VectorMath.sub(slidingVelocity, VectorMath.mul(closestHit.normal, dot));
+        slidingVelocity = slide;
       }
     }
+
+    // Combined Result: Sliding velocity + Avoidance forces
+    let finalVelocity = VectorMath.add(slidingVelocity, avoidanceForce);
 
     // 4. Clamp to max speed
     return VectorMath.limit(finalVelocity, entity.stats.maxSpeed);

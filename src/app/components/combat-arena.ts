@@ -75,7 +75,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
   // ─── Dependencies ───────────────────────────────────────────────
   private readonly store = inject(CombatStore);
   private readonly gameEngineService = inject(CombatEngineService);
-  
+
   // ─── Inputs & Outputs (Compatibility with StrikeReport) ─────────
   mission = input<MissionContract | null>(null);
   shurikens = input<Shuriken[]>([]);
@@ -85,11 +85,11 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
   // ─── Canvas Reference ───────────────────────────────────────────
   private readonly canvas = viewChild<ElementRef<HTMLCanvasElement>>('combatCanvas');
   private ctx: CanvasRenderingContext2D | null = null;
-  
+
   // ─── Game Loop State ────────────────────────────────────────────
   private animationFrameId: number | null = null;
   private lastTimestamp: number = 0;
-  
+
   // ─── 3/4 Perspective Constants ──────────────────────────────────
   protected readonly PERSPECTIVE_SCALE_Y = 0.7;
   protected readonly ARENA_WIDTH = 800;
@@ -104,7 +104,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
     effect(() => {
       const missionData = this.mission();
       const shurikenList = this.shurikens();
-      
+
       if (missionData && shurikenList.length > 0) {
         untracked(() => this.initializeCombatState(shurikenList, missionData));
       }
@@ -131,7 +131,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
    */
   private gameLoop(timestamp: number): void {
     if (!this.lastTimestamp) this.lastTimestamp = timestamp;
-    
+
     // Calculate deltaTime in seconds
     const deltaTime = (timestamp - this.lastTimestamp) / 1000;
     this.lastTimestamp = timestamp;
@@ -177,7 +177,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
       this.missionComplete.emit({ success: false });
       return;
     }
-    
+
     // Loss: Time out (if duration exceeded)
     const mission = this.mission();
     if (mission && this.store.timeElapsed() >= mission.durationSeconds) {
@@ -196,7 +196,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
 
     // A. Clear & Draw Background
     ctx.clearRect(0, 0, this.ARENA_WIDTH, this.ARENA_HEIGHT);
-    
+
     // Draw arena boundary (scaled by PERSPECTIVE_SCALE_Y)
     ctx.strokeStyle = 'rgba(34, 211, 238, 0.2)';
     ctx.lineWidth = 1;
@@ -227,20 +227,20 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
    */
   private drawObstacles(ctx: CanvasRenderingContext2D): void {
     const obstacles = this.store.obstacles();
-    
+
     for (const obs of obstacles) {
       const renderY = obs.y * this.PERSPECTIVE_SCALE_Y;
       const renderHeight = obs.height * this.PERSPECTIVE_SCALE_Y;
       const zOffset = (obs.zHeight || 0) * this.PERSPECTIVE_SCALE_Y;
-      
+
       // 1. Draw the vertical faces (Sides/Front)
       ctx.fillStyle = '#1e293b'; // slate-800
       ctx.fillRect(obs.x, renderY - zOffset, obs.width, renderHeight + zOffset);
-      
+
       // 2. Draw the top face
       ctx.fillStyle = '#334155'; // slate-700
       ctx.fillRect(obs.x, renderY - zOffset, obs.width, renderHeight);
-      
+
       // 3. Highlight edges
       ctx.strokeStyle = 'rgba(34, 211, 238, 0.3)';
       ctx.lineWidth = 1;
@@ -266,14 +266,29 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
 
     // 2. Sprite / Body: Circle/Ellipse offset by elevation (Z-axis)
     ctx.beginPath();
-    ctx.fillStyle = entity.type === 'PLAYER' ? '#06b6d4' : '#ef4444'; // Cyan vs Red
+
+    // Hit Flash logic: If hitFlash > 0, draw white overlay
+    if (entity.hitFlash > 0) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#FFFFFF';
+    } else {
+      ctx.fillStyle = entity.type === 'PLAYER' ? '#06b6d4' : '#ef4444'; // Cyan vs Red
+      ctx.shadowBlur = 0;
+    }
+
     ctx.ellipse(x, bodyY, radius, radius * this.PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
     ctx.fill();
-    
+
+    // Reset shadow for subsequent draws
+    ctx.shadowBlur = 0;
+
     // Aesthetic Glow
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.lineWidth = 2;
     ctx.stroke();
+
+    // (Strike Ready indicator moved to drawTacticalOverlays for depth sorting)
 
     // 3. HP Bar: Small bar above the sprite
     const hpPercent = Math.max(0, entity.stats.hp / entity.stats.maxHp);
@@ -302,26 +317,26 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
    */
   private drawTacticalOverlays(ctx: CanvasRenderingContext2D): void {
     const entities = this.store.entities();
-    
+
     for (const entity of entities) {
       const x = entity.position.x;
       const y = entity.position.y * this.PERSPECTIVE_SCALE_Y;
 
       // Range Wireframes
       ctx.setLineDash([4, 4]);
-      
+
       // Sensor Range (e.g., 120)
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
       ctx.ellipse(x, y, 120, 120 * this.PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
       ctx.stroke();
-      
+
       // Melee Range (20)
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(239, 68, 68, 0.15)';
       ctx.ellipse(x, y, 20, 20 * this.PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
       ctx.stroke();
-      
+
       ctx.setLineDash([]);
 
       // LOS for PURSUING or STRIKING
@@ -341,7 +356,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
       if (entity.state === 'SEARCHING' && entity.lastSeenPos) {
         const lx = entity.lastSeenPos.x;
         const ly = entity.lastSeenPos.y * this.PERSPECTIVE_SCALE_Y;
-        
+
         // Dashed connection
         ctx.beginPath();
         ctx.setLineDash([2, 2]);
@@ -350,7 +365,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
         ctx.lineTo(lx, ly);
         ctx.stroke();
         ctx.setLineDash([]);
-        
+
         // Yellow Crosshair
         ctx.strokeStyle = '#eab308';
         ctx.lineWidth = 1;
@@ -358,6 +373,42 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
         ctx.moveTo(lx - 5, ly); ctx.lineTo(lx + 5, ly);
         ctx.moveTo(lx, ly - 5); ctx.lineTo(lx, ly + 5);
         ctx.stroke();
+      }
+
+      // ⚡ Strike Ready Indicator (Overlay Layer)
+      const currentSpeed = Math.sqrt(entity.velocity.x ** 2 + entity.velocity.y ** 2);
+      const minStrikeSpeed = entity.stats.maxSpeed * 0.4;
+
+      if (entity.type === 'PLAYER' && currentSpeed >= minStrikeSpeed && entity.state !== 'STRIKING') {
+        const bodyY = (entity.position.y - entity.z) * this.PERSPECTIVE_SCALE_Y;
+        const pulse = Math.sin(Date.now() / 100) * 0.5 + 0.5;
+
+        ctx.save();
+        ctx.shadowBlur = 10 + pulse * 10;
+        ctx.shadowColor = '#FBED21';
+        ctx.fillStyle = '#FBED21';
+
+        // Procedural Lightning Bolt
+        const bx = x;
+        const by = bodyY - entity.radius - 15;
+        ctx.beginPath();
+        ctx.moveTo(bx + 4, by - 8);
+        ctx.lineTo(bx - 4, by);
+        ctx.lineTo(bx + 1, by);
+        ctx.lineTo(bx - 3, by + 10);
+        ctx.lineTo(bx + 5, by + 1);
+        ctx.lineTo(bx, by + 1);
+        ctx.closePath();
+        ctx.fill();
+
+        // Strike Aura
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(34, 211, 238, ${0.3 + pulse * 0.4})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 2]);
+        ctx.ellipse(x, bodyY, entity.radius + 6, (entity.radius + 6) * this.PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
       }
     }
   }
@@ -369,7 +420,7 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
   private initializeCombatState(shurikens: Shuriken[], mission: MissionContract): void {
     // 0. Reset Store
     this.store.reset();
-    
+
     // 1. Initialize Obstacles
     const obstacles: AABB[] = [
       { id: 'wall-1', x: 300, y: 300, width: 200, height: 60, zHeight: 50 },
@@ -395,24 +446,33 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
         stats: {
           hp: shuriken.hull?.maxHp || 100,
           maxHp: shuriken.hull?.maxHp || 100,
+          armorValue: shuriken.hull?.armorValue || 5,
+          armorType: 'UNARMORED', // Drones are usually unarmored or specific to hull
+          evasionRate: shuriken.engine?.evasionRate || 0.05,
           energy: shuriken.energyCell?.maxEnergy || 100,
           maxEnergy: shuriken.energyCell?.maxEnergy || 100,
+          energyRegen: shuriken.reactor?.energyRegen || 5,
+          energyDrain: shuriken.engine?.energyDrain || 5,
           speed: 0,
           maxSpeed: shuriken.engine?.topSpeed || 150,
           acceleration: shuriken.engine?.acceleration || 50,
           weight: [
-            shuriken.engine, shuriken.hull, shuriken.energyCell, 
-            shuriken.sensor, shuriken.blade, shuriken.formDesign, 
+            shuriken.engine, shuriken.hull, shuriken.energyCell,
+            shuriken.sensor, shuriken.blade, shuriken.formDesign,
             shuriken.processor, shuriken.shield, shuriken.reactor, shuriken.semiAI
           ].reduce((acc, comp) => acc + (comp?.weight || 0), 0) || 100,
-          baseDamage: shuriken.blade?.baseDamage || 15,
+          baseDamage: (shuriken.blade?.baseDamage || 15),
+          damageType: shuriken.blade?.damageType || 'KINETIC',
+          critChance: shuriken.blade?.critChance || 0.1,
+          critMultiplier: 1.5,
         },
         state: 'PATROLLING',
         gambits: [], // Logic handled by RoutineService elsewhere
         radius: 12,
         color: '#06b6d4',
         stateTimer: 0,
-        retaliationTimer: 0
+        retaliationTimer: 0,
+        hitFlash: 0
       });
     });
 
@@ -425,23 +485,32 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
       z: 0,
       velocity: { x: 0, y: 0 },
       rotation: Math.PI / 2,
-        stats: {
-          hp: mission.hull,
-          maxHp: mission.hull,
-          energy: 1000,
-          maxEnergy: 1000,
-          speed: 0,
-          maxSpeed: 80,
-          acceleration: 30,
-          weight: 500,
-          baseDamage: 25,
-        },
+      stats: {
+        hp: mission.hull,
+        maxHp: mission.hull,
+        armorValue: 10,
+        armorType: 'HEAVY_ARMOR',
+        evasionRate: 0.05,
+        energy: 1000,
+        maxEnergy: 1000,
+        energyRegen: 10,
+        energyDrain: 0,
+        speed: 0,
+        maxSpeed: 80,
+        acceleration: 30,
+        weight: 500,
+        baseDamage: 25,
+        damageType: 'KINETIC',
+        critChance: 0.05,
+        critMultiplier: 1.5
+      },
       state: 'PATROLLING',
       gambits: [],
       radius: 20,
       color: '#ef4444',
       stateTimer: 0,
-      retaliationTimer: 0
+      retaliationTimer: 0,
+      hitFlash: 0
     });
 
     this.store.setEntities(combatEntities);

@@ -5,10 +5,10 @@ import { Shuriken, AntiGravEngine, EnergyCell, Reactor, Sensor, Blade, FormDesig
 
 export const HARDWARE_INVENTORY = {
   engines: [
-    { id: 'eng-drifter', name: 'Drifter (Basic)', description: 'Salvaged industrial mag-lev.', topSpeed: 230, acceleration: 75, evasionRate: 0.05, energyDrain: 5, stealthValue: 10, weight: 10 } as AntiGravEngine,
-    { id: 'eng-hauler', name: 'Hauler (Tank)', description: 'Slow but high weight capacity.', topSpeed: 180, acceleration: 55, evasionRate: 0.0, energyDrain: 8, stealthValue: 0, weight: 25 } as AntiGravEngine,
-    { id: 'eng-screamer', name: 'Screamer (Speed)', description: 'High-performance racing engine.', topSpeed: 500, acceleration: 160, evasionRate: 0.15, energyDrain: 15, stealthValue: -20, weight: 8 } as AntiGravEngine,
-    { id: 'eng-ghost', name: 'Ghost (Stealth)', description: 'Silenced baffles and low profile.', topSpeed: 320, acceleration: 173, evasionRate: 0.10, energyDrain: 8, stealthValue: 50, weight: 12 } as AntiGravEngine
+    { id: 'eng-drifter', name: 'Drifter (Basic)', description: 'Salvaged industrial mag-lev.', topSpeed: 230, acceleration: 130, evasionRate: 0.05, energyDrain: 5, stealthValue: 10, weight: 10 } as AntiGravEngine,
+    { id: 'eng-hauler', name: 'Hauler (Tank)', description: 'Slow but high weight capacity.', topSpeed: 180, acceleration: 75, evasionRate: 0.0, energyDrain: 8, stealthValue: 0, weight: 25 } as AntiGravEngine,
+    { id: 'eng-screamer', name: 'Screamer (Speed)', description: 'High-performance racing engine.', topSpeed: 500, acceleration: 250, evasionRate: 0.15, energyDrain: 15, stealthValue: -20, weight: 8 } as AntiGravEngine,
+    { id: 'eng-ghost', name: 'Ghost (Stealth)', description: 'Silenced baffles and low profile.', topSpeed: 320, acceleration: 185, evasionRate: 0.10, energyDrain: 8, stealthValue: 50, weight: 12 } as AntiGravEngine
   ],
   energyCells: [
     { id: 'cell-scrap', name: 'Scrap Dynamo', description: 'Recovered from a junked hover-car.', maxEnergy: 100, maxOutput: 10, weight: 15 } as EnergyCell,
@@ -95,7 +95,7 @@ export function loadShurikens(): Shuriken[] {
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
       }
-    } catch (error) { 
+    } catch (error) {
       console.warn('[HardwareInventory] Failed to parse shurikens from LocalStorage, resetting to defaults.');
     }
   }
@@ -145,10 +145,10 @@ export function loadUnlockedComponents(): string[] {
 export function loadSavedRoutinesMap(): Record<string, GambitRoutine[]> {
   const saved = localStorage.getItem('rogueBlade_routinesMap');
   if (saved && saved !== 'undefined' && saved !== 'null') {
-    try { 
-      return JSON.parse(saved); 
-    } catch (error) { 
-       console.warn('[HardwareInventory] Failed to parse routinesMap from LocalStorage.');
+    try {
+      return JSON.parse(saved);
+    } catch (error) {
+      console.warn('[HardwareInventory] Failed to parse routinesMap from LocalStorage.');
     }
   }
 
