@@ -203,7 +203,7 @@ _(Note: High-tier missions result in significantly more durable Zenith hostiles 
 
 The Drone AI operates on an underlying "Hidden Default" State Machine before evaluating any user-programmed Gambit Slots.
 
-*   **Default Logic Loop:** PATROLLING (Target = null) -> LOS CLEAR -> PURSUING -> IN MELEE RANGE -> STRIKING -> DEFLECTION/RETREATING -> LOS BLOCKED -> SEARCHING.    
+*   **Default Logic Loop:** PATROLLING (Target = null) -> LOS CLEAR -> PURSUING/SHOOTING -> IN MELEE RANGE -> STRIKING -> DEFLECTION/RETREATING -> LOS BLOCKED -> SEARCHING.    
 *   **Action Fallbacks:** If an IF condition in the user's Gambit slots is met, but the THEN action cannot be executed (e.g., insufficient energy), the simulation skips the routine and evaluates the next one.    
 *   **Default Fallback:** If no gambit conditions are met, the drone reverts to the Hidden Default state machine behavior.    
 
@@ -362,9 +362,9 @@ When a drone's strike connects: Higher speed = more damage, rewarding fast appro
 
 When LOS to the enemy is lost, drones transition to SEARCHING to handle the "Corner Problem":
 1.  **Last-Seen Memory:** While LOS is clear, drones update lastSeenPos = { enemy.x, enemy.y }.
-2.  **Navigate to Last-Seen:** Drone moves to lastSeenPos at full speed.
-3.  **360-Degree Scan (Dog Sniffing):** Upon arrival (within 30 units), if the target is still not visible, the drone performs a slow 360-degree rotation in place for 2 seconds to sweep its sensors around the corner.
-4.  **Memory Expiry:** After SEARCH\_TOTAL\_TIME = 3 seconds, lastSeenPos is cleared and the drone falls back to PATROLLING. (Search scan takes 2 seconds).
+2.  **Navigate to Last-Seen:** Unit moves to lastSeenPos at full speed.
+3.  **360-Degree Scan (Dog Sniffing):** Upon arrival (within 5 units), if the target is still not visible, the unit performs a 360-degree rotation in place for 2 seconds to sweep its sensors.
+4.  **Memory Expiry:** After SEARCH\_TOTAL\_TIME = 3 seconds of search activity, lastSeenPos is cleared and the drone falls back to PATROLLING.
 
 ### 8.9 Emergency Withdrawal (FLEEING to WITHDRAWN)
 
@@ -378,7 +378,7 @@ Drones prioritize hardware preservation when critical damage is sustained.
 Zenith hostiles utilize ranged attacks to suppress drones.
 
 1.  **SHOOTING State:** Triggered when a hostile has a valid sensor lock (Range + LOS + FOV).
-    *   **Movement:** The entity halts all velocity (targetVelocity = {0,0}).
+    *   **Movement:** The entity halts all velocity (targetVelocity = {0,0}). The unit rotates to face and track the target drone continuously.
     *   **Firing Rate:** FIRE\_RATE = 2.0s (default, scales with Tier).
 2.  **Projectile Physics:**
     *   **Movement**: Projectiles move in a linear path: `pos = pos + velocity * deltaTime`.

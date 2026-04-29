@@ -32,7 +32,7 @@ Hardware components function similarly to gear in Action RPGs (like Diablo).This
 
 # 5.  The Software System (Gambit UI)
 
-*   **The Base AI (Hidden Default)**: Before any gambit slots are evaluated, every Shuriken runs a hidden state machine loop (Patrolling -> Pursuing -> Striking -> Fly-by Deflection -> Searching). The drone is fully functional _without_ player programming.
+*   **The Base AI (Hidden Default)**: Before any gambit slots are evaluated, every Shuriken runs a hidden state machine loop (Patrolling -> Pursuing -> Striking -> Fly-by Deflection -> Searching -> Shooting -> Engaging). The drone is fully functional _without_ player programming.
 
 *   **The Override Principle**: The Slot-based Gambit System acts as an override mechanismto interrupt this Base AI. This creates specialized archetypes.
     *   Example "Dagger": IF Self: Energy Low -> THEN Evasive Maneuver.
@@ -189,7 +189,7 @@ These are the core spatial behaviors mapped to existing GDD actions:
 *   **Steering & Obstacle Avoidance (Wall-Sliding)**: Navigation and Vision are strictly separated.Units project a dynamic set of feelers whose length scales with speed. When a feelerhits an AABB, vector projection allows the drone to slide elegantly parallel to theobstacle rather than bouncing off it.
 *   **Retreat & Regroup (Repositioning)**: Drone flies directly away from the target until it reaches a distance of at least 150px or 1.0 seconds have passed. This "Boom-and-Zoom" phase provides a long runway to build up maximum strike velocity before turning back for another pass.
 *   **Flee (Emergency Withdrawal)**: Triggered when HP drops below 20%.
-*   **Search (LOS Lost)**: When an enemy disappears behind cover, the drone navigates to itslast-seen position and performs a 2-second, 360-degree sensor sweep ("dog sniffing")before resetting to a patrol routine.
+*   **Search (LOS Lost)**: When an enemy disappears behind cover, the drone/unit navigates to its last-seen position at full speed. Upon arrival (within 5 units), it performs a 2-second, 360-degree sensor sweep ("dog sniffing"). The `lastSeenPos` memory persists for 3.0 seconds total before the unit resets to its idle patrol routine.
 *   **Patrol (Idle Movement)**: When no target is known, unit moves between random waypoints.
 
 ## 12.4.1 Minimum Strike Velocity

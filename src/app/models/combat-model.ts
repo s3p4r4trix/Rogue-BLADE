@@ -26,7 +26,7 @@ export type ArmorType = 'UNARMORED' | 'HEAVY_ARMOR' | 'ENERGY_SHIELD';
 /**
  * Possible AI states for the state machine.
  */
-export type AIState = 'PATROLLING' | 'PURSUING' | 'STRIKING' | 'ORBITING' | 'SEARCHING' | 'REBOOTING' | 'WITHDRAWN' | 'IDLE';
+export type AIState = 'PATROLLING' | 'PURSUING' | 'STRIKING' | 'ORBITING' | 'SEARCHING' | 'REBOOTING' | 'WITHDRAWN' | 'IDLE' | 'SHOOTING' | 'ENGAGING';
 
 /**
  * Represents a drone or enemy in the combat arena.

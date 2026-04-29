@@ -324,48 +324,8 @@ export class CombatEngineService {
         }
       }
 
-      // 2. Enemy Ranged Combat
-      // Enemies fire projectiles when they have a target and cooldown is ready
-      if (
-        attacker.type === 'ENEMY' &&
-        attacker.targetId &&
-        attacker.retaliationTimer >= COMBAT_CONFIG.AI_TIMINGS.FIRE_RATE
-      ) {
-        const target = resolvedEntities.find(e => e.id === attacker.targetId);
-        if (target) {
-          // Check for line of sight and range
-          const dist = VectorMath.dist(attacker.position, target.position);
-          const losClear = this.sensorService.checkLineOfSight(attacker, target.position, obstacles);
-          
-          if (dist <= COMBAT_CONFIG.RANGES.RADAR_RANGE && losClear) {
-            // FIRE!
-            const direction = VectorMath.normalize(VectorMath.sub(target.position, attacker.position));
-            const velocity = VectorMath.mul(direction, 300); // PROJECTILE_SPEED from docs
-
-            const newProjectile: Projectile = {
-              id: `proj-${crypto.randomUUID()}`,
-              position: { ...attacker.position },
-              velocity,
-              damage: attacker.stats.baseDamage,
-              damageType: attacker.stats.damageType,
-              sourceId: attacker.id,
-              targetId: attacker.targetId,
-              radius: 4
-            };
-
-            const currentProjectiles = this.store.projectiles();
-            this.store.setProjectiles([...currentProjectiles, newProjectile]);
-
-            // Reset fire cooldown
-            attacker = { ...attacker, retaliationTimer: 0 };
-            resolvedEntities[i] = attacker;
-
-            this.store.addLog(`[COMBAT] [HOSTILE] ${attacker.name} fired ${attacker.stats.damageType} projectile at ${target.name}.`);
-          }
-        }
-      }
     }
-
+    
     // Step E.3: Projectile Update & Collision
     const finalizedEntities = this.updateProjectiles(deltaTime, resolvedEntities);
 

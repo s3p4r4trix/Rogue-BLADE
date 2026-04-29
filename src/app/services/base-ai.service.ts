@@ -3,10 +3,12 @@ import { CombatEntity, Vector2D, BehaviorContext } from '../models/combat-model'
 import { VectorMath } from '../utils/vector-math.utils';
 import { SensorService } from './sensor.service';
 import { COMBAT_CONFIG } from '../constants/combat-config';
+import { CombatStore } from './combat-store';
 
 @Injectable({ providedIn: 'root' })
 export class BaseAIService {
   private sensorService = inject(SensorService);
+  private combatStore = inject(CombatStore);
 
   /**
    * Calculates the default behavior (desired velocity) based on the state machine.
@@ -23,8 +25,31 @@ export class BaseAIService {
       case 'PATROLLING':
         desiredVelocity = this.handlePatrolling(entity);
         if (target) {
-          entity.state = 'PURSUING';
+          if (entity.type === 'ENEMY') {
+            entity.state = 'SHOOTING';
+            entity.stateTimer = 0;
+          } else {
+            entity.state = 'PURSUING';
+          }
         }
+        break;
+
+      case 'SHOOTING':
+        if (!target) {
+          entity.state = 'SEARCHING';
+          entity.stateTimer = 0;
+          break;
+        }
+        desiredVelocity = this.handleShooting(entity, target, context);
+        break;
+
+      case 'ENGAGING':
+        if (!target) {
+          entity.state = 'SEARCHING';
+          entity.stateTimer = 0;
+          break;
+        }
+        desiredVelocity = this.handlePursuing(entity, target, context);
         break;
 
       case 'PURSUING':
@@ -54,7 +79,7 @@ export class BaseAIService {
       case 'SEARCHING':
         desiredVelocity = this.handleSearching(entity, context.deltaTime);
         if (target) {
-          entity.state = 'PURSUING';
+          entity.state = entity.type === 'ENEMY' ? 'SHOOTING' : 'PURSUING';
           entity.stateTimer = 0;
         }
         break;
@@ -181,6 +206,48 @@ export class BaseAIService {
     return VectorMath.mul(retreatDir, entity.stats.maxSpeed);
   }
 
+  private handleShooting(
+    entity: CombatEntity,
+    target: CombatEntity,
+    context: BehaviorContext
+  ): Vector2D {
+    // 1. Stationary Turret: Halt all movement
+    const desiredVelocity: Vector2D = { x: 0, y: 0 };
+
+    // 2. Continuous Tracking: Update rotation to face target
+    const toTarget = VectorMath.sub(target.position, entity.position);
+    entity.rotation = Math.atan2(toTarget.y, toTarget.x);
+
+    // 3. Firing Mechanism
+    if (entity.retaliationTimer >= COMBAT_CONFIG.AI_TIMINGS.FIRE_RATE) {
+      const direction = VectorMath.normalize(toTarget);
+      const velocity = VectorMath.mul(direction, 300); // PROJECTILE_SPEED from docs
+
+      const newProjectile = {
+        id: `proj-${crypto.randomUUID()}`,
+        position: { ...entity.position },
+        velocity,
+        damage: entity.stats.baseDamage,
+        damageType: entity.stats.damageType,
+        sourceId: entity.id,
+        targetId: target.id,
+        radius: 4
+      };
+
+      const currentProjectiles = this.combatStore.projectiles();
+      this.combatStore.setProjectiles([...currentProjectiles, newProjectile]);
+
+      // Reset fire cooldown
+      entity.retaliationTimer = 0;
+
+      this.combatStore.addLog(
+        `[COMBAT] [HOSTILE] ${entity.name} fired ${entity.stats.damageType} projectile at ${target.name}.`
+      );
+    }
+
+    return desiredVelocity;
+  }
+
   private handleSearching(entity: CombatEntity, dt: number): Vector2D {
     entity.stateTimer += dt;
 
@@ -192,29 +259,38 @@ export class BaseAIService {
     const distToLastSeen = VectorMath.dist(entity.position, entity.lastSeenPos);
 
     // 1. Move to last seen position
-    if (
-      distToLastSeen > 5 &&
-      entity.stateTimer < COMBAT_CONFIG.AI_TIMINGS.SEARCH_TOTAL_TIME
-    ) {
-      const dir = VectorMath.normalize(VectorMath.sub(entity.lastSeenPos, entity.position));
-      return VectorMath.mul(dir, entity.stats.maxSpeed);
+    // We face the last-seen-point and move in that direction.
+    if (distToLastSeen > 5) {
+      // If we haven't timed out (3s total search memory)
+      if (entity.stateTimer < COMBAT_CONFIG.AI_TIMINGS.SEARCH_TOTAL_TIME) {
+        const dir = VectorMath.normalize(VectorMath.sub(entity.lastSeenPos, entity.position));
+        return VectorMath.mul(dir, entity.stats.maxSpeed);
+      } else {
+        // Search timeout: return to patrolling
+        entity.state = 'PATROLLING';
+        entity.stateTimer = 0;
+        entity.lastSeenPos = undefined;
+        return { x: 0, y: 0 };
+      }
     }
 
-    // 2. Arrived: Rotate 360 degrees
-    if (entity.stateTimer < COMBAT_CONFIG.AI_TIMINGS.SEARCH_SCAN_TIME) {
-      // Rotation logic would be applied to the entity.rotation property,
-      // here we return 0 velocity to stay in place.
+    // 2. Arrived: Rotate 360 degrees to spot hostiles
+    // We stay at the last-seen-point and spin.
+    const scanTime = entity.stateTimer - (distToLastSeen <= 5 ? 0 : 0); 
+    // Wait, stateTimer is total time. We need to know how long we've been scanning.
+    // Let's use the remaining time for scanning until search_total_time.
+    
+    if (entity.stateTimer < COMBAT_CONFIG.AI_TIMINGS.SEARCH_TOTAL_TIME) {
+      // Rotation logic: Spin in place
       entity.rotation +=
         ((Math.PI * 2) / COMBAT_CONFIG.AI_TIMINGS.SEARCH_SCAN_TIME) * dt;
       return { x: 0, y: 0 };
     }
 
-    // 3. Timeout
-    if (entity.stateTimer >= COMBAT_CONFIG.AI_TIMINGS.SEARCH_TOTAL_TIME) {
-      entity.state = 'PATROLLING';
-      entity.stateTimer = 0;
-      entity.lastSeenPos = undefined;
-    }
+    // 3. Final Timeout
+    entity.state = 'PATROLLING';
+    entity.stateTimer = 0;
+    entity.lastSeenPos = undefined;
 
     return { x: 0, y: 0 };
   }
