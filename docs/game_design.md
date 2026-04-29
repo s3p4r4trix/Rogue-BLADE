@@ -2,11 +2,94 @@ Game Design Document: Rogue:BLADE (Mobile / Auto-Battler)
 
 # 1. Lore & Storyline (The Conflict)
 
-Earth has fallen. The "Zenith Collective" – a highly advanced, interstellar race– conquered the planet in a devastating blitzkrieg. Human mega-cities are nowcontrolled by massive alien monoliths and drone swarms. The remnants of humanityhave retreated into abandoned subway systems and underground bunkers. The playertakes on the role of a brilliant cyber-engineer of the last human resistance.From a damp underground workshop in the beginning, you build, program, andreverse-engineer "Smart-Shurikens" – autonomous, silent blade-drones designed tostrike the Zenith Collective from the shadows and liberate the mega-city, sectorby sector.
+Earth has fallen. The "Zenith Collective" – a highly advanced, interstellar race– conquered the planet in a devastating blitzkrieg. Human mega-cities are now controlled by massive alien monoliths and drone swarms. The remnants of humanity have retreated into abandoned subway systems and underground bunkers. The player takes on the role of a brilliant cyber-engineer of the last human resistance. From a damp underground workshop in the beginning, you build, program, and reverse-engineer "Smart-Shurikens" – autonomous, silent blade-drones designed to strike the Zenith Collective from the shadows and liberate the mega-city, sector by sector.
+
+This section outlines the long-term vision for the "Rogue:BLADE" universe, transcending the initial mobile auto-battler scope. This vision serves as the foundation for the "Smart-Shuriken" AI system, ensuring that all implemented mechanics align with a cohesive, immersive world.
+
+The "Rogue:BLADE" universe is a dark, neon-drenched cyberpunk dystopia where humanity fights a desperate war for survival against an advanced alien occupation.
+
+# 1.1 The Core Conflict: Humanity vs. The Zenith Collective
+The "Smart-Shuriken" project is the lynchpin of the human resistance. Humanity's last bastion is the underground network of bunkers and subway tunnels known as the "Substrata." From these hidden depths, players launch "Liberation Strikes" against the Zenith Collective. The objective is to reclaim the megacities by dismantling the monolithic alien structures that dominate the skyline.
+
+### The Antagonist: The Zenith Collective
+The Zenith Collective are interstellar conquerors from a distant galaxy, possessing technology centuries ahead of human civilization. They are not inherently evil but operate with a cold, utilitarian logic. They view organic life as chaotic and inferior, terraforming worlds to fit their rigid, geometric aesthetics. Their primary weakness is their arrogance and their underestimation of human ingenuity and adaptability.
+
+### The Protagonist: The Remnant Fleet
+The player commands the last vestiges of Earth's armed forces, now scattered and operating in the shadows. The resistance forces are a motley crew of cybernetically enhanced soldiers, rogue scientists, and guerrilla fighters. They are united by their refusal to surrender and their determination to restore the planet. The "Rogue:BLADE" system represents the pinnacle of their desperate innovation—a way to fight back using the enemy's own tactics against them.
+
+# 1.2 World Overview: Mega-Cities and the Substrata
+## The Megacities: Ruined by Design
+The surface world is a haunting tableau of human civilization transformed into a Zenith stronghold.
+
+* **The Monoliths**: Colossal alien structures pierce the sky, serving as control hubs for the Zenith occupation. These imposing monoliths broadcast energy fields that warp the local environment and serve as beacons for alien activity.
+* **Overgrown Ruins**: The once-bustling streets are now choked with alien flora that thrives in the energy-rich environment. Skyscrapers are draped in bio-luminescent vines, and parks have transformed into alien jungles.
+* **Neon-lit Battlefields**: The contrast between the ruined city and the glowing alien technology creates a stunning visual spectacle. Holographic advertisements flicker erratically alongside Zenith energy grids, casting an ethereal glow over the desolation.
+
+### The Substrata: The Heart of the Resistance
+Beneath the surface lies the hidden world of the resistance, a network of repurposed infrastructure that serves as the player's base of operations.
+
+* **The Workshop**: The player's main hub, located in a deep subway bunker. This is where the "Smart-Shuriken" drones are built, programmed, and upgraded. The workshop is a testament to human ingenuity, filled with salvaged alien tech and makeshift tools.
+* **Safe Zones**: Hidden enclaves within the Substrata where civilians and resistance fighters find refuge. These areas are crucial for maintaining morale and gathering resources.
+* **Hidden Supply Lines**: Secret tunnels and maintenance shafts connect the safe zones, allowing for the clandestine movement of personnel and materials. These routes are often the most dangerous, as they are prime territory for Zenith patrols.
+
+## 1.3 Key Locations
+The world is comprised of diverse environments, each offering unique challenges and opportunities:
+
+### Downtown Sector: Corporate Conquest
+The former financial district, now a militarized zone where the Zenith Collective has established its primary command center. The towering skyscrapers provide strategic advantages for both the resistance and the Zenith forces, creating a complex vertical combat environment.
+
+* **Zenith Central Tower**: The colossal monolith at the heart of the downtown sector, emitting a constant pulse of energy that empowers nearby Zenith units.
+* **Abandoned Stock Exchange**: A massive, crumbling structure that now serves as a Zenith data hub, heavily guarded by robotic sentinels.
+* **Skybridge Nexus**: High-altitude pathways connecting skyscrapers, offering strategic vantage points for aerial operations but exposing drones to long-range Zenith weaponry.
+
+### The Industrial Zone: The Forge of War
+Once the industrial heartland of the city, this sector is now a scrapyard of human ingenuity and Zenith destruction. The dense network of factories, warehouses, and assembly lines provides ample cover and tactical opportunities.
+
+* **Scrapheap Cauldron**: A massive junkyard where organic and robotic components are melted down to create new hardware. This area is rich in raw materials but heavily patrolled by scavenging bots.
+* **Assembly Line 7**: A derelict factory where the humans once built their defense systems. It has been repurposed as a Zenith weapons manufacturing hub, now producing advanced drones and energy weapons.
+* **Loading Dock Delta**: A chaotic hub of activity where Zenith supply convoys arrive and depart. It is a prime target for raids to seize valuable technology.
+
+### The Residential Sector: The Human Heart
+This sector was once the sprawling suburbs and apartment complexes where the majority of the population lived. Now it is a ghost town, reclaimed by nature and patrolled by Zenith drones.
+
+* **Crumbling Apartments**: Tall residential buildings that offer vertical combat opportunities. The interiors are dark and confined, forcing close-quarters engagements.
+* **Forgotten Parks**: Once lush green spaces, now overrun with alien flora. The dense vegetation provides excellent cover but can interfere with drone sensors.
+* **The Underground Shelter**: A hidden bunker beneath a residential area, one of the few remaining safe zones for human survivors.
+
+### The Nexus Core: The Source of Control
+Deep beneath the city lies the Nexus Core, the central processing unit of the Zenith Collective's occupation. This is the final objective of the resistance, a heavily fortified complex that houses the control systems for the entire planet.
+
+* **The Singularity Chamber**: The heart of the Nexus Core, a massive chamber where the Zenith Collective's hive mind is concentrated. Destroying it would cripple their control over the planet.
+* **Energy Conduits**: Massive conduits of pure energy that power the Nexus Core. They are heavily guarded and pose a significant threat to any drones that come too close.
+* **Alien Bio-Domes**: Areas within the Nexus where the Zenith are cultivating new life forms to serve their purposes, creating hazardous biological environments.
+
+# 1.4 Other Worlds
+Beyond Earth, the Zenith Collective has established an empire spanning multiple star systems. These worlds showcase the Zenith's diverse technologies and their chilling vision of order.
+
+### Xylos: The Crystalline Jungle
+A planet terraformed into a world of sharp, geometric beauty. Towering crystal formations pierce the sky, refracting light in blinding patterns. The atmosphere is thick with energy particles, creating a visually stunning but hazardous environment for drones.
+
+* **Crystal Spires**: Massive crystal formations that serve as communication relays for the Zenith. They pulse with energy and can disrupt drone sensors.
+* **Geometric Flora**: Plants that have adapted to the crystalline environment, featuring sharp, angular leaves and glowing geometric patterns.
+* **Energy Pools**: Pools of liquid energy that collect at the base of the crystal formations, providing power to Zenith installations but damaging any drones that come into contact with them.
+
+### Cygnus-V: The Industrial Forge
+A desolate, volcanic world where the Zenith have established their primary manufacturing hub. The sky is perpetually dark, illuminated by the glow of lava flows and massive industrial complexes. The air is thick with toxic gases, requiring advanced filtration systems for any organic presence.
+
+* **Lava Rivers**: Rivers of molten rock that flow through the landscape, creating impassable barriers and hazardous areas.
+* **Assembly Lines**: Massive automated factories that produce Zenith drones and war machines at an alarming rate.
+* **Volcanic Vents**: GEYsers of superheated gas that periodically erupt, creating dynamic environmental hazards.
+
+### Verdant Prime: The Failed Paradise
+A once-lush world that the Zenith attempted to terraform. Their rigid methods proved incompatible with the planet's natural ecosystem, resulting in a bizarre and dangerous fusion of organic and synthetic life.
+
+* **Twisted Forests**: Forests where trees have fused with metallic structures, creating a nightmarish landscape of organic and inorganic hybrids.
+* **Bio-Mechanical Wildlife**: Animals that have been enhanced with Zenith technology, creating terrifying predators that combine biological instincts with mechanical precision.
+* **Corrupted Ecosystems**: Areas where the delicate balance of nature has been irrevocably broken, resulting in unpredictable environmental hazards and hostile flora.
 
 # 2. Core Concept & Game Idea
 
-"Rogue:BLADE" is a strategic mobile auto-battler with roguelite elements set ina dystopian cyberpunk world under alien occupation. The game centers onSmart-Shuriken – flying, drone-like projectile weapons. Players spend theiractive time in an underground workshop programming, repairing, and upgradingthese shurikens using scavenged and alien tech. Combat is passive: players watchtheir creations autonomously navigate procedurally generated levels and fightwaves of Zenith security, assimilated gangs, and alien robots.
+"Rogue:BLADE" is a strategic mobile auto-battler with roguelite elements set in a dystopian cyberpunk world under alien occupation. The game centers on Smart-Shuriken – flying, drone-like projectile weapons. Players spend their active time in an underground workshop programming, repairing, and upgrading these shurikens using scavenged and alien tech. Combat is passive: players watch their creations autonomously navigate procedurally generated levels and fight waves of Zenith security, assimilated gangs, and alien robots.
 
 # 3. The Mobile Gameplay Loop   
 
@@ -230,3 +313,43 @@ Specialized hostiles may use non-projectile Area-of-Effect attacks.
 *   **EMP Pulse**: Triggers an expanding cyan ring.
     *   **Phase 1 (Shield Strip)**: Instantly destroys any remaining energy shields on the target.
     *   **Phase 2 (Stun)**: If a target has no shields, it enters a `STUNNED` state for 1.5s, disabling all movement and logic.
+
+# 13. Macro Design & Big Picture Roadmap
+## 13.1 The Routine System (Programming Phase)
+
+The programming interface must be deep but strictly optimized for mobile screens.
+
+* **Top-Down Priority (The Gambit System):** Avoid complex visual programming with nested AND/OR blocks. Instead, players slot routines in a strict 1-to-5 top-down list (e.g., 1. IF HP < 25% THEN Retreat, 2. IF Target in LOS THEN Shoot). The first true condition dictates the drone's behavior for that tick.
+* **Hardware-Driven Unlocks:** Routines are inherently tied to hardware. Equipping a Thermal Sensor unlocks Thermal routines. Equipping a Cloaking Drive unlocks Stealth routines.
+
+## 13.2 Meta-Progression & The Workshop
+Players must feel a sense of progression even after a total wipe. The game separates "Run-Bound" items from permanent "Meta-Progression."
+
+* **The Drone Swarm Cap:** To maintain visual clarity and UI sanity on mobile, the player's active swarm is strictly capped at **5 Drones**.
+* **Drone Bays (Permanent Unlocks):** Players start with 1 Drone Bay. They use base resources (Polymer, Scrap) to permanently build additional Drone Bays in the Genesis Chamber, allowing them to field more drones in future runs.
+* **The "Reverse-Engineering" Loop:** Instead of just dismantling old gear, players can spend resources to Reverse-Engineer hardware.
+    * **For Rare/Alien Tech:** Destroys the item, but permanently uploads its unique Routine to the base Mainframe. The player can now flash this advanced routine onto basic hardware in future runs.
+    * **For Basic/Common Tech:** Grants "Mastery" experience for that component class. Leveling up Drifter Engine mastery, for example, grants a permanent +5% speed to all future Drifter Engines.
+
+## 13.3 Loot & The Economy
+The loot system balances predictable resource gathering with massive, run-altering RNG drops.
+
+* **Two-Tiered Loot:**
+    * **Base Resources (Scrap, Polymer, Credits, Data):** Dropped by standard enemies. Used to upgrade Drone Bays, repair hulls, and Reverse-Engineer items.
+    * **Random Components (Hardware/PCBs):** Dropped by Elites and Bosses. These provide the massive roguelite dopamine spikes and dictate run strategy.
+* **Rarities (Tier + Condition):** 
+    * **Tier:** (1-3): Dictates the base statistical power of the item.
+    * **Condition:** Adds unique modifiers.
+        * **Scavenged (Common)**
+        * **Overclocked (Rare):** +Stats, but higher energy drain.
+        * **Mil-Spec (Epic):** Heavily armored.
+        * **Zenith-Tech (Legendary):** Alien tech with bizarre, run-defining properties.
+
+## 13.4 Campaign Structure (The Liberation Strike)
+
+The game uses a finite map structure to provide players with a clear ultimate goal, rather than aimless infinite scaling.
+
+* **Mega-City Sectors:** The game is divided into distinct Sectors (e.g., Slums, Industrial Core, Zenith Monolith).
+* **Node-Based Navigation:** Similar to Slay the Spire, players chart a course through a web of nodes (Combat, Elite, Scavenge, Rest/Workshop) culminating in a Sector Boss.
+* **Permadeath:** If all deployed drones are destroyed, the run ends. The physical hardware equipped is lost forever. The player returns to the base with only their Stash, permanent Drone Bays, and Reverse-Engineered data.
+* **Endgame:** After defeating the final Zenith Monolith, players unlock the "Endless Simulation Matrix" for testing extreme, limit-breaking builds.
