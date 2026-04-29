@@ -51,8 +51,8 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
       maxSpeed: 220,
       acceleration: 150,
       weight: 70,
-      baseDamage: 18,
-      damageType: 'SLASHING',
+      baseDamage: 5,
+      damageType: 'ENERGY',
       critChance: 0.15,
       critMultiplier: 1.5
     }
@@ -75,8 +75,8 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
       maxSpeed: 200,
       acceleration: 150,
       weight: 200,
-      baseDamage: 35,
-      damageType: 'KINETIC',
+      baseDamage: 10,
+      damageType: 'ENERGY',
       critChance: 0.05,
       critMultiplier: 1.5
     }
@@ -99,8 +99,8 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
       maxSpeed: 140,
       acceleration: 80,
       weight: 400,
-      baseDamage: 55,
-      damageType: 'KINETIC',
+      baseDamage: 10,
+      damageType: 'ENERGY',
       critChance: 0.0,
       critMultiplier: 1.2
     }
@@ -123,7 +123,7 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
       maxSpeed: 160,
       acceleration: 60,
       weight: 120,
-      baseDamage: 1,
+      baseDamage: 10,
       damageType: 'EMP',
       critChance: 0.05,
       critMultiplier: 1.5

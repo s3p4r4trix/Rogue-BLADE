@@ -80,11 +80,26 @@ export interface CombatEntity {
 }
 
 /**
+ * Represents a flying projectile in the combat arena.
+ */
+export interface Projectile {
+  id: string;
+  position: Vector2D;
+  velocity: Vector2D;
+  damage: number;
+  damageType: DamageType;
+  sourceId: string;
+  targetId?: string;
+  radius: number;
+}
+
+/**
  * State definition for the CombatStore and simulation context.
  */
 export interface CombatState {
   entities: CombatEntity[];
   obstacles: AABB[];
+  projectiles: Projectile[];
   deltaTime: number;
   timeElapsed: number;
   isFinished: boolean;

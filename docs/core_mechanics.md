@@ -146,7 +146,7 @@ _(Note: Net damage always deals at least 1 point of damage unless completely eva
 
 ### 5.3 Glancing Blows (Low-Speed Collisions)
 
-If a Shuriken collides with an enemy while NOT in the STRIKING state (currentSpeed < MIN_STRIKE_SPEED), it deals a "Glancing Blow". This provides a baseline damage source even when momentum is low.
+If a **Player-owned Shuriken** collides with an enemy while NOT in the STRIKING state (currentSpeed < MIN_STRIKE_SPEED), it deals a "Glancing Blow". This provides a baseline damage source even when momentum is low. Zenith hostiles do not deal collision damage and rely entirely on ranged projectiles.
 
 *   **Logic:** Baseline contact damage without the benefit of the Kinetic Momentum Multiplier.
 *   **Formula:** glancingDamage = max(1, (baseDamage * effectivenessMatrix[weaponType][enemyArmor]) - enemyArmorValue)
@@ -379,10 +379,16 @@ Zenith hostiles utilize ranged attacks to suppress drones.
 
 1.  **SHOOTING State:** Triggered when a hostile has a valid sensor lock (Range + LOS + FOV).
     *   **Movement:** The entity halts all velocity (targetVelocity = {0,0}).
-    *   **Firing Rate:** FIRE\_RATE = 2.0s.    
+    *   **Firing Rate:** FIRE\_RATE = 2.0s (default, scales with Tier).
 2.  **Projectile Physics:**
+    *   **Movement**: Projectiles move in a linear path: `pos = pos + velocity * deltaTime`.
     *   **Speed:** PROJECTILE\_SPEED = 300 units/s.
-    *   **Collision:** Projectiles are destroyed upon hitting walls, obstacles, or entities.
+    *   **Radius**: Projectiles have a physical collision radius (default 3 units).
+    *   **Collision Detection**: 
+        *   **Obstacles**: Projectiles are destroyed immediately upon entering an AABB boundary.
+        *   **Entities**: Collision is resolved via Circle-vs-Point check: `dist(proj, target) <= target.radius + proj.radius`.
+    *   **Damage Resolution**: Upon impact, projectiles apply damage using the `EFFECTIVENESS\_MATRIX` and flat `armorValue` reduction: `finalDamage = max(1, round(proj.damage * effectiveness - target.armorValue))`.
+    *   **Impact Effects**: Targets sustain a 150ms hit flash and immediate reactive awareness.
 
 ### 8.11 Action Logging, ECS & Telemetry (CombatStore)
 
@@ -398,7 +404,7 @@ Battle state is managed via an Angular-based centralized CombatStore (NgRx Signa
 Combatants (Drones and Hostiles) possess immediate sensor feedback upon sustaining damage, regardless of their current Line of Sight (LOS) or sensor range.
 
 1.  **Damage Lock-on:** When an entity is struck by a kinetic strike or a projectile, it immediately registers the attacker's current spatial coordinates.
-2.  **Memory Update:** The entity's lastSeenPos is updated to the attacker's position, and the searchTimer is reset to 0.
+2.  **Memory Update:** The entity's `lastSeenPos` is updated to the attacker's (or projectile's impact) position, and the `searchTimer` is reset to 0.
 3.  **Behavior Shift:** Transition immediately from PATROLLING or SEARCHING to PURSUING.
 
 ### 8.13 Corner Navigation (Pursuit Optimization)

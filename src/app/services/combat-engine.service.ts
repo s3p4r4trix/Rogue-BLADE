@@ -4,7 +4,7 @@ import { SensorService } from './sensor.service';
 import { RoutineService } from './routine.service';
 import { BaseAIService } from './base-ai.service';
 import { SteeringService } from './steering.service';
-import { Vector2D, BehaviorContext } from '../models/combat-model';
+import { Vector2D, BehaviorContext, Projectile, CombatEntity } from '../models/combat-model';
 import { VectorMath } from '../utils/vector-math.utils';
 import { COMBAT_CONFIG } from '../constants/combat-config';
 
@@ -40,6 +40,7 @@ export class CombatEngineService {
       const context: BehaviorContext = {
         entities,
         obstacles,
+        projectiles: this.store.projectiles(),
         deltaTime,
         timeElapsed: this.store.timeElapsed(),
         isFinished: this.store.isFinished(),
@@ -162,6 +163,7 @@ export class CombatEngineService {
           );
 
           // Glancing Blow Logic: Low-speed collision damage (Player vs Enemy)
+          // Only PLAYER drones deal collision damage; enemies use ranged projectiles.
           if (
             (e1.type === 'PLAYER' && e2.type === 'ENEMY') ||
             (e1.type === 'ENEMY' && e2.type === 'PLAYER')
@@ -171,7 +173,7 @@ export class CombatEngineService {
             const aIdx = e1.type === 'PLAYER' ? i : j;
             const dIdx = e1.type === 'PLAYER' ? j : i;
 
-            if (attacker.state !== 'STRIKING') {
+            if (attacker.type === 'PLAYER' && attacker.state !== 'STRIKING') {
               const effectiveness =
                 COMBAT_CONFIG.EFFECTIVENESS_MATRIX[attacker.stats.damageType]?.[
                   defender.stats.armorType
@@ -199,27 +201,24 @@ export class CombatEngineService {
               };
 
               // Force ORBITING state only for PLAYER drones with precise deflection math
-              if (attacker.type === 'PLAYER') {
-                const outwardNormal = VectorMath.normalize(VectorMath.sub(attacker.position, defender.position));
-                const currentSpeed = VectorMath.length(updatedEntities[aIdx].velocity);
-                
-                // Determine rotation direction (away from target) using the perp-dot product
-                // This ensures we rotate "outward" relative to the collision point
-                const perpDot = attacker.velocity.x * outwardNormal.y - attacker.velocity.y * outwardNormal.x;
-                const side = perpDot > 0 ? 1 : -1;
-                
-                const deflectedVelocity = VectorMath.rotate(
-                  attacker.velocity, 
-                  COMBAT_CONFIG.PHYSICS.POST_STRIKE_DEFLECTION_ANGLE * side
-                );
-                
-                resolvedCollisions[aIdx] = {
-                  ...attacker,
-                  state: 'ORBITING',
-                  stateTimer: 0,
-                  velocity: VectorMath.mul(deflectedVelocity, COMBAT_CONFIG.PHYSICS.POST_STRIKE_FRICTION_MULT)
-                };
-              }
+              const outwardNormal = VectorMath.normalize(VectorMath.sub(attacker.position, defender.position));
+              const currentSpeed = VectorMath.length(updatedEntities[aIdx].velocity);
+              
+              // Determine rotation direction (away from target) using the perp-dot product
+              const perpDot = attacker.velocity.x * outwardNormal.y - attacker.velocity.y * outwardNormal.x;
+              const side = perpDot > 0 ? 1 : -1;
+              
+              const deflectedVelocity = VectorMath.rotate(
+                attacker.velocity, 
+                COMBAT_CONFIG.PHYSICS.POST_STRIKE_DEFLECTION_ANGLE * side
+              );
+              
+              resolvedCollisions[aIdx] = {
+                ...attacker,
+                state: 'ORBITING',
+                stateTimer: 0,
+                velocity: VectorMath.mul(deflectedVelocity, COMBAT_CONFIG.PHYSICS.POST_STRIKE_FRICTION_MULT)
+              };
 
               this.store.addLog(
                 `[COMBAT] ${attacker.name} glancing blow on ${defender.name} for ${finalDamage} DMG.`
@@ -325,57 +324,137 @@ export class CombatEngineService {
         }
       }
 
-      // 2. Enemy Retaliation (Basic)
+      // 2. Enemy Ranged Combat
+      // Enemies fire projectiles when they have a target and cooldown is ready
       if (
         attacker.type === 'ENEMY' &&
-        attacker.retaliationTimer >= COMBAT_CONFIG.AI_TIMINGS.RETALIATION_COOLDOWN
+        attacker.targetId &&
+        attacker.retaliationTimer >= COMBAT_CONFIG.AI_TIMINGS.FIRE_RATE
       ) {
-        for (let j = 0; j < resolvedEntities.length; j++) {
-          const player = resolvedEntities[j];
-          if (player.type === 'PLAYER') {
-            const dist = VectorMath.dist(attacker.position, player.position);
+        const target = resolvedEntities.find(e => e.id === attacker.targetId);
+        if (target) {
+          // Check for line of sight and range
+          const dist = VectorMath.dist(attacker.position, target.position);
+          const losClear = this.sensorService.checkLineOfSight(attacker, target.position, obstacles);
+          
+          if (dist <= COMBAT_CONFIG.RANGES.RADAR_RANGE && losClear) {
+            // FIRE!
+            const direction = VectorMath.normalize(VectorMath.sub(target.position, attacker.position));
+            const velocity = VectorMath.mul(direction, 300); // PROJECTILE_SPEED from docs
 
-            if (dist <= attacker.radius + player.radius) {
-              // Same math for enemy retaliation
-              if (Math.random() <= player.stats.evasionRate) {
-                this.store.addLog(`[COMBAT] ${attacker.name} retaliation [EVADED] by ${player.name}.`);
-              } else {
-                const isCrit = Math.random() <= attacker.stats.critChance;
-                const finalDamage = Math.round(
-                  attacker.stats.baseDamage * (isCrit ? attacker.stats.critMultiplier : 1.0)
-                );
-                const newHp = Math.max(0, player.stats.hp - finalDamage);
+            const newProjectile: Projectile = {
+              id: `proj-${crypto.randomUUID()}`,
+              position: { ...attacker.position },
+              velocity,
+              damage: attacker.stats.baseDamage,
+              damageType: attacker.stats.damageType,
+              sourceId: attacker.id,
+              targetId: attacker.targetId,
+              radius: 4
+            };
 
-                // Push player back slightly
-                const pushDir = VectorMath.normalize(
-                  VectorMath.sub(player.position, attacker.position)
-                );
-                const pushVel = VectorMath.mul(pushDir, 50);
+            const currentProjectiles = this.store.projectiles();
+            this.store.setProjectiles([...currentProjectiles, newProjectile]);
 
-                resolvedEntities[j] = {
-                  ...player,
-                  stats: { ...player.stats, hp: newHp },
-                  velocity: VectorMath.add(player.velocity, pushVel),
-                  hitFlash: 0.15
-                };
+            // Reset fire cooldown
+            attacker = { ...attacker, retaliationTimer: 0 };
+            resolvedEntities[i] = attacker;
 
-                this.store.addLog(
-                  `[COMBAT] ${attacker.name} retaliated against ${player.name} for ${finalDamage} DMG. [Hull: ${newHp}]`
-                );
-              }
-
-              // Reset enemy retaliation cooldown
-              attacker = { ...attacker, retaliationTimer: 0 };
-              resolvedEntities[i] = attacker;
-              break;
-            }
+            this.store.addLog(`[COMBAT] [HOSTILE] ${attacker.name} fired ${attacker.stats.damageType} projectile at ${target.name}.`);
           }
         }
       }
     }
 
+    // Step E.3: Projectile Update & Collision
+    const finalizedEntities = this.updateProjectiles(deltaTime, resolvedEntities);
+
     // Step F: State Patching
     // Trigger reactive UI update with the resolved entities
-    this.store.setEntities(resolvedEntities);
+    this.store.setEntities(finalizedEntities);
+  }
+
+  /**
+   * Moves active projectiles and resolves collisions with obstacles and entities.
+   * @param deltaTime Time elapsed in seconds.
+   * @param entities The current list of combat entities for collision checks.
+   * @returns Updated entity list after projectile damage is applied.
+   */
+  private updateProjectiles(deltaTime: number, entities: CombatEntity[]): CombatEntity[] {
+    const projectiles = this.store.projectiles();
+    const obstacles = this.store.obstacles();
+    const updatedProjectiles: Projectile[] = [];
+    const updatedEntities = [...entities];
+
+    for (const p of projectiles) {
+      // 1. Kinetic Movement
+      const newPos = VectorMath.add(p.position, VectorMath.mul(p.velocity, deltaTime));
+
+      // 2. Arena Boundary Check
+      if (
+        newPos.x < 0 || 
+        newPos.x > COMBAT_CONFIG.ARENA_SIZE || 
+        newPos.y < 0 || 
+        newPos.y > COMBAT_CONFIG.ARENA_SIZE
+      ) {
+        continue; // De-spawn projectile
+      }
+
+      // 3. Obstacle Collision (AABB)
+      let hitObstacle = false;
+      for (const obs of obstacles) {
+        if (VectorMath.isPointInAABB(newPos, obs)) {
+          hitObstacle = true;
+          break;
+        }
+      }
+      if (hitObstacle) continue; // De-spawn projectile
+
+      // 4. Entity Collision (Circle vs Point)
+      let hitEntity = false;
+      for (let i = 0; i < updatedEntities.length; i++) {
+        const target = updatedEntities[i];
+        
+        // Prevent friendly fire/self-damage from the source
+        if (target.id === p.sourceId) continue;
+
+        const dist = VectorMath.dist(newPos, target.position);
+        if (dist <= target.radius + p.radius) {
+          hitEntity = true;
+
+          // Damage Resolution (Section 5.1 & 8.10)
+          const effectiveness = COMBAT_CONFIG.EFFECTIVENESS_MATRIX[p.damageType]?.[target.stats.armorType] || 1.0;
+          const finalDamage = Math.max(1, Math.round(p.damage * effectiveness - target.stats.armorValue));
+          const newHp = Math.max(0, target.stats.hp - finalDamage);
+
+          // Apply Damage & Hit Flash
+          updatedEntities[i] = {
+            ...target,
+            stats: { ...target.stats, hp: newHp },
+            hitFlash: 0.15, // 150ms impact flash
+            // Projectiles also trigger immediate reactive awareness (Section 8.12)
+            lastSeenPos: { ...p.position },
+            stateTimer: 0
+          };
+
+          // If the target was idle/patrolling, shift to pursuit
+          if (updatedEntities[i].state === 'PATROLLING' || updatedEntities[i].state === 'SEARCHING') {
+            updatedEntities[i].state = 'PURSUING';
+          }
+
+          const isHostile = entities.find(e => e.id === p.sourceId)?.type === 'ENEMY';
+          const hostileTag = isHostile ? '[HOSTILE] ' : '';
+          this.store.addLog(`[COMBAT] ${hostileTag}Projectile hit ${target.name} for ${finalDamage} DMG (${p.damageType}).`);
+          break; // Projectile destroyed on impact
+        }
+      }
+
+      if (!hitEntity) {
+        updatedProjectiles.push({ ...p, position: newPos });
+      }
+    }
+
+    this.store.setProjectiles(updatedProjectiles);
+    return updatedEntities;
   }
 }

@@ -149,7 +149,7 @@ The Zenith Collective and their assimilated troops demand specific programming:
 ## 7.1 Enemy AI Behavior & Combat Protocols
 Zenith forces utilize advanced tactical protocols:
 
-*   **Ranged Engagement**: Hostiles fire high-velocity energy projectiles at the target.
+*   **Ranged Engagement**: Hostiles fire high-velocity energy projectiles at the target. Triggered when a valid sensor lock (Range + LOS + FOV) is established.
 
 # 8. The Workshop (Meta-Progression)
 *   **Repair Deck & NPC Mechanic**: Upgrading them increases Nanite speed.
@@ -215,3 +215,10 @@ To avoid spaghetti code, the real-time AI and physics rely on a strongly decoupl
     3.  **BaseAIService**: Provides the default state machine target vector and handles corner navigation if no Gambits trigger.  
     4.  **SteeringService**: Applies dynamic feelers, wall-sliding, and physical momentum.  
 *   **Reactive UI**: The Angular UI components bind directly to the signals in the CombatStore,eliminating event listeners and ensuring telemetry is always 100% accurate.
+
+## 12.8 Ranged Combat & Projectiles
+Zenith hostiles utilize ranged attacks to suppress drones.
+*   **SHOOTING State**: Triggered when a hostile has a valid sensor lock (Range + LOS + FOV). The entity halts all velocity to stabilize aim.
+*   **Projectile Physics**: Projectiles move in a linear path at 300 units/s. They have a small collision radius and are destroyed upon hitting walls, obstacles, or entities.
+*   **Damage Resolution**: Projectiles use the standard effectiveness matrix and armor mitigation rules.
+*   **Aesthetics**: Projectiles are rendered with distinct visual styles (Energy Orbs, Kinetic Streaks, Slashing Tracers, EMP Rings) based on their damage type.

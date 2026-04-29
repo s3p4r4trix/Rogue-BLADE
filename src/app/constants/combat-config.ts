@@ -12,7 +12,7 @@ export const COMBAT_CONFIG = {
     SEARCH_TOTAL_TIME: 3,
     RETREAT_DURATION: 1.0,
     STRIKE_COOLDOWN: 1.0,
-    RETALIATION_COOLDOWN: 1.5
+    FIRE_RATE: 2.0
   },
 
   /** Distances and Ranges (pixels/units) */

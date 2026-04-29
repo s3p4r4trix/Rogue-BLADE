@@ -383,7 +383,7 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   getLogClass(logContent: string): string {
     if (logContent.includes('[CRITICAL]') || logContent.includes('[FAILURE]')) return 'text-red-500 font-black italic';
     if (logContent.includes('[SUCCESS]') || logContent.includes('MISSION OBJECTIVE NEUTRALIZED')) return 'text-green-400 font-bold';
-    if (logContent.includes('HOSTILE_ENTITY') || logContent.includes('HOSTILE:')) return 'text-orange-500 font-bold';
+    if (logContent.includes('[HOSTILE]')) return 'text-orange-500 font-bold';
     if (logContent.includes('[SYSTEM]')) return 'text-cyan-500 opacity-80';
     if (logContent.includes('[STATE]')) return 'text-purple-400 opacity-70';
     if (logContent.includes('[SEARCH]')) return 'text-yellow-500 italic opacity-80';

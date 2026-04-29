@@ -1,10 +1,11 @@
 import { computed } from '@angular/core';
 import { signalStore, withState, withMethods, patchState, withComputed } from '@ngrx/signals';
-import { CombatEntity, AABB, CombatState } from '../models/combat-model';
+import { CombatEntity, AABB, CombatState, Projectile } from '../models/combat-model';
 
 const initialState: CombatState = {
   entities: [],
   obstacles: [],
+  projectiles: [],
   deltaTime: 0,
   timeElapsed: 0,
   isFinished: false,
@@ -75,6 +76,13 @@ export const CombatStore = signalStore(
      */
     setObstacles(obstacles: AABB[]): void {
       patchState(store, { obstacles });
+    },
+
+    /**
+     * Sets the projectiles in the arena.
+     */
+    setProjectiles(projectiles: Projectile[]): void {
+      patchState(store, { projectiles });
     },
 
     /**

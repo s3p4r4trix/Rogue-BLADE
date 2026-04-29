@@ -223,6 +223,9 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
 
     // D. Tactical Visual Feedback (Overlays)
     this.drawTacticalOverlays(ctx);
+
+    // E. Projectiles
+    this.drawProjectiles(ctx);
   }
 
   /**
@@ -587,5 +590,70 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
     this.store.setEntities(combatEntities);
     this.store.addLog('SYSTEM: Combat simulation initialized. Entities deployed.');
     this.arenaLog.emit(`[SYSTEM] Combat simulation initialized. Entities deployed.`);
+  }
+
+  /**
+   * Renders active projectiles from the CombatStore.
+   */
+  private drawProjectiles(ctx: CanvasRenderingContext2D): void {
+    const projectiles = this.store.projectiles();
+
+    for (const p of projectiles) {
+      const x = p.position.x;
+      const y = p.position.y * this.PERSPECTIVE_SCALE_Y;
+      const radius = p.radius || 3;
+
+      ctx.save();
+      ctx.beginPath();
+
+      switch (p.damageType) {
+        case 'ENERGY':
+          // Glowing Cyan Orbs
+          ctx.fillStyle = '#22d3ee';
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = '#22d3ee';
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+
+        case 'KINETIC':
+          // Grey Streaks
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 2;
+          const kDir = VectorMath.normalize(p.velocity);
+          ctx.moveTo(x - kDir.x * 6, y - kDir.y * 6 * this.PERSPECTIVE_SCALE_Y);
+          ctx.lineTo(x + kDir.x * 2, y + kDir.y * 2 * this.PERSPECTIVE_SCALE_Y);
+          ctx.stroke();
+          break;
+
+        case 'SLASHING':
+          // Yellow Tracers
+          ctx.strokeStyle = '#fef08a';
+          ctx.lineWidth = 1.5;
+          const sDir = VectorMath.normalize(p.velocity);
+          ctx.moveTo(x - sDir.x * 10, y - sDir.y * 10 * this.PERSPECTIVE_SCALE_Y);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          break;
+
+        case 'EMP':
+          // Pulsing Purple Rings
+          const pulse = Math.sin(Date.now() / 50) * 0.5 + 0.5;
+          ctx.strokeStyle = '#a855f7';
+          ctx.lineWidth = 2;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#a855f7';
+          ctx.arc(x, y, radius + pulse * 4, 0, Math.PI * 2);
+          ctx.stroke();
+          break;
+        
+        default:
+          ctx.fillStyle = '#ffffff';
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          ctx.fill();
+      }
+
+      ctx.restore();
+    }
   }
 }
