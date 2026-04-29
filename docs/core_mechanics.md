@@ -305,7 +305,7 @@ All movement uses smooth acceleration toward a target velocity. The acceleration
 
 **Patrol (Idle Navigation):**When no target is known or seen, the unit moves at 100% topSpeed between random waypoints within the arena to scan for threats.
 
-**Retreat & Regroup (actionDefendAlly / Post-Strike):** Calculates a vector directly away from the target entity. The drone maintains this retreat until it is at least 300 units away or 1.5 seconds have elapsed. Used to build up maximum momentum before a new strike pass.
+**Retreat & Regroup (actionDefendAlly / Post-Strike):** Calculates a vector directly away from the target entity. The drone maintains this retreat until it is at least 150 units away or 1.0 seconds have elapsed. Used to build up maximum momentum before a new strike pass.
 
 **Flee / Retreat (actionEmergencyWithdrawal):** Calculates the vector directly away from the nearest enemy and moves toward the furthest arena boundary.
 
@@ -349,7 +349,7 @@ All movement uses smooth acceleration toward a target velocity. The acceleration
 Drones must reach a minimum velocity before a strike attempt is valid. This prevents low-energy "humping" where a drone sticks to a target.
 *   **Minimum Strike Speed:** MIN_STRIKE_SPEED = 0.4 (40% of topSpeed)
 *   **Gate Check:** canStrike = currentSpeed >= (topSpeed \* MIN_STRIKE_SPEED)
-*   **Post-Strike Bounce:** Immediately after registering a hit, the drone's velocity is inverted and reduced (velocity = -velocity * 0.5) and its state shifts to ORBITING (Retreating) until it reaches a distance of 300 units or 1.5s have passed. This forces a natural fly-by and repositioning loop for momentum buildup.
+*   **Post-Strike Bounce:** Immediately after registering a hit, the drone's velocity is inverted and reduced (velocity = -velocity * 0.5) and its state shifts to ORBITING (Retreating) until it reaches a distance of 150 units or 1.0s have passed. This forces a natural fly-by and repositioning loop for momentum buildup.
 *   **Strike Cooldown:** After a successful hit, strikeCooldown = 1.0 seconds before the next strike.
 *   **Glancing Blow Fallback:** If a collision occurs while Strike conditions are not met, the engine defaults to a Glancing Blow (Section 5.3) to ensure continuous pressure.
 

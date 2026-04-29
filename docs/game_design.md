@@ -188,7 +188,7 @@ These are the core spatial behaviors mapped to existing GDD actions:
 *   **Fighting & Post-Strike Bounce**: High-intensity engagement. Once a strike connects,the drone physically bounces (velocity = -velocity \* 0.5) and forces anOrbiting reposition to build up momentum for the next pass.
     *   **Glancing Blows**: If a drone collides with an enemy without reaching strike velocity, it deals a low-damage "Glancing Blow" and bounces back, preventing "sticky" movement while ensuring continuous damage output.
 *   **Steering & Obstacle Avoidance (Wall-Sliding)**: Navigation and Vision are strictly separated.Units project a dynamic set of feelers whose length scales with speed. When a feelerhits an AABB, vector projection allows the drone to slide elegantly parallel to theobstacle rather than bouncing off it.
-*   **Retreat & Regroup (Repositioning)**: Drone flies directly away from the target until it reaches a distance of at least 300px or 1.5 seconds have passed. This "Boom-and-Zoom" phase provides a long runway to build up maximum strike velocity before turning back for another pass.
+*   **Retreat & Regroup (Repositioning)**: Drone flies directly away from the target until it reaches a distance of at least 150px or 1.0 seconds have passed. This "Boom-and-Zoom" phase provides a long runway to build up maximum strike velocity before turning back for another pass.
 *   **Flee (Emergency Withdrawal)**: Triggered when HP drops below 20%.
 *   **Search (LOS Lost)**: When an enemy disappears behind cover, the drone navigates to itslast-seen position and performs a 2-second, 360-degree sensor sweep ("dog sniffing")before resetting to a patrol routine.
 *   **Patrol (Idle Movement)**: When no target is known, unit moves between random waypoints.
