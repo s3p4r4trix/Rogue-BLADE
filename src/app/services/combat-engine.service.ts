@@ -41,6 +41,7 @@ export class CombatEngineService {
         entities,
         obstacles,
         projectiles: this.store.projectiles(),
+        pulses: this.store.pulses(),
         deltaTime,
         timeElapsed: this.store.timeElapsed(),
         isFinished: this.store.isFinished(),
@@ -127,9 +128,23 @@ export class CombatEngineService {
             ? entity.stateTimer
             : entity.stateTimer + deltaTime,
         retaliationTimer: (entity.retaliationTimer || 0) + deltaTime,
-        hitFlash: Math.max(0, (entity.hitFlash || 0) - deltaTime)
+        hitFlash: Math.max(0, (entity.hitFlash || 0) - deltaTime),
+        pulseTriggered: false // Reset flag after use in loop or post-processing
       };
     });
+
+    // Handle EMP Pulses and other AoE effects
+    const processedEntities = updatedEntities.map(entity => {
+      if (entity.pulseTriggered) {
+        const radius = entity.stats.aoeRadius || 150;
+        this.executeAoEPulse(entity, radius, updatedEntities);
+        return { ...entity, pulseTriggered: false };
+      }
+      return entity;
+    });
+
+    // Update visual pulses
+    this.updateVisualPulses(deltaTime);
 
     // Step E.1: Circle-vs-Circle Collision Resolution (Section 8.4)
     // Drones and enemies resolve physical overlap to prevent stacking.
@@ -327,7 +342,7 @@ export class CombatEngineService {
     }
     
     // Step E.3: Projectile Update & Collision
-    const finalizedEntities = this.updateProjectiles(deltaTime, resolvedEntities);
+    const finalizedEntities = this.updateProjectiles(deltaTime, processedEntities);
 
     // Step F: State Patching
     // Trigger reactive UI update with the resolved entities
@@ -416,5 +431,67 @@ export class CombatEngineService {
 
     this.store.setProjectiles(updatedProjectiles);
     return updatedEntities;
+  }
+
+  /**
+   * Executes an Area-of-Effect pulse from a source entity.
+   * Strips shields from targets; if no shields, applies STUNNED state.
+   */
+  private executeAoEPulse(source: CombatEntity, radius: number, entities: CombatEntity[]): void {
+    const targets = entities.filter(e => e.type === 'PLAYER');
+    let hitCount = 0;
+
+    for (const target of targets) {
+      const dist = VectorMath.dist(source.position, target.position);
+      if (dist <= radius) {
+        hitCount++;
+        
+        if (target.stats.shields > 0) {
+          // Strip shields
+          target.stats.shields = 0;
+          this.store.addLog(`[COMBAT] ${target.name} SHIELD_COLLAPSE. Pulse neutralized.`);
+        } else {
+          // Apply Stun
+          target.state = 'STUNNED';
+          target.stateTimer = 0;
+          target.velocity = { x: 0, y: 0 };
+          this.store.addLog(`[COMBAT] ${target.name} STUNNED by EMP pulse.`);
+        }
+        target.hitFlash = 0.3; // Longer flash for EMP
+      }
+    }
+
+    // Add visual effect
+    this.store.addPulse({
+      id: `pulse-${crypto.randomUUID()}`,
+      x: source.position.x,
+      y: source.position.y,
+      radius: 0,
+      maxRadius: radius,
+      timer: 0,
+      duration: 0.5 // 500ms visual duration
+    });
+  }
+
+  /**
+   * Updates visual pulse effects, expanding and fading them out.
+   */
+  private updateVisualPulses(dt: number): void {
+    const pulses = this.store.pulses();
+    if (pulses.length === 0) return;
+
+    const updatedPulses = pulses
+      .map(p => {
+        const newTimer = p.timer + dt;
+        const progress = Math.min(1, newTimer / p.duration);
+        return {
+          ...p,
+          timer: newTimer,
+          radius: p.maxRadius * progress
+        };
+      })
+      .filter(p => p.timer < p.duration);
+
+    this.store.setPulses(updatedPulses);
   }
 }

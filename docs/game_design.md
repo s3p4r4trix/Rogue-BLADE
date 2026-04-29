@@ -53,8 +53,8 @@ Every trigger must evaluate to a boolean (true / false). Many triggers arelocked
     *   reqSensor: Radar / Lidar
     *   logic: Returns true if an enemy is within the 400 unit tracking radius.
 *   **ifEnemyIsShielded** (Designation: Enemy: Shield Active )    
-    *   reqSensor: EM-Scanner (DEFERRED)
-    *   logic: Currently returns false (Shields disabled in prototype).
+    *   reqSensor: EM-Scanner
+    *   logic: Returns true if the target has active energy shields.
 *   **ifEnemyIsOrganic** (Designation: Enemy: Soft Target )
     *   reqSensor: Biosensor
     *   logic: Returns true if the target armor type is UNARMORED/Flesh.
@@ -143,8 +143,8 @@ Determines the overall physical shape and combat specialization of the Shuriken.
 # 7. Enemy Design: The Zenith Collective & Sensor Counters
 The Zenith Collective and their assimilated troops demand specific programming:
 
-*   **Zenith EMP-Wardens**: Disable shurikens temporarily.
-*   **Phalanx Drones (Shield Bearers)**: Require specific shield-breaker routines.
+*   **Zenith EMP-Wardens**: Utilize specialized AoE pulses that strip shields and stun drones.
+*   **Phalanx Drones (Shield Bearers)**: Require specific shield-breaker routines or high-volume fire to neutralize.
 
 ## 7.1 Enemy AI Behavior & Combat Protocols
 Zenith forces utilize advanced tactical protocols:
@@ -221,4 +221,10 @@ Zenith hostiles utilize ranged attacks to suppress drones.
 *   **SHOOTING State**: Triggered when a hostile has a valid sensor lock (Range + LOS + FOV). The entity halts all velocity to stabilize aim.
 *   **Projectile Physics**: Projectiles move in a linear path at 300 units/s. They have a small collision radius and are destroyed upon hitting walls, obstacles, or entities.
 *   **Damage Resolution**: Projectiles use the standard effectiveness matrix and armor mitigation rules.
-*   **Aesthetics**: Projectiles are rendered with distinct visual styles (Energy Beams, Kinetic Streaks, Slashing Tracers, EMP Rings) based on their damage type.
+*   **Aesthetics**: Projectiles are rendered with distinct visual styles (Energy Beams, Kinetic Streaks, Slashing Tracers) based on their damage type.
+
+## 12.9 AoE Pulses & Status Effects
+Specialized hostiles may use non-projectile Area-of-Effect attacks.
+*   **EMP Pulse**: Triggers an expanding cyan ring.
+    *   **Phase 1 (Shield Strip)**: Instantly destroys any remaining energy shields on the target.
+    *   **Phase 2 (Stun)**: If a target has no shields, it enters a `STUNNED` state for 1.5s, disabling all movement and logic.

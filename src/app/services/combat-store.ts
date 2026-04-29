@@ -1,11 +1,12 @@
 import { computed } from '@angular/core';
 import { signalStore, withState, withMethods, patchState, withComputed } from '@ngrx/signals';
-import { CombatEntity, AABB, CombatState, Projectile } from '../models/combat-model';
+import { CombatEntity, AABB, CombatState, Projectile, PulseEffect } from '../models/combat-model';
 
 const initialState: CombatState = {
   entities: [],
   obstacles: [],
   projectiles: [],
+  pulses: [],
   deltaTime: 0,
   timeElapsed: 0,
   isFinished: false,
@@ -83,6 +84,22 @@ export const CombatStore = signalStore(
      */
     setProjectiles(projectiles: Projectile[]): void {
       patchState(store, { projectiles });
+    },
+
+    /**
+     * Sets the visual pulse effects in the arena.
+     */
+    setPulses(pulses: PulseEffect[]): void {
+      patchState(store, { pulses });
+    },
+
+    /**
+     * Adds a single pulse effect to the arena.
+     */
+    addPulse(pulse: PulseEffect): void {
+      patchState(store, (state) => ({
+        pulses: [...state.pulses, pulse]
+      }));
     },
 
     /**

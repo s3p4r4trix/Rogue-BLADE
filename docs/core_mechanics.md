@@ -8,6 +8,8 @@ When a Shuriken is fully assembled, its components calculate these final attribu
 ### Survival & Defense
 
 *   **maxHp** (Integer): Total health points.    
+*   **shields** (Integer): Current energy shield points. Regenerates via Shield Generators.
+*   **maxShields** (Integer): Maximum capacity of the energy shield.
 *   **armorValue** (Integer): Flat damage reduction against physical attacks.    
 *   **evasionRate** (Float 0.0 - 1.0): Percentage chance to completely dodge an attack.    
 *   **stealthValue** (Integer): Reduces enemy detection radius. Higher is better.
@@ -120,6 +122,17 @@ To prevent the "Death Spiral" of doing zero damage and moving slowly until death
 *   During Reboot, the drone takes +50% incoming damage.
 *   After 3 seconds, energy instantly restores to 30% of maximum.
 *   Energy systems recharge at 150% efficiency for 3 seconds immediately after reboot.
+
+### 4.4 STUNNED Status Effect
+
+Triggered by specialized AoE attacks (e.g., EMP Pulse) when a drone has no active shields.
+*   **Behavior**: The drone enters a state of total paralysis.
+*   **Duration**: 1.5 seconds.
+*   **Mechanics**:
+    *   Velocity is immediately set to 0.
+    *   AI routine evaluation (Gambits) is suspended.
+    *   Default state machine behavior is disabled.
+*   **Recovery**: After the duration, the drone reverts to its `PATROLLING` routine.
     
 
 5\. Damage Types vs. Armor Types (Effectiveness Matrix)
@@ -132,7 +145,7 @@ When a Shuriken attacks an enemy, the damageType is checked against the enemy's 
 | SLASHING (Razor) | 1.5x (150%) | 0.4x (40%) | 0.8x (80%) |
 | KINETIC (Blunt) | 1.0x (100%) | 1.5x (150%) | 0.5x (50%) |
 | ENERGY (Plasma) | 1.0x (100%) | 1.0x (100%) | 2.0x (200%) |
-| EMP (Utility) | 0.0x (Stun only) | 0.0x (Stun only) | Instantly Breaks Shield |
+| EMP (Utility) | 0.0x (Stun only) | 0.0x (Stun only) | Shield Collapse |
 
 ### 5.1 Damage Calculation Formula
 
@@ -418,3 +431,13 @@ To prevent drones from getting stuck against convex obstacles when the target is
 3.  **Path Selection:** The AI checks which `safePoints` have a clear LOS from the current position.
 4.  **Best Path:** The AI selects the `safePoint` that minimizes the total distance: `dist(entity, safePoint) + dist(safePoint, target)`.
 5.  **Execution:** The drone sets its desired velocity toward the selected `safePoint` until LOS to the actual target is restored.
+
+### 8.14 AoE Pulses (EMP Warden)
+
+Specialized units like the EMP Warden utilize non-projectile Area-of-Effect attacks.
+
+1.  **Pulse Sequence**: Triggered every 4.0 seconds when a hostile has a valid target within range.
+2.  **Radius**: AoE Pulse covers a 150-unit radius from the source.
+3.  **Shield Strip**: Any drone caught in the pulse with `shields > 0` suffers immediate **Shield Collapse** (shields set to 0).
+4.  **Stun**: Any drone caught in the pulse with `shields == 0` enters the `STUNNED` state for 1.5 seconds.
+5.  **Visuals**: Indicated by an expanding cyan ring and a 300ms hit flash on affected units.

@@ -25,6 +25,8 @@ export interface EnemyTemplate {
     damageType: DamageType;
     critChance: number;
     critMultiplier: number;
+    aoeRadius?: number;
+    pulseCooldown?: number;
   };
 }
 
@@ -126,7 +128,9 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
       baseDamage: 10,
       damageType: 'EMP',
       critChance: 0.05,
-      critMultiplier: 1.5
+      critMultiplier: 1.5,
+      aoeRadius: 150,
+      pulseCooldown: 4000
     }
   }
 };

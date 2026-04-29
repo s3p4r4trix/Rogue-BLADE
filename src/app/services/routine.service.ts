@@ -11,6 +11,11 @@ export class RoutineService {
    * @returns The Action to execute if a trigger is met, or null.
    */
   evaluateGambits(entity: CombatEntity, context: BehaviorContext): Action | null {
+    // If stunned, AI routines are disabled
+    if (entity.state === 'STUNNED') {
+      return null;
+    }
+
     // TODO: Iterate through entity.gambits by priority
     // For each gambit, check if trigger is met
     // Return the action of the first triggered gambit

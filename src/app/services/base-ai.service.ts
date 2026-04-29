@@ -22,6 +22,10 @@ export class BaseAIService {
     const target = context.currentTarget;
 
     switch (entity.state) {
+      case 'STUNNED':
+        desiredVelocity = this.handleStunned(entity, context.deltaTime);
+        break;
+
       case 'PATROLLING':
         desiredVelocity = this.handlePatrolling(entity);
         if (target) {
@@ -219,33 +223,60 @@ export class BaseAIService {
     entity.rotation = Math.atan2(toTarget.y, toTarget.x);
 
     // 3. Firing Mechanism
-    if (entity.retaliationTimer >= COMBAT_CONFIG.AI_TIMINGS.FIRE_RATE) {
-      const direction = VectorMath.normalize(toTarget);
-      const velocity = VectorMath.mul(direction, 300); // PROJECTILE_SPEED from docs
+    const cooldown = entity.archetype === 'EMP_WARDEN' 
+      ? (entity.stats.pulseCooldown || 4000) / 1000 
+      : COMBAT_CONFIG.AI_TIMINGS.FIRE_RATE;
 
-      const newProjectile = {
-        id: `proj-${crypto.randomUUID()}`,
-        position: { ...entity.position },
-        velocity,
-        damage: entity.stats.baseDamage,
-        damageType: entity.stats.damageType,
-        sourceId: entity.id,
-        targetId: target.id,
-        radius: 4
-      };
+    if (entity.retaliationTimer >= cooldown) {
+      if (entity.archetype === 'EMP_WARDEN') {
+        // Trigger AoE Pulse instead of projectile
+        entity.pulseTriggered = true;
+        entity.retaliationTimer = 0;
+        
+        this.combatStore.addLog(
+          `[COMBAT] [HOSTILE] ${entity.name} initiated EMP_PULSE sequence.`
+        );
+      } else {
+        const direction = VectorMath.normalize(toTarget);
+        const velocity = VectorMath.mul(direction, 300); // PROJECTILE_SPEED from docs
 
-      const currentProjectiles = this.combatStore.projectiles();
-      this.combatStore.setProjectiles([...currentProjectiles, newProjectile]);
+        const newProjectile = {
+          id: `proj-${crypto.randomUUID()}`,
+          position: { ...entity.position },
+          velocity,
+          damage: entity.stats.baseDamage,
+          damageType: entity.stats.damageType,
+          sourceId: entity.id,
+          targetId: target.id,
+          radius: 4
+        };
 
-      // Reset fire cooldown
-      entity.retaliationTimer = 0;
+        const currentProjectiles = this.combatStore.projectiles();
+        this.combatStore.setProjectiles([...currentProjectiles, newProjectile]);
 
-      this.combatStore.addLog(
-        `[COMBAT] [HOSTILE] ${entity.name} fired ${entity.stats.damageType} projectile at ${target.name}.`
-      );
+        // Reset fire cooldown
+        entity.retaliationTimer = 0;
+
+        this.combatStore.addLog(
+          `[COMBAT] [HOSTILE] ${entity.name} fired ${entity.stats.damageType} projectile at ${target.name}.`
+        );
+      }
     }
 
     return desiredVelocity;
+  }
+
+  private handleStunned(entity: CombatEntity, dt: number): Vector2D {
+    entity.stateTimer += dt;
+    
+    // STUN duration: 1.5 seconds
+    if (entity.stateTimer >= 1.5) {
+      entity.state = 'PATROLLING';
+      entity.stateTimer = 0;
+      this.combatStore.addLog(`[SYSTEM] ${entity.name} REBOOT_SEQUENCE_COMPLETE. AI restored.`);
+    }
+
+    return { x: 0, y: 0 };
   }
 
   private handleSearching(entity: CombatEntity, dt: number): Vector2D {

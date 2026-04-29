@@ -226,6 +226,9 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
 
     // E. Projectiles
     this.drawProjectiles(ctx);
+
+    // F. Pulse Effects (AoE)
+    this.drawPulses(ctx);
   }
 
   /**
@@ -519,6 +522,8 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
           maxHp: shuriken.hull?.maxHp || 100,
           armorValue: shuriken.hull?.armorValue || 5,
           armorType: 'UNARMORED', // Drones are usually unarmored or specific to hull
+          shields: shuriken.shield?.shieldCapacity || 0,
+          maxShields: shuriken.shield?.shieldCapacity || 0,
           evasionRate: shuriken.engine?.evasionRate || 0.05,
           energy: shuriken.energyCell?.maxEnergy || 100,
           maxEnergy: shuriken.energyCell?.maxEnergy || 100,
@@ -562,6 +567,8 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
       stats: {
         hp: template.stats.maxHp,
         maxHp: template.stats.maxHp,
+        shields: template.stats.maxShields || 0,
+        maxShields: template.stats.maxShields || 0,
         armorValue: template.stats.armorValue,
         armorType: template.stats.armorType,
         evasionRate: template.stats.evasionRate,
@@ -576,9 +583,12 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
         baseDamage: template.stats.baseDamage,
         damageType: template.stats.damageType,
         critChance: template.stats.critChance,
-        critMultiplier: template.stats.critMultiplier
+        critMultiplier: template.stats.critMultiplier,
+        aoeRadius: template.stats.aoeRadius,
+        pulseCooldown: template.stats.pulseCooldown
       },
       state: 'PATROLLING',
+      archetype: mission.enemyTypeId === 'emp-warden' ? 'EMP_WARDEN' : undefined,
       gambits: [],
       radius: template.radius,
       color: template.color,
@@ -666,6 +676,50 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
           ctx.fill();
       }
 
+      ctx.restore();
+    }
+  }
+
+  /**
+   * Renders visual pulse effects (expanding cyan circles).
+   */
+  private drawPulses(ctx: CanvasRenderingContext2D): void {
+    const pulses = this.store.pulses();
+    
+    for (const p of pulses) {
+      const progress = p.timer / p.duration;
+      const alpha = 1 - progress;
+      
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(34, 211, 238, ${alpha})`;
+      ctx.lineWidth = 4 * (1 - progress);
+      ctx.shadowBlur = 20 * alpha;
+      ctx.shadowColor = '#22d3ee';
+      
+      // Draw as ellipse for perspective
+      ctx.ellipse(
+        p.x, 
+        p.y * this.PERSPECTIVE_SCALE_Y, 
+        p.radius, 
+        p.radius * this.PERSPECTIVE_SCALE_Y, 
+        0, 0, Math.PI * 2
+      );
+      ctx.stroke();
+      
+      // Inner subtle glow
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
+      ctx.lineWidth = 1;
+      ctx.ellipse(
+        p.x, 
+        p.y * this.PERSPECTIVE_SCALE_Y, 
+        p.radius * 0.9, 
+        p.radius * 0.9 * this.PERSPECTIVE_SCALE_Y, 
+        0, 0, Math.PI * 2
+      );
+      ctx.stroke();
+      
       ctx.restore();
     }
   }

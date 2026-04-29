@@ -26,7 +26,7 @@ export type ArmorType = 'UNARMORED' | 'HEAVY_ARMOR' | 'ENERGY_SHIELD';
 /**
  * Possible AI states for the state machine.
  */
-export type AIState = 'PATROLLING' | 'PURSUING' | 'STRIKING' | 'ORBITING' | 'SEARCHING' | 'REBOOTING' | 'WITHDRAWN' | 'IDLE' | 'SHOOTING' | 'ENGAGING';
+export type AIState = 'PATROLLING' | 'PURSUING' | 'STRIKING' | 'ORBITING' | 'SEARCHING' | 'REBOOTING' | 'WITHDRAWN' | 'IDLE' | 'SHOOTING' | 'ENGAGING' | 'STUNNED';
 
 /**
  * Represents a drone or enemy in the combat arena.
@@ -45,6 +45,8 @@ export interface CombatEntity {
   stats: {
     hp: number;
     maxHp: number;
+    shields: number;
+    maxShields: number;
     armorValue: number;
     armorType: ArmorType;
     evasionRate: number;
@@ -60,10 +62,14 @@ export interface CombatEntity {
     damageType: DamageType;
     critChance: number;
     critMultiplier: number;
+    aoeRadius?: number;
+    pulseCooldown?: number;
   };
   
   // AI / Logic
   state: AIState;
+  archetype?: string; // e.g. 'EMP_WARDEN'
+  pulseTriggered?: boolean; // Flag to execute AoE pulse
   gambits: GambitRoutine[];
   targetId?: string; // ID of the entity currently being targeted
   lastSeenPos?: Vector2D; // For SEARCHING behavior
@@ -94,12 +100,26 @@ export interface Projectile {
 }
 
 /**
+ * Visual representation of an EMP pulse or other AoE effect.
+ */
+export interface PulseEffect {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+  maxRadius: number;
+  timer: number; // current time in animation
+  duration: number; // total animation time
+}
+
+/**
  * State definition for the CombatStore and simulation context.
  */
 export interface CombatState {
   entities: CombatEntity[];
   obstacles: AABB[];
   projectiles: Projectile[];
+  pulses: PulseEffect[];
   deltaTime: number;
   timeElapsed: number;
   isFinished: boolean;
