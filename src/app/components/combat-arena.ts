@@ -18,6 +18,8 @@ import { CombatEntity, AABB } from '../models/combat-model';
 import { MissionContract } from '../models/mission-model';
 import { ENEMY_TEMPLATES } from '../constants/enemy-templates';
 import { Shuriken } from '../models/hardware-model';
+import { COMBAT_CONFIG } from '../constants/combat-config';
+import { VectorMath } from '../utils/vector-math.utils';
 
 @Component({
   selector: 'app-combat-arena',
@@ -326,16 +328,81 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
       // Range Wireframes
       ctx.setLineDash([4, 4]);
 
-      // Sensor Range (e.g., 120)
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.ellipse(x, y, 120, 120 * this.PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      const radarRadius = COMBAT_CONFIG.RANGES.RADAR_RANGE;
+      const meleeRadius = COMBAT_CONFIG.RANGES.MELEE_RANGE_BASE + COMBAT_CONFIG.RANGES.MELEE_RANGE_BUFFER;
+      const obstacles = this.store.obstacles();
 
-      // Melee Range (20)
+      // Draw Vision/Radar Area with Dynamic Clipping (Section 8.5)
+      if (entity.type === 'ENEMY') {
+        // Enemies have a 120-degree FOV cone
+        const fovDegrees = 120;
+        const halfFovRad = (fovDegrees * Math.PI) / 360;
+        const startAngle = entity.rotation - halfFovRad;
+        const endAngle = entity.rotation + halfFovRad;
+
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        
+        // Raycast across the FOV arc to calculate the visibility polygon
+        const segments = 64;
+        for (let i = 0; i <= segments; i++) {
+          const angle = startAngle + (endAngle - startAngle) * (i / segments);
+          const dir = { x: Math.cos(angle), y: Math.sin(angle) };
+          let actualDist: number = radarRadius;
+
+          for (const obs of obstacles) {
+            // Vision is only blocked if the entity is not flying higher than the obstacle
+            if (entity.z >= (obs.zHeight ?? 0)) continue;
+
+            const hit = VectorMath.intersectRayAABB(entity.position, dir, radarRadius, obs);
+            if (hit && hit.distance < actualDist) {
+              actualDist = hit.distance;
+            }
+          }
+
+          const px = x + dir.x * actualDist;
+          const py = y + dir.y * actualDist * this.PERSPECTIVE_SCALE_Y;
+          ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.03)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.15)';
+        ctx.stroke();
+      } else {
+        // Player drones have 360-degree vision with dynamic clipping
+        ctx.beginPath();
+        
+        const segments = 72; // 5-degree steps
+        for (let i = 0; i <= segments; i++) {
+          const angle = (i / segments) * Math.PI * 2;
+          const dir = { x: Math.cos(angle), y: Math.sin(angle) };
+          let actualDist: number = radarRadius;
+
+          for (const obs of obstacles) {
+            if (entity.z >= (obs.zHeight ?? 0)) continue;
+            const hit = VectorMath.intersectRayAABB(entity.position, dir, radarRadius, obs);
+            if (hit && hit.distance < actualDist) {
+              actualDist = hit.distance;
+            }
+          }
+
+          const px = x + dir.x * actualDist;
+          const py = y + dir.y * actualDist * this.PERSPECTIVE_SCALE_Y;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.stroke();
+      }
+
+      // Melee Range Indicator
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.15)';
-      ctx.ellipse(x, y, 20, 20 * this.PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = entity.type === 'PLAYER' ? 'rgba(34, 211, 238, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+      ctx.ellipse(x, y, meleeRadius, meleeRadius * this.PERSPECTIVE_SCALE_Y, 0, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.setLineDash([]);
@@ -479,10 +546,11 @@ export class CombatArenaComponent implements AfterViewInit, OnDestroy {
 
     // Enemy Target (Zenith Hostile)
     const template = ENEMY_TEMPLATES[mission.enemyTypeId] || ENEMY_TEMPLATES['GUARDIAN_UNIT'];
+    const enemyId = `enemy-${crypto.randomUUID()}`;
 
     combatEntities.push({
-      id: 'enemy-1',
-      name: mission.targetName,
+      id: enemyId,
+      name: template.name,
       type: 'ENEMY',
       position: { x: 400, y: 100 },
       z: 0,

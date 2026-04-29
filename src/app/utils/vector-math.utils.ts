@@ -120,5 +120,30 @@ export const VectorMath = {
       { x: aabb.x, y: aabb.y + aabb.height },
       { x: aabb.x + aabb.width, y: aabb.y + aabb.height }
     ];
+  },
+
+  /**
+   * Calculates if a target is within a specified FOV cone relative to the source's rotation.
+   * @param sourcePos Position of the viewing entity.
+   * @param targetPos Position of the target.
+   * @param sourceRotation Forward facing direction of the source in radians.
+   * @param fovDegrees Total field of view arc in degrees (default 120).
+   */
+  isTargetInFOV: (
+    sourcePos: Vector2D,
+    targetPos: Vector2D,
+    sourceRotation: number,
+    fovDegrees = 120
+  ): boolean => {
+    const toTarget = VectorMath.sub(targetPos, sourcePos);
+    const angleToTarget = Math.atan2(toTarget.y, toTarget.x);
+    let diff = angleToTarget - sourceRotation;
+
+    // Normalize angle difference to [-PI, PI]
+    while (diff > Math.PI) diff -= 2 * Math.PI;
+    while (diff < -Math.PI) diff += 2 * Math.PI;
+
+    const halfFOV = (fovDegrees * Math.PI) / 360;
+    return Math.abs(diff) <= halfFOV;
   }
 };

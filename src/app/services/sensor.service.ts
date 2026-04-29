@@ -54,7 +54,7 @@ export class SensorService {
    * @param allEntities List of all entities in the arena.
    * @returns Array of entities detected within range.
    */
-  getEnemiesInRadar(entity: CombatEntity, allEntities: CombatEntity[]): CombatEntity[] {
+  getEnemiesInRadar(entity: CombatEntity, allEntities: CombatEntity[], obstacles: AABB[]): CombatEntity[] {
     const radarRange = COMBAT_CONFIG.RANGES.RADAR_RANGE;
 
     return allEntities.filter((e) => {
@@ -62,7 +62,16 @@ export class SensorService {
       if (e.type === entity.type) return false; // Ignore teammates
 
       const dist = VectorMath.dist(entity.position, e.position);
-      return dist <= radarRange;
+      if (dist > radarRange) return false;
+
+      // Hostiles have a restricted 120-degree FOV cone
+      if (entity.type === 'ENEMY') {
+        const inFOV = VectorMath.isTargetInFOV(entity.position, e.position, entity.rotation, 120);
+        if (!inFOV) return false;
+      }
+
+      // Everyone requires clear LOS for sensor lock (Section 8.5)
+      return this.checkLineOfSight(entity, e.position, obstacles);
     });
   }
 

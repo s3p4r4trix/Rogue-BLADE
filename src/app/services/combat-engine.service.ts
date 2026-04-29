@@ -34,7 +34,7 @@ export class CombatEngineService {
     const updatedEntities = entities.map((entity) => {
       // Step A: Perception (SensorService)
       // Determine context: nearest enemy, line of sight, etc.
-      const nearbyEnemies = this.sensorService.getEnemiesInRadar(entity, entities);
+      const nearbyEnemies = this.sensorService.getEnemiesInRadar(entity, entities, obstacles);
       const currentTarget = nearbyEnemies.length > 0 ? nearbyEnemies[0] : null;
 
       const context: BehaviorContext = {
@@ -182,9 +182,19 @@ export class CombatEngineService {
               );
               const newHp = Math.max(0, defender.stats.hp - finalDamage);
 
+              // Snap rotation if the defender is a hostile (Section 8.12)
+              let newRotation = defender.rotation;
+              if (defender.type === 'ENEMY') {
+                newRotation = Math.atan2(
+                  attacker.position.y - defender.position.y,
+                  attacker.position.x - defender.position.x
+                );
+              }
+
               resolvedCollisions[dIdx] = {
                 ...defender,
                 stats: { ...defender.stats, hp: newHp },
+                rotation: newRotation,
                 hitFlash: 0.15
               };
 
@@ -262,10 +272,20 @@ export class CombatEngineService {
               const finalDamage = Math.max(1, Math.round(grossDamage - target.stats.armorValue));
               const newHp = Math.max(0, target.stats.hp - finalDamage);
 
+              // Snap rotation if the target is a hostile (Section 8.12)
+              let newRotation = target.rotation;
+              if (target.type === 'ENEMY') {
+                newRotation = Math.atan2(
+                  attacker.position.y - target.position.y,
+                  attacker.position.x - target.position.x
+                );
+              }
+
               // Apply damage to target (Immutable update)
               resolvedEntities[targetIdx] = {
                 ...target,
                 stats: { ...target.stats, hp: newHp },
+                rotation: newRotation,
                 hitFlash: 0.15 // 150ms flash
               };
 

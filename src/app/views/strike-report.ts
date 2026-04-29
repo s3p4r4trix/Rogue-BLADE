@@ -98,31 +98,45 @@ import { CombatStore } from '../services/combat-store';
                  SQUAD_VITAL_TELEMETRY
               </h3>
 
+              <!-- Mission Identity -->
+              <div class="flex justify-between items-end mb-1 px-1">
+                <span class="text-[7px] text-gray-600 uppercase font-black tracking-[0.2em]">MISSION_PROTOCOL</span>
+                <span class="text-[10px] font-black text-gray-100 uppercase tracking-tighter">{{ mission()?.targetName || 'UNKNOWN_TARGET' }}</span>
+              </div>
+
               <!-- Hostile Intel -->
               <div class="mb-10 p-4 border border-red-900/30 bg-red-950/10 relative overflow-hidden group">
                 <div class="absolute top-0 right-0 p-1 text-[7px] text-red-900 uppercase font-black">Target_Lock: Active</div>
-                <h4 class="text-[9px] text-red-500 font-black mb-3 tracking-widest uppercase flex items-center gap-2">
+                <h4 class="text-[9px] text-red-500 font-black mb-5 tracking-widest uppercase flex items-center gap-2">
                   <span class="w-1 h-1 bg-red-500 animate-ping"></span>
                   HOSTILE_ENTITY_DETECTION
                 </h4>
                 
-                <div class="space-y-4">
-                  <div class="flex justify-between items-end">
-                    <span class="text-xs font-black text-gray-100 uppercase tracking-tighter">{{ mission()?.targetName || 'UNKNOWN_TARGET' }}</span>
-                    <span class="text-[10px] font-mono text-red-500">{{ Math.ceil(combatStore.enemyHull()) }} <span class="opacity-30">/</span> {{ combatStore.enemyMaxHull() }}</span>
-                  </div>
-                  
-                  <div class="space-y-1.5">
-                      <div class="flex justify-between items-center text-[8px] text-red-900 uppercase font-bold tracking-tighter">
-                        <span>Hull_Integrity</span>
-                        <span>{{ combatStore.enemyMaxHull() > 0 ? Math.ceil((combatStore.enemyHull() / combatStore.enemyMaxHull()) * 100) : 0 }}%</span>
+                <div class="space-y-6">
+                  @for(enemy of combatStore.entities(); track enemy.id) {
+                    @if (enemy.type === 'ENEMY') {
+                      <div class="space-y-3">
+                        <div class="flex justify-between items-end">
+                          <span class="text-[10px] font-black text-red-400 uppercase tracking-tighter">{{ enemy.name }}</span>
+                          <span class="text-[10px] font-mono text-red-500">{{ Math.ceil(enemy.stats.hp) }} <span class="opacity-30">/</span> {{ enemy.stats.maxHp }}</span>
+                        </div>
+                        
+                        <div class="space-y-1.5">
+                          <div class="flex justify-between items-center text-[7px] text-red-900 uppercase font-bold tracking-tighter">
+                            <span>Hull_Integrity</span>
+                            <span>{{ enemy.stats.maxHp > 0 ? Math.ceil((enemy.stats.hp / enemy.stats.maxHp) * 100) : 0 }}%</span>
+                          </div>
+                          <div class="w-full h-1.5 bg-red-950/20">
+                            <div class="h-full bg-red-600 transition-all duration-300" 
+                                 [ngClass]="{'animate-pulse bg-red-500': enemy.stats.hp < (enemy.stats.maxHp * 0.3)}"
+                                 [style.width.%]="(enemy.stats.hp / enemy.stats.maxHp) * 100"></div>
+                          </div>
+                        </div>
                       </div>
-                    <div class="w-full h-2 bg-red-950/20">
-                      <div class="h-full bg-red-600 transition-all duration-300" 
-                           [ngClass]="{'animate-pulse bg-red-500': combatStore.enemyHull() < (combatStore.enemyMaxHull() * 0.3)}"
-                           [style.width.%]="(combatStore.enemyHull() / combatStore.enemyMaxHull()) * 100"></div>
-                    </div>
-                  </div>
+                    }
+                  } @empty {
+                    <div class="text-[8px] text-red-900/50 uppercase font-mono italic">NO_HOSTILES_IN_RADAR...</div>
+                  }
                 </div>
               </div>
 
@@ -226,25 +240,25 @@ import { CombatStore } from '../services/combat-store';
 export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   /** Signal-based view child for the log terminal container. */
   private logContainer = viewChild<ElementRef>('logContainer');
-  
+
   /** High-fidelity offline combat simulation. */
   private combat = inject(CombatSimulationService);
-  
+
   /** Navigation service. */
   private router = inject(Router);
-  
+
   /** Mission state manager. */
   private missionStore = inject(MissionStore);
-  
+
   /** Workshop state manager. */
   private workshopStore = inject(WorkshopStore);
-  
+
   /** Live combat state manager. */
   readonly combatStore = inject(CombatStore);
 
   /** Signal exposing the current active mission details. */
   mission = this.missionStore.activeStrikeMission;
-  
+
   /** Signal containing the list of shurikens available for the strike. */
   shurikens = this.workshopStore.availableShurikens;
 
@@ -388,7 +402,7 @@ export class StrikeReport implements OnInit, OnDestroy, AfterViewChecked {
   /**
    * Logic: Finalizes the session and resets mission state.
    */
-  finalize() {   
+  finalize() {
     this.missionStore.refreshContracts();
     this.missionStore.clearStrike();
     this.router.navigate(['/liberation']);
