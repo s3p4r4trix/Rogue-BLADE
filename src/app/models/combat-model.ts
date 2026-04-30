@@ -64,6 +64,7 @@ export interface CombatEntity {
     critMultiplier: number;
     aoeRadius?: number;
     pulseCooldown?: number;
+    sensorRange?: number;
   };
 
   // AI / Logic

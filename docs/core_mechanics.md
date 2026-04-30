@@ -250,7 +250,7 @@ Every trigger must evaluate to a boolean (true / false). Many triggers are locke
     *   **logic:** Returns true if any enemy is within the sensor lock radius.
 *   **trig_self_hull_critical** (Tactical: _Self: Hull Critical_)
     *   **reqSensor:** None (Internal)
-    *   **logic:** Returns true if currentHp < 20% of maxHp.
+    *   **logic:** Returns true if currentHp < 30% of maxHp.
 *   **trig_incoming_fire** (Tactical: _Self: Incoming Fire_)
     *   **reqSensor:** Thermal/Lidar Matrix
     *   **logic:** Returns true if an enemy projectile is on a collision course.
@@ -265,7 +265,7 @@ Every trigger must evaluate to a boolean (true / false). Many triggers are locke
     *   **logic:** Returns true if the target has active energy shields.
 *   **trig_ally_critical** (Tactical: _Ally: Critical_)
     *   **reqSensor:** Radar Array
-    *   **logic:** Returns true if a nearby allied drone is below 20% HP.
+    *   **logic:** Returns true if a nearby allied drone is below 30% HP.
 *   **trig_flank_exposed** (Tactical: _Tactical: Flank Exposed_)
     *   **reqSensor:** Terahertz Array
     *   **logic:** Returns true if target is facing away from the drone.
