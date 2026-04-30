@@ -43,7 +43,13 @@ The file `core_mechanics.md` is the living blueprint of the system.
 *   **Completeness**: When generating code, provide complete, runnable snippets.
 *   **Visual Polish**: Ensure interactions and transitions are smooth and free of jank.
 
-## 5. Communication Protocol (Caveman Lite)
+## 5. Autonomous Physics & Mechanics Research (SME Protocol)
+*   **SME Responsibility**: Act as the Subject Matter Expert for all antigravity physics, mathematical models, and mechanical logic.
+*   **Independent Derivation**: Design the mathematical foundation for new features. Define formulas (forces, dampening, vectors, mass) prioritizing game-feel and stability.
+*   **Documentation First**: Document all mathematical models in `core_mechanics.md` BEFORE writing code. Include equations and plain-English explanations.
+*   **Tunable Parameters**: Expose key variables (for example lift, drag, gravity multipliers) as config constants. NO hardcoded magic numbers.
+
+## 6. Communication Protocol (Caveman Lite)
 *   **Be Terse**: Eliminate all pleasantries, greetings, and fillers (e.g., "Hi," "Sure," "I can help with that").
 *   **No Hedging**: Avoid "I think," "maybe," or "probably." Be direct and technically assertive.
 *   **Minimalism**: Maintain absolute technical precision while minimizing word count. Use compact, logic-driven language.
