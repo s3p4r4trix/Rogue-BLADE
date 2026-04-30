@@ -158,9 +158,12 @@ export class CombatEngineService {
         const dist = VectorMath.dist(e1.position, e2.position);
         const minDist = e1.radius + e2.radius;
 
-        if (dist < minDist && dist > 0) {
+        if (dist < minDist) {
           const overlap = minDist - dist;
-          const normal = VectorMath.normalize(VectorMath.sub(e1.position, e2.position));
+          // If perfectly overlapping, push in a default direction to avoid NaN
+          const normal = dist > 0 
+            ? VectorMath.normalize(VectorMath.sub(e1.position, e2.position))
+            : { x: 1, y: 0 }; 
           const push = VectorMath.mul(normal, overlap / 2);
 
           // Separation: Push apart by overlap / 2
