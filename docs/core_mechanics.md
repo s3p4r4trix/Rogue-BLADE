@@ -43,43 +43,61 @@ When a Shuriken is fully assembled, its components calculate these final attribu
 
 ### A. Anti-Grav Engines
 
-*   **Drifter (Basic):** speed: +230, acceleration: +75, evasionRate: +0.05, energyDrain: 5, stealthValue: 10    
-*   **Hauler (Tank):** speed: +180, acceleration: +55, evasionRate: +0.0, energyDrain: 8, weightCapacity: High    
-*   **Screamer (Speed):** speed: +500, acceleration: +160, evasionRate: +0.15, energyDrain: 15, stealthValue: -20    
-*   **Ghost (Stealth):** speed: +320, acceleration: +133, evasionRate: +0.10, energyDrain: 8, stealthValue: +50    
+*   **Drifter (Basic):** speed: +230, acceleration: +230, evasionRate: +0.05, energyDrain: 5, stealthValue: 10, weight: 10
+*   **Hauler (Tank):** speed: +180, acceleration: +130, evasionRate: +0.0, energyDrain: 8, stealthValue: 0, weight: 25
+*   **Screamer (Speed):** speed: +500, acceleration: +750, evasionRate: +0.15, energyDrain: 15, stealthValue: -20, weight: 8
+*   **Ghost (Stealth):** speed: +320, acceleration: +185, evasionRate: +0.10, energyDrain: 8, stealthValue: 50, weight: 12
 
 ### B. Hull Materials
 
-*   **Plasteel (Tier I):** hp: 100, armorValue: 5, weight: 20    
-*   **Durasteel (Tier II):** hp: 300, armorValue: 25, weight: 60    
-*   **Neutronium (Tier III):** hp: 1500, armorValue: 150, weight: 300    
+*   **Scrap-Metal (Tier I):** hp: 80, armorValue: 2, weight: 25
+*   **Carbon-Composite (Tier I):** hp: 100, armorValue: 5, weight: 15
+*   **Durasteel (Tier II):** hp: 300, armorValue: 25, weight: 60
+*   **Neutronium-Cast (Tier III):** hp: 1500, armorValue: 150, weight: 300
 
 ### C. Blades & Edges
 
-*   **Carbon Razor:** damage: 40, type: SLASHING, critChance: 0.10, energyDrain: 0    
-*   **Titan Breaker:** damage: 80, type: KINETIC, critChance: 0.05, energyDrain: 0    
-*   **Plasma Edge:** damage: 70, type: ENERGY, critChance: 0.15, energyDrain: 25    
+*   **Sharpened Edge:** damage: 20, type: SLASHING, critChance: 0.05, energyDrain: 0
+*   **Hammer Profile:** damage: 40, type: KINETIC, critChance: 0.02, energyDrain: 0
+*   **Vibro-Blade:** damage: 50, type: SLASHING, critChance: 0.12, energyDrain: 5
+*   **Energy Blade:** damage: 100, type: ENERGY, critChance: 0.15, energyDrain: 25
 
 ### D. Form Designs (Chassis Multipliers)
 
 Forms apply a global multiplier to the final stats.
 
-*   **Disc:** speedMult: 1.0, weightMult: 1.0, damageMult: 1.0
-*   **Dagger:** speedMult: 2.0, weightMult: 0.4, critChanceMult: 1.5
-*   **Sphere:** speedMult: 0.3, weightMult: 2.5, armorMult: 1.2
-*   **Shuriken:** speedMult: 1.0, weightMult: 0.9, damageMult: 1.0
-*   **Ion Disk** speedMult: 1.1, weightMult: 1.0, damageMult: 1.6
+*   **Shuriken:** speedMult: 1.0, weightMult: 0.7, damageMult: 1.1, armorMult: 0.8
+*   **Disc:** speedMult: 1.0, weightMult: 1.1, damageMult: 1.0, armorMult: 1.0
+*   **Dagger:** speedMult: 1.2, weightMult: 0.8, damageMult: 0.3, armorMult: 0.5, critChanceMult: 1.5
+*   **Sphere:** speedMult: 0.7, weightMult: 1.5, damageMult: 2.0, armorMult: 1.7, critChanceMult: 0.3
+*   **Ion-Edge:** speedMult: 1.1, weightMult: 0.9, damageMult: 0.9, armorMult: 0.9, critChanceMult: 1.2
 
 ### E. Processors & AI
 
-*   **Abacus Chip:** slots: 2, reactionTime: 0.5s, processorSpeed: 5    
-*   **Cortex CPU:** slots: 3, reactionTime: 0.2s, processorSpeed: 15    
-*   **Omni-Node Core:** slots: 5, reactionTime: 0.05s, processorSpeed: 40    
+*   **Abacus Chip:** slots: 2, reactionTime: 0.5s, processorSpeed: 5, weight: 1
+*   **Cortex CPU:** slots: 3, reactionTime: 0.2s, processorSpeed: 15, weight: 1
+*   **Omni-Node Core:** slots: 5, reactionTime: 0.05s, processorSpeed: 40, weight: 2
 
-### F. Semi-AI (The Brain - OPTIONAL)
+### F. Energy Systems
+
+*   **Energy Cells (Capacity):**
+    *   Scrap Dynamo: maxEnergy: 100, weight: 15
+    *   Voltiac Cell: maxEnergy: 300, weight: 10
+*   **Reactors (Regeneration):**
+    *   Atomic Reactor: energyRegen: 2, weight: 5
+    *   Fusion Reactor: energyRegen: 5, weight: 8
+    *   Antimatter Reactor: energyRegen: 12, weight: 15
+
+### G. Shield Generators
+
+*   **Scrap-Capacitor:** shieldCapacity: 50, regenRate: 2, energyCostPerRegen: 5, weight: 10
+
+### H. Semi-AI (The Brain - OPTIONAL)
 
 A Shuriken with an equipped Semi-AI is designated as a MASTER. A Shuriken without a Semi-AI is designated as SOLO unless slaved to a Master.
 
+*   **Scrap-Code "Feral":** reactionTimeMult: 0.85, iffAccuracy: 70, weight: 1
+*   **Aegis "Guardian":** reactionTimeMult: 0.90, iffAccuracy: 95, weight: 1
 *   **Swarm Coordination:** Masters manage SLAVE units. Slaves receive the Master's iffAccuracy and a 15% Latency reduction.
 *   **Processor Synergy:** Equipping a Semi-AI on a Shuriken provides a direct performance boost to the internal Processor, reducing its base reaction time.    
 *   **Operational Risk (Grace Period):** If a Master is destroyed, Slaves do NOT suffer an immediate permanent penalty. Instead, they enter a 5-second "Chaos Mode" (erratic movement, basic attacks only) before reverting to their internal base reaction time without the Master's buffs.
@@ -350,7 +368,7 @@ All movement uses smooth acceleration toward a target velocity. The acceleration
 ### 8.5 Sensors & Detection
 
 **Radius Checks (AoE):** Simple Euclidean distance check between entities on the 2D ground plane.
-*   **Radar Range:** sensorRange (default 400 units). Returns true if dist(drone, target) <= sensorRange.
+*   **Radar Range:** sensorRange (default 800 units). Returns true if dist(drone, target) <= sensorRange.
 *   **Melee Range:** meleeRange (default 30 units). Returns true if dist(drone, target) <= meleeRange. (Calculation uses entity.radius + target.radius + 15).
 
 **Initial Detection (No Omniscience):** Drones start a mission with lastSeenPos = null and begin in the PATROLLING state. They have no information about enemy coordinates until they achieve a "Sensor Lock" (Range <= sensorRange AND LOS is clear).

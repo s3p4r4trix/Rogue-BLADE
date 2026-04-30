@@ -134,7 +134,7 @@ Every trigger must evaluate to a boolean (true / false). Many triggers arelocked
     *   logic: Returns true if an enemy is within collision/strike radius.
 *   **ifEnemyInSight** (Designation: Enemy: Detected )    
     *   reqSensor: Radar / Lidar
-    *   logic: Returns true if an enemy is within the 400 unit tracking radius.
+    *   logic: Returns true if an enemy is within the sensor range tracking radius.
 *   **ifEnemyIsShielded** (Designation: Enemy: Shield Active )    
     *   reqSensor: EM-Scanner
     *   logic: Returns true if the target has active energy shields.
@@ -212,7 +212,7 @@ Actions dictate the behavior of the Shuriken once a trigger is met. Some actions
 
 ## 6.5 Sensors (Unlocking Triggers)
 
-*   **Radar**: Long-range monitoring; susceptible to chaff (up to 400 units).
+*   **Radar**: Long-range monitoring; susceptible to chaff (up to 800 units).
 *   **Terahertz**: Penetrates physical obstacles (up to 20 meters).
 
 ## 6.6 Blades & Edges
