@@ -244,61 +244,59 @@ The Drone AI operates on an underlying "Hidden Default" State Machine before eva
 ### 7.1 Triggers (IF Components)
 
 Every trigger must evaluate to a boolean (true / false). Many triggers are locked unless the specific sensor is equipped in the hardware phase. In the Rogue OS UI, these are presented with tactical designations.
-*   **ifEnemyInMeleeRange** (Tactical: _Enemy: Close Proximity_)
-    *   **reqSensor:** None (Proximity)    
-    *   **logic:** Returns true if an enemy is within collision/strike radius.        
-*   **ifEnemyInSight** (Tactical: _Enemy: Detected_)
-    *   **reqSensor:** Radar / Lidar    
-    *   **logic:** Returns true if an enemy is within the global tracking radius.
-*   **ifEnemyIsShielded** (Tactical: _Enemy: Shield Active_)
-    *   **reqSensor:** EM-Scanner
-    *   **logic:** Returns true if the target has active energy shields.
-*   **ifEnemyIsOrganic** (Tactical: _Enemy: Soft Target_)
-    *   **reqSensor:** Biosensor
-    *   **logic:** Returns true if the target armor type is UNARMORED/Flesh.
-*   **ifEnemyBehindCover** (Tactical: _Enemy: Obscured_)
-    *   **reqSensor:** Terahertz Array    
-    *   **logic:** Returns true if target is obscured by a wall/obstacle.
-*   **ifTargetIsMarked** (Tactical: _Enemy: Marked_)
-    *   **reqSensor:** None (Reads Swarm Data)
-    *   **logic:** Returns true if any enemy currently has the 'Marked' status.
-*   **ifSelfHpCritical** (Tactical: _Self: Hull Breach_)
-    *   **reqSensor:** None (Internal System)
+
+*   **trig_target_acquired** (Tactical: _Target: Acquired_)
+    *   **reqSensor:** None (Baseline)
+    *   **logic:** Returns true if any enemy is within the sensor lock radius.
+*   **trig_self_hull_critical** (Tactical: _Self: Hull Critical_)
+    *   **reqSensor:** None (Internal)
     *   **logic:** Returns true if currentHp < 20% of maxHp.
-*   **ifEnergyHigh** (Tactical: _Self: Power Overload_)
-    *   **reqSensor:** None (Internal System)
-    *   **logic:** Returns true if currentEnergy > 80% of maxEnergy.
-*   **ifIncomingProjectile** (Tactical: _Self: Incoming Fire_)
-    *   **reqSensor:** Lidar
-    *   **logic:** Returns true if an enemy projectile is on a collision course with this Shuriken.
+*   **trig_incoming_fire** (Tactical: _Self: Incoming Fire_)
+    *   **reqSensor:** Thermal/Lidar Matrix
+    *   **logic:** Returns true if an enemy projectile is on a collision course.
+*   **trig_enemy_vulnerable** (Tactical: _Enemy: Vulnerable_)
+    *   **reqSensor:** Thermal/Lidar Matrix
+    *   **logic:** Returns true if target is stunned or has zero shields.
+*   **trig_enemy_charging** (Tactical: _Enemy: Charging_)
+    *   **reqSensor:** EM Scanner
+    *   **logic:** Returns true if target is spooling a high-energy attack.
+*   **trig_enemy_shielded** (Tactical: _Enemy: Shield Active_)
+    *   **reqSensor:** EM Scanner
+    *   **logic:** Returns true if the target has active energy shields.
+*   **trig_ally_critical** (Tactical: _Ally: Critical_)
+    *   **reqSensor:** Radar Array
+    *   **logic:** Returns true if a nearby allied drone is below 20% HP.
+*   **trig_flank_exposed** (Tactical: _Tactical: Flank Exposed_)
+    *   **reqSensor:** Terahertz Array
+    *   **logic:** Returns true if target is facing away from the drone.
 
 ### 7.2 Actions (THEN Components)
 
 Actions dictate the behavior of the Shuriken once a trigger is met. Some actions have specific energy costs or hardware synergies.
 
-*   **actionStandardStrike** (Tactical: _Execute: Standard Strike_)
-    *   **behavior:** Moves toward the target and executes a standard attack using the equipped blade profile.
-    *   **energyCost:** 0 (Base cost)
-*   **actionKineticRam** (Tactical: _Execute: Kinetic Ram_)
+*   **act_hit_and_run** (Tactical: _Execute: Hit & Run_)
+    *   **behavior:** Executes a standard strike then immediately initiates a maximum distance retreat.
+    *   **energyCost:** 0
+*   **act_kinetic_ram** (Tactical: _Execute: Kinetic Ram_)
     *   **behavior:** Maximizes acceleration toward the target to maximize the momentum multiplier.
-    *   **energyCost:** 20
-*   **actionEvasiveManeuver** (Tactical: _Execute: Evasive Action_)
-    *   **behavior:** Briefly increases evasionRate to Max Cap (0.75) and moves erratically. Cancels current attack.
+    *   **energyCost:** 30
+*   **act_flank_maneuver** (Tactical: _Execute: Flank Maneuver_)
+    *   **behavior:** Repaths to move behind the target's current facing direction.
     *   **energyCost:** 15
-*   **actionApplyMark** (Tactical: _Execute: Apply Mark_)
-    *   **behavior:** Attacks with the intent to apply the "Marked" status effect instead of dealing max damage.
-    *   **energyCost:** 5
-*   **actionDefendAlly** (Tactical: _Execute: Defend Ally_)
-    *   **behavior:** Repaths to orbit the nearest allied Shuriken (or the player's core) to intercept incoming attacks.
+*   **act_take_cover** (Tactical: _Execute: Take Cover_)
+    *   **behavior:** Moves to the nearest obstacle to break line-of-sight.
+    *   **energyCost:** 10
+*   **act_evasive_orbit** (Tactical: _Execute: Evasive Orbit_)
+    *   **behavior:** Circles the target at high speed with erratic course corrections.
     *   **energyCost:** 0
-*   **actionActivateCloak** (Tactical: _Execute: Ghost Protocol_)
-    *   **behavior:** Consumes energy per second to push stealthValue to maximum, making the Shuriken very hard to detect by normal enemies.
-    *   **energyCost:** 10 per second
-*   **actionEmergencyReboot** (Tactical: _Execute: Emergency Reboot_)
-    *   **behavior:** Drone stand still for 3 seconds. During this time, the drone is prone to damage and enemy tracking but has 30% of maximum energy after this period.
+*   **act_intercept_target** (Tactical: _Execute: Intercept_)
+    *   **behavior:** Moves to intercept the target's current trajectory.
     *   **energyCost:** 0
-*   **actionEmergencyWithdrawal** (Tactical: _Execute: Emergency Withdrawal_)
-    *   **behavior:** Moves to the furthest possible edge of the combat zone away from the highest density of enemies to regenerate shields/HP.
+*   **act_shield_flare** (Tactical: _Execute: Shield Flare_)
+    *   **behavior:** Overloads shields to briefly grant damage immunity.
+    *   **energyCost:** 40
+*   **act_focus_master_target** (Tactical: _Execute: Focus Fire_)
+    *   **behavior:** Targets the same entity currently being engaged by the Swarm Master.
     *   **energyCost:** 0
         
 

@@ -20,13 +20,11 @@ export const HARDWARE_INVENTORY = {
     { id: 'react-antimatter', name: 'Antimatter Reactor', description: 'High-yield antimatter reactor.', energyRegen: 12, weight: 15 } as Reactor
   ],
   sensors: [
-    { id: 'sens-optical', name: 'Optical Sensors', description: 'Short-range camera array.', range: 300, accuracy: 0.7, unlocksTriggerIds: ['ifEnemyInMeleeRange'], weight: 1 } as Sensor,
-    { id: 'sens-bio', name: 'Biosensors', description: 'Organic signature tracking.', range: 400, accuracy: 0.85, unlocksTriggerIds: ['ifEnemyIsOrganic'], weight: 2 } as Sensor,
-    { id: 'sens-thermal', name: 'Thermal Sensors', description: 'Infrared heat detection.', range: 400, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyInSight'], weight: 2 } as Sensor,
-    { id: 'sens-em', name: 'EM-Sensors', description: 'Detects active energy fields.', range: 500, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyIsShielded'], weight: 3 } as Sensor,
-    { id: 'sens-radar', name: 'Radar Array', description: 'Long-range monitoring.', range: 800, accuracy: 0.8, unlocksTriggerIds: ['ifEnemyInSight'], weight: 5 } as Sensor,
-    { id: 'sens-lidar', name: 'Lidar Array', description: 'Precision optical targeting.', range: 600, accuracy: 0.98, unlocksTriggerIds: ['ifIncomingProjectile'], weight: 4 } as Sensor,
-    { id: 'sens-terahertz', name: 'Terahertz Array', description: 'Penetrates physical obstacles.', range: 350, accuracy: 0.9, unlocksTriggerIds: ['ifEnemyBehindCover'], weight: 3 } as Sensor
+    { id: 'sens-proximity', name: 'Proximity Array', description: 'Basic short-range proximity sensors.', range: 300, accuracy: 0.9, unlocksTriggerIds: [], weight: 1 } as Sensor,
+    { id: 'sens-em', name: 'EM Scanner', description: 'Detects active energy fields and charge signatures.', range: 450, accuracy: 0.85, unlocksTriggerIds: ['trig_enemy_shielded', 'trig_enemy_charging'], weight: 2 } as Sensor,
+    { id: 'sens-thermal', name: 'Thermal/Lidar Matrix', description: 'Advanced infrared and light-based tracking.', range: 500, accuracy: 0.95, unlocksTriggerIds: ['trig_incoming_fire', 'trig_enemy_vulnerable'], weight: 3 } as Sensor,
+    { id: 'sens-terahertz', name: 'Terahertz Array', description: 'Penetrates physical obstacles and reveals weaknesses.', range: 350, accuracy: 0.9, unlocksTriggerIds: ['trig_flank_exposed'], weight: 4 } as Sensor,
+    { id: 'sens-radar', name: 'Radar Array', description: 'Long-range tactical monitoring.', range: 800, accuracy: 0.8, unlocksTriggerIds: ['trig_ally_critical'], weight: 5 } as Sensor
   ],
   blades: [
     { id: 'blade-edge', name: 'Sharpened Edge', description: 'Simple metal rim.', damageType: 'SLASHING', baseDamage: 20, critChance: 0.05, critMultiplier: 1.5, energyDrain: 0, unlocksActionIds: ['actionStandardStrike'], weight: 5 } as Blade,
@@ -61,12 +59,34 @@ export const HARDWARE_INVENTORY = {
   ]
 };
 
+export const AVAILABLE_TRIGGERS: Trigger[] = [
+  { id: 'trig_target_acquired', type: 'trigger', value: 'Target acquired', name: 'Target: Acquired', description: 'Enemy detected within sensor lock range.' },
+  { id: 'trig_self_hull_critical', type: 'trigger', value: 'Hull < 20%', name: 'Self: Hull Critical', description: 'Structural integrity at critical levels.' },
+  { id: 'trig_incoming_fire', type: 'trigger', value: 'Incoming fire', name: 'Self: Incoming Fire', description: 'Hostile projectiles detected on intercept course.', requiredSensor: 'Thermal/Lidar Matrix' },
+  { id: 'trig_enemy_vulnerable', type: 'trigger', value: 'Enemy vulnerable', name: 'Enemy: Vulnerable', description: 'Target is stunned or shields are down.', requiredSensor: 'Thermal/Lidar Matrix' },
+  { id: 'trig_enemy_charging', type: 'trigger', value: 'Enemy charging', name: 'Enemy: Charging', description: 'Target is spooling a high-energy attack.', requiredSensor: 'EM Scanner' },
+  { id: 'trig_enemy_shielded', type: 'trigger', value: 'Enemy shielded', name: 'Enemy: Shield Active', description: 'Target has active energy shielding.', requiredSensor: 'EM Scanner' },
+  { id: 'trig_ally_critical', type: 'trigger', value: 'Ally critical', name: 'Ally: Critical', description: 'Nearby allied drone is in critical condition.', requiredSensor: 'Radar Array' },
+  { id: 'trig_flank_exposed', type: 'trigger', value: 'Flank exposed', name: 'Tactical: Flank Exposed', description: 'Target flank or rear is vulnerable to strike.', requiredSensor: 'Terahertz Array' }
+];
+
+export const AVAILABLE_ACTIONS: Action[] = [
+  { id: 'act_hit_and_run', type: 'action', value: 'Hit and run', name: 'Execute: Hit & Run', description: 'Strike the target and immediately retreat to safe distance.' },
+  { id: 'act_kinetic_ram', type: 'action', value: 'Kinetic ram', name: 'Execute: Kinetic Ram', energyCost: 30, description: 'Maximize acceleration for a high-momentum collision.' },
+  { id: 'act_flank_maneuver', type: 'action', value: 'Flank maneuver', name: 'Execute: Flank Maneuver', energyCost: 15, description: 'Reposition to the target\'s vulnerable flank.' },
+  { id: 'act_take_cover', type: 'action', value: 'Take cover', name: 'Execute: Take Cover', energyCost: 10, description: 'Navigate to the nearest obstacle to break LOS.' },
+  { id: 'act_evasive_orbit', type: 'action', value: 'Evasive orbit', name: 'Execute: Evasive Orbit', description: 'Circle the target with unpredictable movement patterns.' },
+  { id: 'act_intercept_target', type: 'action', value: 'Intercept target', name: 'Execute: Intercept', description: 'Calculate and move to the target\'s projected path.' },
+  { id: 'act_shield_flare', type: 'action', value: 'Shield flare', name: 'Execute: Shield Flare', energyCost: 40, description: 'Overload shields to provide brief damage immunity.' },
+  { id: 'act_focus_master_target', type: 'action', value: 'Focus master target', name: 'Execute: Focus Fire', description: 'Coordinate with Swarm Master to focus on a single target.' }
+];
+
 /** ─── Default Shuriken Template ─────────────────────────────────────────────── */
 
 export const DEFAULT_SHURIKEN: Omit<Shuriken, 'id' | 'name'> = {
   engine: HARDWARE_INVENTORY.engines[0],
   energyCell: HARDWARE_INVENTORY.energyCells[0],
-  sensor: HARDWARE_INVENTORY.sensors[0],
+  sensor: HARDWARE_INVENTORY.sensors[0], // sens-proximity
   blade: HARDWARE_INVENTORY.blades[0],
   formDesign: HARDWARE_INVENTORY.formDesigns[0],
   hull: HARDWARE_INVENTORY.hulls[0],
@@ -122,7 +142,7 @@ export function loadUnlockedComponents(): string[] {
     // Reactors
     'react-atomic', 'react-fusion', 'react-antimatter',
     // Sensors
-    'sens-optical', 'sens-bio', 'sens-thermal', 'sens-em', 'sens-radar', 'sens-lidar', 'sens-terahertz',
+    'sens-proximity', 'sens-em', 'sens-thermal', 'sens-terahertz', 'sens-radar',
     // Blades
     'blade-edge', 'blade-hammer', 'blade-vibro', 'blade-energy',
     // Form Designs
@@ -156,13 +176,13 @@ export function loadSavedRoutinesMap(): Record<string, GambitRoutine[]> {
   const defaultRoutines: GambitRoutine[] = [
     {
       priority: 1,
-      trigger: { id: 'ifEnemyInMeleeRange', type: 'trigger', value: 'Enemy in melee range', name: 'Enemy: Close Proximity', description: 'Target is within strike radius.' },
-      action: { id: 'actionStandardStrike', type: 'action', value: 'Standard Strike', name: 'Execute: Standard Strike', energyCost: 0, description: 'Basic attack maneuver.', baseLatency: 200 }
+      trigger: AVAILABLE_TRIGGERS[0], // trig_target_acquired
+      action: AVAILABLE_ACTIONS[0] // act_hit_and_run
     },
     {
       priority: 2,
-      trigger: { id: 'ifEnemyInSight', type: 'trigger', value: 'Enemy in sight', name: 'Enemy: Detected', description: 'Target detected by radar/lidar.', requiredSensor: 'Radar/Lidar' },
-      action: { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: 'Execute: Kinetic Ram', energyCost: 20, description: 'High-speed physical collision.', baseLatency: 500 }
+      trigger: AVAILABLE_TRIGGERS[1], // trig_self_hull_critical
+      action: AVAILABLE_ACTIONS[4] // act_evasive_orbit
     }
   ];
 

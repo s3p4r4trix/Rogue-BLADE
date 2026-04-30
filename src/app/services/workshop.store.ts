@@ -3,7 +3,7 @@ import { signalStore, withState, withComputed, withMethods, withHooks, patchStat
 import { moveItemInArray } from '@angular/cdk/drag-drop';
 import { Action, GambitRoutine, Trigger } from '../models/gambit-model';
 import { Shuriken } from '../models/hardware-model';
-import { HARDWARE_INVENTORY, loadShurikens, loadUnlockedComponents, loadSavedRoutinesMap } from '../data/hardware-inventory.data';
+import { HARDWARE_INVENTORY, AVAILABLE_TRIGGERS, AVAILABLE_ACTIONS, loadShurikens, loadUnlockedComponents, loadSavedRoutinesMap } from '../data/hardware-inventory.data';
 
 /** ─── Workshop State Definition ─────────────────────────────────────────────── */
 
@@ -33,24 +33,8 @@ const loadedRoutines = loadSavedRoutinesMap();
 const savedActiveId = localStorage.getItem('rogueBlade_activeShuriken');
 
 const initialState: WorkshopState = {
-  availableTriggers: [
-    { id: 'ifEnemyInMeleeRange', type: 'trigger', value: 'Enemy in melee range', name: 'Enemy: Close Proximity', description: 'Target is within strike radius.' },
-    { id: 'ifEnemyInSight', type: 'trigger', value: 'Enemy in sight', name: 'Enemy: Detected', description: 'Target detected by radar/lidar.', requiredSensor: 'Radar/Lidar' },
-    { id: 'ifEnemyIsShielded', type: 'trigger', value: 'Enemy has active shield', name: 'Enemy: Shield Active', description: 'Target is protected by EM field.', requiredSensor: 'EM-Sensors' },
-    { id: 'ifEnemyIsOrganic', type: 'trigger', value: 'Enemy is organic', name: 'Enemy: Soft Target', description: 'Target is flesh/light armored.', requiredSensor: 'Biosensors' },
-    { id: 'ifSelfHpCritical', type: 'trigger', value: 'Hull integrity < 20%', name: 'Self: Hull Breach', description: 'Critical internal damage detected.' },
-    { id: 'ifEnergyHigh', type: 'trigger', value: 'Energy pool > 80%', name: 'Self: Power Overload', description: 'System capacity ready for high-drain actions.' },
-    { id: 'ifIncomingProjectile', type: 'trigger', value: 'Incoming projectile detected', name: 'Self: Incoming Fire', description: 'Hostile fire on collision course.', requiredSensor: 'Lidar Array' },
-    { id: 'ifEnemyBehindCover', type: 'trigger', value: 'Enemy behind obstacle', name: 'Enemy: Obscured', description: 'Target is hidden by cover.', requiredSensor: 'Terahertz Array' }
-  ],
-  availableActions: [
-    { id: 'actionStandardStrike', type: 'action', value: 'Standard Strike', name: 'Execute: Standard Strike', energyCost: 0, description: 'Basic attack maneuver.', baseLatency: 200 },
-    { id: 'actionKineticRam', type: 'action', value: 'Kinetic Ram', name: 'Execute: Kinetic Ram', energyCost: 20, description: 'High-speed physical collision.', baseLatency: 500 },
-    { id: 'actionEvasiveManeuver', type: 'action', value: 'Evasive Maneuver', name: 'Execute: Evasive Action', energyCost: 15, description: 'Briefly maximize evasion.', baseLatency: 100 },
-    { id: 'actionActivateCloak', type: 'action', value: 'Activate Cloak', name: 'Execute: Ghost Protocol', energyCost: 10, description: 'Consume energy to disappear.', baseLatency: 300 },
-    { id: 'actionEmergencyReboot', type: 'action', value: 'Emergency Reboot', name: 'Execute: Emergency Reboot', energyCost: 0, description: 'Stand still to regain energy.', baseLatency: 3000 },
-    { id: 'actionEmergencyWithdrawal', type: 'action', value: 'Emergency Withdrawal', name: 'Execute: Emergency Withdrawal', energyCost: 0, description: 'Withdraw to safety zones.', baseLatency: 0 }
-  ],
+  availableTriggers: AVAILABLE_TRIGGERS,
+  availableActions: AVAILABLE_ACTIONS,
   availableShurikens: loadedShurikens,
   unlockedComponentIds: loadedUnlocked,
   activeShurikenId: savedActiveId || loadedShurikens[0]?.id || 'shuriken-01',
@@ -119,7 +103,7 @@ export const WorkshopStore = signalStore(
     return {
       /** Logic: Updates hardware components after a balance patch or refactor. */
       migrateHardware(): void {
-        const baseIds = ['eng-drifter', 'cell-scrap', 'react-fusion', 'sens-optical', 'blade-edge', 'form-shuriken', 'hull-scrap', 'proc-abacus', 'semi-feral', 'sens-terahertz'];
+        const baseIds = ['eng-drifter', 'cell-scrap', 'react-fusion', 'sens-proximity', 'blade-edge', 'form-shuriken', 'hull-scrap', 'proc-abacus', 'semi-feral', 'sens-terahertz'];
         const updatedUnlocked = Array.from(new Set([...store.unlockedComponentIds(), ...baseIds]));
         
         const migratedShurikens = store.availableShurikens().map(shuriken => {
