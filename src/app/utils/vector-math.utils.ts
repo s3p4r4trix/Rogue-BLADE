@@ -57,8 +57,9 @@ export const VectorMath = {
   /** Limits the magnitude of a vector to a maximum value. */
   limit: (v: Vector2D, max: number): Vector2D => {
     const len = VectorMath.length(v);
-    if (len > max && len > 0) {
-      return VectorMath.mul(VectorMath.div(v, len), max);
+    const limitMax = Math.max(0, max);
+    if (len > limitMax && len > 0) {
+      return VectorMath.mul(VectorMath.div(v, len), limitMax);
     }
     return v;
   },
@@ -79,16 +80,33 @@ export const VectorMath = {
     length: number,
     aabb: AABB
   ): { hitPoint: Vector2D; normal: Vector2D; distance: number } | null => {
-    const invDirX = 1.0 / dir.x;
-    const invDirY = 1.0 / dir.y;
+    // Robust Ray-AABB intersection
+    let tmin = -Infinity;
+    let tmax = Infinity;
 
-    const t1 = (aabb.x - origin.x) * invDirX;
-    const t2 = (aabb.x + aabb.width - origin.x) * invDirX;
-    const t3 = (aabb.y - origin.y) * invDirY;
-    const t4 = (aabb.y + aabb.height - origin.y) * invDirY;
+    // Check X axis
+    if (Math.abs(dir.x) < 1e-10) {
+      if (origin.x < aabb.x || origin.x > aabb.x + aabb.width) return null;
+    } else {
+      const invDirX = 1.0 / dir.x;
+      let t1 = (aabb.x - origin.x) * invDirX;
+      let t2 = (aabb.x + aabb.width - origin.x) * invDirX;
+      if (t1 > t2) [t1, t2] = [t2, t1];
+      tmin = Math.max(tmin, t1);
+      tmax = Math.min(tmax, t2);
+    }
 
-    const tmin = Math.max(Math.min(t1, t2), Math.min(t3, t4));
-    const tmax = Math.min(Math.max(t1, t2), Math.max(t3, t4));
+    // Check Y axis
+    if (Math.abs(dir.y) < 1e-10) {
+      if (origin.y < aabb.y || origin.y > aabb.y + aabb.height) return null;
+    } else {
+      const invDirY = 1.0 / dir.y;
+      let t1 = (aabb.y - origin.y) * invDirY;
+      let t2 = (aabb.y + aabb.height - origin.y) * invDirY;
+      if (t1 > t2) [t1, t2] = [t2, t1];
+      tmin = Math.max(tmin, t1);
+      tmax = Math.min(tmax, t2);
+    }
 
     if (tmax < 0 || tmin > tmax || tmin > length) return null;
 
